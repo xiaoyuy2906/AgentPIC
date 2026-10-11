@@ -1,0 +1,84 @@
+"""SAX circuit adapter with explicit ideal compact-model assumptions."""
+
+import numpy as np
+
+from agentpic.ir import EngineeringIR
+
+
+class SAXBackend:
+    name = "sax"
+
+    def simulate(self, ir: EngineeringIR) -> dict:
+        return simulate(ir)
+
+
+def simulate(ir: EngineeringIR) -> dict:
+    if not ir.layout_resolved:
+        raise ValueError("physical arm lengths must be resolved before circuit simulation")
+    import jax
+
+    jax.config.update("jax_enable_x64", True)
+    import jax.numpy as jnp
+    import sax
+
+    def ideal_coupler(wl=1.55, coupling=0.5):
+        through = jnp.sqrt(1 - coupling) * jnp.ones_like(jnp.asarray(wl))
+        cross = 1j * jnp.sqrt(coupling) * jnp.ones_like(jnp.asarray(wl))
+        return sax.reciprocal(
+            {("o1", "o4"): through, ("o2", "o3"): through, ("o1", "o3"): cross, ("o2", "o4"): cross}
+        )
+
+    def waveguide(wl=1.55, length_um=1.0, neff=1.8, ng=1.9, wl0=1.55, loss=0.0):
+        wl = jnp.asarray(wl)
+        index = neff + (neff - ng) * (wl - wl0) / wl0
+        amplitude = 10 ** (-loss * length_um / 1e4 / 20)
+        propagation = amplitude * jnp.exp(2j * jnp.pi * index * length_um / wl)
+        return sax.reciprocal({("o1", "o2"): propagation})
+
+    tech = ir.technology
+    instances = {}
+    for instance in ir.netlist.instances:
+        if instance.kind == "ideal_coupler":
+            settings = {"coupling": instance.coupling_ratio}
+        else:
+            settings = {
+                "length_um": instance.length_um,
+                "neff": tech.effective_index,
+                "ng": tech.group_index,
+                "wl0": tech.reference_wavelength_um,
+                "loss": tech.loss_db_per_cm,
+            }
+        instances[instance.name] = {"component": instance.kind, "settings": settings}
+    netlist = {
+        "instances": instances,
+        "connections": {edge.a.sax_key(): edge.b.sax_key() for edge in ir.netlist.connections},
+        "ports": {name: endpoint.sax_key() for name, endpoint in ir.netlist.ports.items()},
+    }
+    model, _ = sax.circuit(
+        netlist=netlist, models={"ideal_coupler": ideal_coupler, "waveguide": waveguide}
+    )
+    spec = ir.specification
+    wavelengths = np.linspace(
+        spec.wavelength_nm - spec.sweep_span_nm / 2,
+        spec.wavelength_nm + spec.sweep_span_nm / 2,
+        spec.sweep_points,
+    )
+    scattering = model(wl=jnp.asarray(wavelengths / 1000))
+    ports = ["in0", "in1", "out0", "out1"]
+    matrix = np.zeros((len(wavelengths), 4, 4), dtype=complex)
+    for (output_port, input_port), value in scattering.items():
+        matrix[:, ports.index(output_port), ports.index(input_port)] = np.asarray(value)
+    return {
+        "schema_version": "1.0",
+        "backend": "sax",
+        "model_version": tech.model_version,
+        "wavelength_nm": wavelengths.tolist(),
+        "ports": ports,
+        "s_real": matrix.real.tolist(),
+        "s_imag": matrix.imag.tolist(),
+        "input_port": "in0",
+        "transmission_out0": (np.abs(matrix[:, 2, 0]) ** 2).tolist(),
+        "transmission_out1": (np.abs(matrix[:, 3, 0]) ** 2).tolist(),
+        "sax_netlist": netlist,
+        "physical_calibration": "not_performed",
+    }

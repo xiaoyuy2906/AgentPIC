@@ -1,0 +1,6 @@
+{
+  "device": "mzi",
+  "platform": "sin",
+  "wavelength_nm": 1550,
+  "outputs": ["netlist", "simulation", "gds", "verification"]
+}

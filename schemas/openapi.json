@@ -1,0 +1,827 @@
+{
+  "components": {
+    "schemas": {
+      "Artifact": {
+        "additionalProperties": false,
+        "properties": {
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "sha256",
+          "size_bytes",
+          "media_type"
+        ],
+        "title": "Artifact",
+        "type": "object"
+      },
+      "CheckResult": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "not_run"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "detail"
+        ],
+        "title": "CheckResult",
+        "type": "object"
+      },
+      "Connection": {
+        "additionalProperties": false,
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/Endpoint"
+          },
+          "b": {
+            "$ref": "#/components/schemas/Endpoint"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "Connection",
+        "type": "object"
+      },
+      "DesignSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "delta_length_um": {
+            "default": 10,
+            "maximum": 200.0,
+            "minimum": -200.0,
+            "title": "Delta Length Um",
+            "type": "number"
+          },
+          "device": {
+            "const": "mzi",
+            "default": "mzi",
+            "title": "Device",
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "enum": [
+                "netlist",
+                "simulation",
+                "gds",
+                "verification"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Outputs",
+            "type": "array"
+          },
+          "platform": {
+            "const": "sin",
+            "default": "sin",
+            "title": "Platform",
+            "type": "string"
+          },
+          "sweep_points": {
+            "default": 201,
+            "maximum": 2001.0,
+            "minimum": 3.0,
+            "title": "Sweep Points",
+            "type": "integer"
+          },
+          "sweep_span_nm": {
+            "default": 40,
+            "exclusiveMinimum": 0.0,
+            "maximum": 100.0,
+            "title": "Sweep Span Nm",
+            "type": "number"
+          },
+          "wavelength_nm": {
+            "default": 1550,
+            "maximum": 1600.0,
+            "minimum": 1500.0,
+            "title": "Wavelength Nm",
+            "type": "number"
+          }
+        },
+        "title": "DesignSpec",
+        "type": "object"
+      },
+      "Endpoint": {
+        "additionalProperties": false,
+        "properties": {
+          "instance": {
+            "title": "Instance",
+            "type": "string"
+          },
+          "port": {
+            "title": "Port",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instance",
+          "port"
+        ],
+        "title": "Endpoint",
+        "type": "object"
+      },
+      "EngineeringIR": {
+        "additionalProperties": false,
+        "properties": {
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "design_id": {
+            "title": "Design Id",
+            "type": "string"
+          },
+          "layout_resolved": {
+            "default": false,
+            "title": "Layout Resolved",
+            "type": "boolean"
+          },
+          "netlist": {
+            "$ref": "#/components/schemas/NetlistIR"
+          },
+          "schema_version": {
+            "const": "1.0",
+            "default": "1.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "specification": {
+            "$ref": "#/components/schemas/DesignSpec"
+          },
+          "technology": {
+            "$ref": "#/components/schemas/TechnologyIR"
+          },
+          "workflow": {
+            "items": {
+              "$ref": "#/components/schemas/TaskIR"
+            },
+            "title": "Workflow",
+            "type": "array"
+          }
+        },
+        "required": [
+          "design_id",
+          "specification",
+          "technology",
+          "netlist",
+          "workflow",
+          "assumptions"
+        ],
+        "title": "EngineeringIR",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InstanceIR": {
+        "additionalProperties": false,
+        "properties": {
+          "coupling_ratio": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coupling Ratio"
+          },
+          "kind": {
+            "enum": [
+              "ideal_coupler",
+              "waveguide"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "length_um": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Um"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ports": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ports",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "ports"
+        ],
+        "title": "InstanceIR",
+        "type": "object"
+      },
+      "NetlistIR": {
+        "additionalProperties": false,
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "instances": {
+            "items": {
+              "$ref": "#/components/schemas/InstanceIR"
+            },
+            "title": "Instances",
+            "type": "array"
+          },
+          "ports": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Endpoint"
+            },
+            "title": "Ports",
+            "type": "object"
+          }
+        },
+        "required": [
+          "instances",
+          "connections",
+          "ports"
+        ],
+        "title": "NetlistIR",
+        "type": "object"
+      },
+      "RunResult": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_directory": {
+            "title": "Artifact Directory",
+            "type": "string"
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/Artifact"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "design_id": {
+            "title": "Design Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "1.0",
+            "default": "1.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_status": {
+            "enum": [
+              "passed_with_limitations",
+              "failed",
+              "not_run"
+            ],
+            "title": "Verification Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "design_id",
+          "artifact_directory",
+          "status",
+          "verification_status",
+          "artifacts"
+        ],
+        "title": "RunResult",
+        "type": "object"
+      },
+      "TaskIR": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "depends_on",
+          "backend"
+        ],
+        "title": "TaskIR",
+        "type": "object"
+      },
+      "TechnologyIR": {
+        "additionalProperties": false,
+        "properties": {
+          "bend_radius_um": {
+            "default": 50.0,
+            "title": "Bend Radius Um",
+            "type": "number"
+          },
+          "calibrated": {
+            "const": false,
+            "default": false,
+            "title": "Calibrated",
+            "type": "boolean"
+          },
+          "core_layer": {
+            "default": [
+              1,
+              0
+            ],
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Core Layer",
+            "type": "array"
+          },
+          "effective_index": {
+            "default": 1.8,
+            "title": "Effective Index",
+            "type": "number"
+          },
+          "foundry": {
+            "title": "Foundry",
+            "type": "null"
+          },
+          "group_index": {
+            "default": 1.9,
+            "title": "Group Index",
+            "type": "number"
+          },
+          "loss_db_per_cm": {
+            "default": 0.0,
+            "title": "Loss Db Per Cm",
+            "type": "number"
+          },
+          "minimum_spacing_um": {
+            "default": 0.5,
+            "title": "Minimum Spacing Um",
+            "type": "number"
+          },
+          "minimum_width_um": {
+            "default": 0.5,
+            "title": "Minimum Width Um",
+            "type": "number"
+          },
+          "model_version": {
+            "const": "ideal_sin_v1",
+            "default": "ideal_sin_v1",
+            "title": "Model Version",
+            "type": "string"
+          },
+          "name": {
+            "const": "sin_demo_v1",
+            "default": "sin_demo_v1",
+            "title": "Name",
+            "type": "string"
+          },
+          "reference_wavelength_um": {
+            "default": 1.55,
+            "title": "Reference Wavelength Um",
+            "type": "number"
+          },
+          "thickness_um": {
+            "default": 0.4,
+            "title": "Thickness Um",
+            "type": "number"
+          },
+          "width_um": {
+            "default": 1.0,
+            "title": "Width Um",
+            "type": "number"
+          }
+        },
+        "title": "TechnologyIR",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VerificationReport": {
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckResult"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "design_id": {
+            "title": "Design Id",
+            "type": "string"
+          },
+          "foundry_signoff": {
+            "const": false,
+            "default": false,
+            "title": "Foundry Signoff",
+            "type": "boolean"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "1.0",
+            "default": "1.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed_with_limitations",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "design_id",
+          "status",
+          "checks",
+          "limitations"
+        ],
+        "title": "VerificationReport",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Agent-native PIC EDA, milestone 1",
+    "title": "AgentPIC",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "get_capabilities_v1_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Capabilities V1 Capabilities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Capabilities"
+      }
+    },
+    "/v1/compile": {
+      "post": {
+        "operationId": "compile_specification_v1_compile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineeringIR"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compile Specification"
+      }
+    },
+    "/v1/designs": {
+      "post": {
+        "operationId": "design_v1_designs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Design"
+      }
+    },
+    "/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run"
+      }
+    },
+    "/v1/runs/{run_id}/artifacts/{name}": {
+      "get": {
+        "operationId": "artifact_v1_runs__run_id__artifacts__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Artifact"
+      }
+    },
+    "/v1/runs/{run_id}/verify": {
+      "post": {
+        "operationId": "verify_v1_runs__run_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify"
+      }
+    }
+  }
+}

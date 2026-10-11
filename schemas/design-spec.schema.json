@@ -1,0 +1,61 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "delta_length_um": {
+      "default": 10,
+      "maximum": 200,
+      "minimum": -200,
+      "title": "Delta Length Um",
+      "type": "number"
+    },
+    "device": {
+      "const": "mzi",
+      "default": "mzi",
+      "title": "Device",
+      "type": "string"
+    },
+    "outputs": {
+      "items": {
+        "enum": [
+          "netlist",
+          "simulation",
+          "gds",
+          "verification"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Outputs",
+      "type": "array"
+    },
+    "platform": {
+      "const": "sin",
+      "default": "sin",
+      "title": "Platform",
+      "type": "string"
+    },
+    "sweep_points": {
+      "default": 201,
+      "maximum": 2001,
+      "minimum": 3,
+      "title": "Sweep Points",
+      "type": "integer"
+    },
+    "sweep_span_nm": {
+      "default": 40,
+      "exclusiveMinimum": 0,
+      "maximum": 100,
+      "title": "Sweep Span Nm",
+      "type": "number"
+    },
+    "wavelength_nm": {
+      "default": 1550,
+      "maximum": 1600,
+      "minimum": 1500,
+      "title": "Wavelength Nm",
+      "type": "number"
+    }
+  },
+  "title": "DesignSpec",
+  "type": "object"
+}

@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "detail"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "design_id": {
+      "title": "Design Id",
+      "type": "string"
+    },
+    "foundry_signoff": {
+      "const": false,
+      "default": false,
+      "title": "Foundry Signoff",
+      "type": "boolean"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "passed_with_limitations",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "design_id",
+    "status",
+    "checks",
+    "limitations"
+  ],
+  "title": "VerificationReport",
+  "type": "object"
+}
