@@ -1,46 +1,42 @@
-# Interface contract, version 1.0
+# Unified contract, version 2.0
 
-All interfaces call the same compiler/runtime. Public Pydantic models reject unknown fields and non-finite numbers; JSON Schema is generated from those models. `schemas/` contains the specification, IR, result, verification report and OpenAPI contracts. Regenerate them with `uv run python scripts/export_schemas.py`; CI checks for drift. MCP's `tools/list` advertises the current input and structured-output contracts.
+`core/src/contracts.ts` is the only editable contract definition. Zod exports JSON Schema and the locked generator produces Python Pydantic models. `schemas/openapi.json` documents all HTTP routes; MCP exposes the same definitions through tools/list. Python's shared base sets generic finite-number/default validation policy only.
 
-## Specification
+## Design input
 
-| Field | Default | Constraint / unit |
+| Field | Default | Supported constraint |
 |---|---|---|
-| `device` | `mzi` | Only `mzi` |
-| `platform` | `sin` | Only `sin`; illustrative process `sin_demo_v1` |
+| `device` | `mzi` | MZI only |
+| `platform` | `sin` | Illustrative `sin_demo_v1` PDK |
 | `wavelength_nm` | 1550 | 1500–1600 nm |
-| `outputs` | All four | Nonempty, unique subset of `netlist`, `simulation`, `gds`, `verification` |
-| `delta_length_um` | 10 | −200 to +200 µm; top arm minus bottom arm |
+| `outputs` | All four | Nonempty unique subset of netlist/simulation/gds/verification |
+| `delta_length_um` | 10 | −200 to +200 µm, top minus bottom arm |
 | `sweep_span_nm` | 40 | Greater than zero, at most 100 nm |
 | `sweep_points` | 201 | Odd integer, 3–2001 |
 
-The entire sweep must be in 1450–1650 nm. An odd number of points includes the requested center wavelength. These are software support bounds, not a claim of calibrated material-model validity. The API accepts a specification object directly; MCP tools accept it under the `specification` argument.
+The full sweep must lie in 1450–1650 nm. Unique outputs, odd samples and engineering bounds are checked by the TS compiler. These are software support ranges, not calibrated physical validity ranges.
 
-The normalized input is SHA-256 hashed to a 16-character design ID. IDs also depend on requested outputs and sampling settings. The source hash, model version, dependency versions and lock hash distinguish software/environment revisions; a design ID alone is not a provenance guarantee.
+## Typed engineering records
 
-## Compilation and execution
+- **Component:** instance name, model identifier, typed ports, optional length/coupling parameters.
+- **Port:** name, physical domain and input/output/bidirectional direction. The present solver models support optical ports.
+- **Connection:** two named component/port endpoints.
+- **Circuit:** components, connections and explicitly exposed external ports.
+- **PDK:** process identifier, layer/datatype, geometry rules, material-model assumptions and supported components. The current PDK is a demonstration declaration, not a foundry integration.
+- **EngineeringIR:** version, normalized design intent/ID, PDK, Circuit, assumptions and workflow DAG. `length_source` distinguishes specification lengths from measured layout lengths.
 
-The compiler chooses the supported MZI template, emits named components, typed endpoints, technology/model assumptions, and a dependency DAG. Compilation does not generate GDS or fabricate values for unresolved waveguide lengths.
+Schemas reject unknown fields. Semantic validation separately rejects unresolved references, duplicate names, double-used/dangling ports, incompatible domains/directions, disconnected circuits, missing model parameters, PDK violations and invalid task dependencies. Tests deliberately submit schema-valid but semantically invalid circuits.
 
-```mermaid
-flowchart LR
-  S[Specification] --> C[Validate and compile IR]
-  C --> L[GDSFactory layout and GDS]
-  L --> B[Backannotate physical lengths]
-  B --> X[SAX circuit simulation]
-  X --> V[Independent verification]
-  L --> V
-  V --> M[Provenance and manifest]
-```
+## Runtime and backend boundary
 
-The runtime executes the DAG locally and synchronously, writing state after each transition. Task states are `pending`, `running`, `completed`, `failed`, and `blocked`. A backend exception fails the run and blocks dependent tasks, retaining partial artifacts and the error. A completed verification task can produce failing checks; the run then reports `failed`. Interrupted processes may leave partial runs; automatic crash recovery, resume, cancellation, timeout enforcement and distributed scheduling are future work.
+The TS Runtime invokes the typed ScientificBackend interface. Its Python implementation runs a short-lived `uv run --locked python -m agentpic.worker` process, writes one JSON request to stdin, reads one JSON response, and validates the returned shape. Scientific logging uses stderr. Timeouts terminate the child. No SAX dictionaries or GDSFactory objects cross the adapter boundary.
 
-GDSFactory uses global PDK/cell caches. A process-local lock serializes runtime engine access. Backend protocols support dependency injection, but the current compiler and independent analytic verifier intentionally target the supported MZI topology. Adding a topology requires extending both compilation and its verification policy.
+Compilation assigns nominal lengths so circuit simulation is executable without layout. The full workflow runs compile → layout → backannotate → simulate → verify → manifest. State and events persist after transitions. Backend errors fail the task, block dependents and retain partial artifacts. A completed verification task may still report failed checks and cause overall failure. There is no automatic process-crash recovery or resume.
 
-## Results and evidence
+SAX can evaluate the supported model graph, while the present independent optical validation policy targets the emitted ideal MZI. Adding circuit families requires extending the compiler/model catalog and their independent verification policies. The placeholder EM request/result is not yet a complete material, mesh or solver configuration contract.
 
-`RunResult` contains the version, run/design IDs, status, verification status, server-local artifact directory, artifact inventory and optional execution error. A transport success is not an engineering pass. `VerificationReport` contains a status, individual check IDs, `pass`/`fail`/`not_run`, evidence, limitations and `foundry_signoff: false`.
+## Results
 
-HTTP clients download artifacts using the artifact endpoint, not the server-local path. MCP uses the artifact resource template. `manifest.json` and `run.json` are also readable artifacts but are not included in their own checksum inventories. The saved run result is the local integrity reference, not a signed attestation. Reverification returns a new report without overwriting the original evidence or its recorded hashes.
+`RunResult` contains run/design IDs, status, verification status, server-local artifact directory, hashes and optional error. HTTP clients download through the artifact route; MCP uses resource URIs. `VerificationReport` includes per-check pass/fail/not_run, evidence, limitations and literal `foundry_signoff: false`.
 
-The EM request/result contracts are placeholders for future adapters. They are not yet a complete meshing, material dispersion or solver configuration IR, and no EM execution tool is advertised.
+`manifest.json` and `run.json` are not included in their own hash inventories. Local hashes are an integrity reference, not a signed attestation. Reverification returns a fresh report without altering the original evidence. Format 1.0 prototype artifacts are not accepted as version 2.0 runs.

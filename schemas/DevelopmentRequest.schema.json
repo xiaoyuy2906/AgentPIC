@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/DevelopmentRequest",
+  "$defs": {
+    "DevelopmentRequest": {
+      "type": "object",
+      "properties": {
+        "capability_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "const": "requires_implementation"
+        },
+        "technical_specification": {
+          "type": "string"
+        },
+        "library_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "depends_on": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "depends_on",
+              "description"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "promotion_gate": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability_id",
+        "status",
+        "technical_specification",
+        "library_candidates",
+        "tasks",
+        "promotion_gate"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

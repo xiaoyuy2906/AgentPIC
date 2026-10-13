@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/PhysicsDiagnostic",
+  "$defs": {
+    "PhysicsDiagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "possible_cause": {
+          "type": "string"
+        },
+        "suggested_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "possible_cause",
+        "suggested_action"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

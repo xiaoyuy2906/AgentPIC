@@ -1,3 +1,3 @@
-"""AgentPIC: typed, verifiable photonic design workflows."""
+"""AgentPIC scientific computing backends. Engineering logic lives in TypeScript."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

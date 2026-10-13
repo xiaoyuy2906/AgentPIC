@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/PDK",
+  "$defs": {
+    "PDK": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "default": "sin_demo_v1",
+          "type": "string",
+          "const": "sin_demo_v1"
+        },
+        "foundry": {
+          "default": null,
+          "type": "null"
+        },
+        "calibrated": {
+          "default": false,
+          "type": "boolean",
+          "const": false
+        },
+        "core_layer": {
+          "default": [
+            1,
+            0
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "width_um": {
+          "default": 1,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "thickness_um": {
+          "default": 0.4,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "bend_radius_um": {
+          "default": 50,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "minimum_width_um": {
+          "default": 0.5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "minimum_spacing_um": {
+          "default": 0.5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reference_wavelength_um": {
+          "default": 1.55,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "effective_index": {
+          "default": 1.8,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "group_index": {
+          "default": 1.9,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "loss_db_per_cm": {
+          "default": 0,
+          "type": "number",
+          "const": 0
+        },
+        "model_version": {
+          "default": "ideal_sin_v1",
+          "type": "string",
+          "const": "ideal_sin_v1"
+        },
+        "supported_components": {
+          "default": [
+            "ideal_coupler",
+            "waveguide"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ideal_coupler",
+              "waveguide"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

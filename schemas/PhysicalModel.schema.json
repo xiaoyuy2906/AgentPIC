@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/PhysicalModel",
+  "$defs": {
+    "PhysicalModel": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "materials": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "refractive_index": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "refractive_index"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "layers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "material": {
+                "type": "string"
+              },
+              "thickness": {
+                "$ref": "#/$defs/Length"
+              }
+            },
+            "required": [
+              "material",
+              "thickness"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "background_material": {
+          "type": "string"
+        },
+        "assumptions": {
+          "type": "object",
+          "properties": {
+            "linear": {
+              "type": "boolean"
+            },
+            "lossless": {
+              "type": "boolean"
+            },
+            "isotropic": {
+              "type": "boolean"
+            },
+            "nonmagnetic": {
+              "type": "boolean"
+            },
+            "propagation_invariant": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "linear",
+            "lossless",
+            "isotropic",
+            "nonmagnetic",
+            "propagation_invariant"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "kind",
+        "materials",
+        "layers",
+        "background_material",
+        "assumptions"
+      ],
+      "additionalProperties": false
+    },
+    "Length": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "nm",
+            "um",
+            "m"
+          ]
+        },
+        "dimension": {
+          "default": "length",
+          "type": "string",
+          "const": "length"
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

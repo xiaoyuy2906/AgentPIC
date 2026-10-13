@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "optical.mode.planar_te",
+  "criteria_source": "core/src/capabilities/planar-te.ts",
+  "execution": "npm run benchmark:physics -- --output runs/physics-benchmarks",
+  "benchmarks": [
+    {"id": "valid_straight_waveguide", "expected_status": "accepted", "checks": ["guiding_bounds", "propagation_units", "eigen_residual", "sampling", "grid_convergence", "domain_convergence", "reference_agreement", "reproducibility"]},
+    {"id": "wrong_wavelength_units", "expected_status": "invalid", "expected_diagnostic": "wavelength_unit_or_range"},
+    {"id": "invalid_material", "expected_status": "invalid", "expected_diagnostic": "invalid_material"},
+    {"id": "inconsistent_assumptions", "expected_status": "invalid", "expected_diagnostic": "inconsistent_assumptions"},
+    {"id": "coarse_resolution", "expected_status": "improved", "expected_hypothesis": "discretization_error"},
+    {"id": "truncated_domain", "expected_status": "improved", "expected_hypothesis": "boundary_truncation"},
+    {"id": "equivalent_units", "expected_status": "accepted"},
+    {"id": "insufficient_budget", "expected_status": "inconclusive"}
+  ],
+  "additional_automated_tests": ["corrupted numerical result rejection", "false LLM explanation rejection", "unknown capability development request", "schema-valid semantic errors", "HTTP and MCP transports"]
+}

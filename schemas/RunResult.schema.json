@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/RunResult",
+  "$defs": {
+    "RunResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "2.0",
+          "type": "string",
+          "const": "2.0"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "design_id": {
+          "type": "string"
+        },
+        "artifact_directory": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "verification_status": {
+          "type": "string",
+          "enum": [
+            "passed_with_limitations",
+            "failed",
+            "not_run"
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Artifact"
+          }
+        },
+        "error": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "run_id",
+        "design_id",
+        "artifact_directory",
+        "status",
+        "verification_status",
+        "artifacts"
+      ],
+      "additionalProperties": false
+    },
+    "Artifact": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "media_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "sha256",
+        "size_bytes",
+        "media_type"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

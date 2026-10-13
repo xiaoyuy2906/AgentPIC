@@ -1,32 +1,20 @@
-# Milestone 1 progress
+# Persistent development progress
 
-Goal: machine-interface-driven SiN MZI design → simulation → layout → verification → GDS.
+Current goal: minimum viable autonomous physics reasoning and verification, using a straight optical waveguide as a benchmark. The latest scope preserves ADR-001 and the completed MZI circuit/layout capabilities while adding an extensible experiment/evidence workflow.
 
-| Task | Depends on | State |
-|---|---|---|
-| Research SAX/GDSFactory and define IR | — | Implemented; sources in research.md and generated contracts in schemas/ |
-| Implement compiler and local runtime | IR | Implemented; dependency execution, persistent state, failure evidence |
-| Integrate physical layout and length backannotation | compiler | Verified with real GDSFactory geometry and GDS readback |
-| Integrate SAX and independent compact-model checks | backannotation | Verified against independent complex analytic MZI |
-| API + MCP contracts and executions | runtime | Verified through HTTP and real MCP stdio integration tests |
-| Test, execute acceptance case, CI and documentation | all implementations | 31 local tests pass; real HTTP/MCP acceptance passes; hosted CI publication in progress |
-| Create and publish GitHub AgentPIC repository | GitHub CLI authentication | Public repository created; initial code publication in progress |
+## Implemented and locally executed
 
-The initial FDTD-first work was superseded by the user's explicit PIC EDA milestone. uv environment management is retained. No FDTD simulation or Nanobeam work is included in milestone 1.
+- TypeScript/Zod is the sole editable contract source. JSON Schema and Python Pydantic models are generated.
+- TypeScript owns compiler semantics, runtime, verification management, experiment/hypothesis policies, capability registry, HTTP and MCP.
+- Python owns scientific adapters and numerical/geometric analysis. SAX/GDSFactory internals remain inside adapters.
+- The exact MZI request executes through real HTTP and MCP and produces matching GDS/netlist/simulation artifacts. Reverification yields 27 passes and three explicitly unperformed calibration/signoff checks.
+- Straight planar waveguide physics executes real SciPy eigenmode and independent dispersion-reference calculations. The reference neff for the example is approximately 1.7467074376474285.
+- Valid configurations are accepted; coarse resolution and boundary truncation are diagnosed and improved. Incorrect wavelength units, material parameters and physical assumptions are rejected before solver execution. Missing evidence remains inconclusive.
+- LLM proposals are recorded separately and cannot override numerical evidence.
+- Unknown capabilities produce persistent technical specifications and development/test dependencies.
 
-## Acceptance evidence
+## Latest verification state
 
-`scripts/acceptance.py` is the repeatable acceptance procedure. It submits the unmodified milestone JSON through both real transports, downloads GDS, repeats independent verification, and compares core output hashes. GitHub Actions preserves the resulting evidence for each Python version. Local `runs/` and development `work/` directories are intentionally untracked.
+The final local TypeScript suite passed 50 tests and Python passed 8 tests, with zero failures. Strict TypeScript compilation, schema generation, formatting and Python lint checks passed. The eight-case physics benchmark suite passed its expected outcomes; the acceptance runner also requires every registered check for the valid baseline to pass. Hosted CI runs both Python 3.12 and 3.13 and uploads physics and MZI evidence. See [the current CI results](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml), `docs/roadmap.md` for dependencies and `benchmarks/registry.json` for benchmark acceptance requirements.
 
-Local acceptance on macOS arm64 / Python 3.13.5 produced matching HTTP/MCP artifacts for design `6abdcca29ad17e43`: physical arm lengths 814.157 and 804.157 µm; powers at 1550 nm of 0.8793790613461524 and 0.12062093865384789; 19 passing checks including integrity and three explicitly unperformed checks. The generated GDS SHA-256 is `e46b85250aa54be06e61c32675c9f244fcb35d27f76d05ccdd8d22e73b9ac11c`. These are demonstration-model results.
-
-## Deferred work and dependencies
-
-| Work | Prerequisite |
-|---|---|
-| EM-calibrated compact models | Defined material stack, validated solver adapter, convergence and reference tests |
-| FDTDX / FEM / EME / mode solver | Extend the reserved EM contract with numerical and material specifications |
-| More devices / arbitrary circuits | Extend topology compiler, layout adapters and independent verification policies |
-| Foundry PDK integration | Appropriate PDK access, licensed model/rule data and supported signoff execution |
-| Optimization and autonomous design exploration | Objective/constraint IR, calibrated models and reproducible study runtime |
-| Distributed execution and resume | Durable task scheduling, interruption recovery and cancellation semantics |
+No foundry signoff, full-vector channel solver, 3D EM implementation, fabricated-device calibration, embedded code-writing agent, or production solver deployment is claimed. uv continues to manage `.venv`; both dependency lock files are committed.

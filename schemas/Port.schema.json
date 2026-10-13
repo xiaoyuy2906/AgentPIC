@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Port",
+  "$defs": {
+    "Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "domain": {
+          "default": "optical",
+          "type": "string",
+          "enum": [
+            "optical",
+            "electrical"
+          ]
+        },
+        "direction": {
+          "default": "bidirectional",
+          "type": "string",
+          "enum": [
+            "input",
+            "output",
+            "bidirectional"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

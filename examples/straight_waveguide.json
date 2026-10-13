@@ -1,0 +1,14 @@
+{
+  "goal": "Verify the fundamental TE mode of a straight symmetric SiN slab waveguide and diagnose numerical error.",
+  "capability_id": "optical.mode.planar_te",
+  "model": {
+    "kind": "layered_dielectric",
+    "materials": {"core": {"refractive_index": 2.0}, "cladding": {"refractive_index": 1.444}},
+    "layers": [{"material": "core", "thickness": {"value": 0.4, "unit": "um"}}],
+    "background_material": "cladding",
+    "assumptions": {"linear": true, "lossless": true, "isotropic": true, "nonmagnetic": true, "propagation_invariant": true}
+  },
+  "wavelength": {"value": 1550, "unit": "nm"},
+  "polarization": "TE",
+  "numerical": {"grid_step": {"value": 0.01, "unit": "um"}, "padding": {"value": 2, "unit": "um"}}
+}

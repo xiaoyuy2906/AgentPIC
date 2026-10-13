@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Experiment",
+  "$defs": {
+    "Experiment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "hypothesis_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configuration": {
+          "$ref": "#/$defs/PhysicsConfiguration"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Criterion"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "operation",
+        "purpose",
+        "hypothesis_ids",
+        "configuration",
+        "criteria"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicsConfiguration": {
+      "type": "object",
+      "properties": {
+        "model_kind": {
+          "type": "string"
+        },
+        "wavelength_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "polarization": {
+          "type": "string",
+          "enum": [
+            "TE",
+            "TM"
+          ]
+        },
+        "layers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "thickness_um": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "refractive_index": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "thickness_um",
+              "refractive_index"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "background_index": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "grid_step_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "padding_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_points": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "model_kind",
+        "wavelength_um",
+        "polarization",
+        "layers",
+        "background_index",
+        "grid_step_um",
+        "padding_um",
+        "max_points"
+      ],
+      "additionalProperties": false
+    },
+    "Criterion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observable": {
+          "type": "string"
+        },
+        "comparison": {
+          "type": "string",
+          "enum": [
+            "lt",
+            "lte",
+            "gte",
+            "range"
+          ]
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "unit": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "observable",
+        "comparison",
+        "thresholds",
+        "unit",
+        "rationale"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

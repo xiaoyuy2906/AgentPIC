@@ -1,4 +1,4 @@
-"""Independent checks of serialized engineering artifacts and exported geometry.
+"""Independent numerical and geometry checks; semantic verification lives in TypeScript.
 
 This module deliberately does not import the SAX models or the layout builder.
 Numerical agreement verifies the stated ideal models, not physical calibration.
@@ -6,14 +6,11 @@ Numerical agreement verifies the stated ideal models, not physical calibration.
 
 from __future__ import annotations
 
-import hashlib
-import json
-from collections import Counter
 from pathlib import Path
 
 import numpy as np
 
-from agentpic.ir import Artifact, CheckResult, EngineeringIR, VerificationReport
+from agentpic.ir import CheckResult, EngineeringIR
 
 LIMITATIONS = [
     "Demonstration SiN process; no foundry PDK or signoff rule deck.",
@@ -29,103 +26,7 @@ def _check(identifier: str, passed: bool, detail: str, **evidence) -> CheckResul
     )
 
 
-def _topology_checks(ir: EngineeringIR, netlist: dict, layout: dict) -> list[CheckResult]:
-    instances = {instance.name: instance for instance in ir.netlist.instances}
-    expected_ports = {
-        (instance.name, port) for instance in ir.netlist.instances for port in instance.ports
-    }
-    used = Counter()
-    graph = {name: set() for name in instances}
-    valid = len(instances) == len(ir.netlist.instances)
-    for edge in ir.netlist.connections:
-        a, b = (edge.a.instance, edge.a.port), (edge.b.instance, edge.b.port)
-        valid &= a in expected_ports and b in expected_ports and a != b
-        used.update((a, b))
-        if a[0] in graph and b[0] in graph:
-            graph[a[0]].add(b[0])
-            graph[b[0]].add(a[0])
-    for endpoint in ir.netlist.ports.values():
-        used[(endpoint.instance, endpoint.port)] += 1
-    valid &= set(used) == expected_ports and all(n == 1 for n in used.values())
-    visited, pending = set(), list(instances)[:1]
-    while pending:
-        node = pending.pop()
-        if node not in visited:
-            visited.add(node)
-            pending.extend(graph[node] - visited)
-    valid &= visited == set(instances)
-
-    expected_edges = {
-        frozenset((edge.a.sax_key(), edge.b.sax_key())) for edge in ir.netlist.connections
-    }
-    extracted = layout["extracted_netlist"]
-    actual_edges = {frozenset((edge["p1"], edge["p2"])) for edge in extracted["nets"]}
-    expected_external = {name: endpoint.sax_key() for name, endpoint in ir.netlist.ports.items()}
-    extracted_ok = (
-        expected_edges == actual_edges
-        and extracted["ports"] == expected_external
-        and set(extracted["instances"]) == set(instances)
-        and len(extracted["nets"]) == len(expected_edges)
-    )
-    position_error = 0.0
-    orientation_ok = True
-    for edge in ir.netlist.connections:
-        a = layout["ports"][edge.a.instance][edge.a.port]
-        b = layout["ports"][edge.b.instance][edge.b.port]
-        position_error = max(
-            position_error,
-            float(np.linalg.norm(np.subtract(a["center_um"], b["center_um"]))),
-            abs(a["width_um"] - b["width_um"]),
-        )
-        orientation_ok &= abs((a["orientation_deg"] - b["orientation_deg"]) % 360 - 180) < 1e-6
-    lengths = {
-        name: float(np.linalg.norm(np.diff(np.asarray(points), axis=0), axis=1).sum())
-        for name, points in layout["centerlines_um"].items()
-    }
-    length_error = max(
-        abs(lengths[instance.name] - instance.length_um)
-        for instance in ir.netlist.instances
-        if instance.kind == "waveguide"
-    )
-    delta_error = abs(lengths["top_arm"] - lengths["bottom_arm"] - ir.specification.delta_length_um)
-    return [
-        _check(
-            "netlist_connectivity",
-            bool(valid),
-            "Every endpoint is used exactly once; graph is connected.",
-        ),
-        _check(
-            "netlist_artifact_consistency",
-            netlist == ir.netlist.model_dump(mode="json"),
-            "Exported netlist agrees with resolved engineering IR.",
-        ),
-        _check(
-            "layout_netlist_agreement",
-            extracted_ok,
-            "GDSFactory port-extracted connectivity agrees with intended netlist.",
-        ),
-        _check(
-            "physical_port_alignment",
-            position_error <= 0.001 and orientation_ok,
-            "Connected physical ports coincide, have matching widths and opposite orientations.",
-            maximum_error_um=position_error,
-        ),
-        _check(
-            "physical_length_backannotation",
-            ir.layout_resolved and length_error <= 0.001,
-            "Simulation lengths agree with independently summed layout centerlines.",
-            maximum_error_um=length_error,
-        ),
-        _check(
-            "requested_path_imbalance",
-            delta_error <= 0.002,
-            "Physical arm imbalance satisfies the engineering specification.",
-            error_um=delta_error,
-        ),
-    ]
-
-
-def _simulation_checks(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
+def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
     matrix = np.asarray(simulation["s_real"]) + 1j * np.asarray(simulation["s_imag"])
     spec, tech = ir.specification, ir.technology
@@ -212,7 +113,7 @@ def _simulation_checks(ir: EngineeringIR, simulation: dict) -> list[CheckResult]
     ]
 
 
-def _geometry_checks(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[CheckResult]:
+def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[CheckResult]:
     import klayout.db as kdb
 
     layout = kdb.Layout()
@@ -292,58 +193,3 @@ def _geometry_checks(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[
             minimum_radius_um=minimum_radius if np.isfinite(minimum_radius) else None,
         ),
     ]
-
-
-def verify_artifacts(
-    directory: Path, artifacts: list[Artifact] | None = None
-) -> VerificationReport:
-    checks: list[CheckResult] = []
-    design_id = "unknown"
-    if artifacts is not None:
-        mismatches = []
-        for artifact in artifacts:
-            path = directory / artifact.name
-            try:
-                matches = (
-                    Path(artifact.name).name == artifact.name
-                    and path.resolve().parent == directory.resolve()
-                    and path.is_file()
-                    and path.stat().st_size == artifact.size_bytes
-                    and hashlib.sha256(path.read_bytes()).hexdigest() == artifact.sha256
-                )
-            except OSError:
-                matches = False
-            if not matches:
-                mismatches.append(artifact.name)
-        checks.append(
-            _check(
-                "artifact_integrity",
-                not mismatches,
-                "Files match their recorded SHA-256 hashes.",
-                mismatches=mismatches,
-            )
-        )
-    try:
-        ir = EngineeringIR.model_validate_json((directory / "engineering_ir.json").read_text())
-        design_id = ir.design_id
-        metadata = json.loads((directory / "layout.json").read_text())
-        netlist = json.loads((directory / "netlist.json").read_text())
-        simulation = json.loads((directory / "simulation.json").read_text())
-        checks.extend(_topology_checks(ir, netlist, metadata))
-        checks.extend(_simulation_checks(ir, simulation))
-        checks.extend(_geometry_checks(ir, metadata, directory / "design.gds"))
-    except (ValueError, KeyError, TypeError, OSError, RuntimeError, IndexError) as exc:
-        checks.append(_check("artifact_read_or_validation", False, f"{type(exc).__name__}: {exc}"))
-    for identifier, detail in (
-        (
-            "electromagnetic_calibration",
-            "No EM backend executed; compact models remain physically uncalibrated.",
-        ),
-        ("measurement_validation", "No fabricated-device measurement data supplied."),
-        ("foundry_signoff", "No foundry PDK or signoff checks available."),
-    ):
-        checks.append(CheckResult(id=identifier, status="not_run", detail=detail))
-    status = "failed" if any(c.status == "fail" for c in checks) else "passed_with_limitations"
-    return VerificationReport(
-        design_id=design_id, status=status, checks=checks, limitations=LIMITATIONS
-    )

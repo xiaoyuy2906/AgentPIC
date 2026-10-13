@@ -73,6 +73,28 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     extracted = component.get_netlist(
         on_multi_connect="error", on_dangling_port="error", instance_namer=lambda ref: ref.name
     )
+
+    def endpoint(key):
+        instance, port = key.split(",")
+        return {"instance": instance, "port": port}
+
+    extracted_circuit = {
+        "instances": [
+            {
+                **instance.model_dump(mode="json"),
+                "ports": [
+                    {"name": port.name, "domain": "optical", "direction": "bidirectional"}
+                    for port in references[instance.name].ports
+                ],
+            }
+            for instance in ir.netlist.instances
+            if instance.name in extracted["instances"]
+        ],
+        "connections": [
+            {"a": endpoint(e["p1"]), "b": endpoint(e["p2"])} for e in extracted["nets"]
+        ],
+        "ports": {name: endpoint(key) for name, key in extracted["ports"].items()},
+    }
     ports = {}
     for name, ref in references.items():
         ports[name] = {
@@ -87,14 +109,14 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     options.gds2_write_timestamps = False
     component.write_gds(directory / "design.gds", save_options=options, with_metadata=False)
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "top_cell": component.name,
         "technology": tech.name,
         "core_layer": list(tech.core_layer),
         "lengths_um": lengths,
         "centerlines_um": centerlines,
         "ports": ports,
-        "extracted_netlist": extracted,
+        "extracted_circuit": extracted_circuit,
         "bend_radius_um": tech.bend_radius_um,
         "delta_length_um": lengths["top_arm"] - lengths["bottom_arm"],
     }

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Hypothesis",
+  "$defs": {
+    "Hypothesis": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "deterministic_physics",
+            "external_llm"
+          ]
+        },
+        "statement": {
+          "type": "string"
+        },
+        "cause": {
+          "type": "string",
+          "enum": [
+            "discretization_error",
+            "boundary_truncation",
+            "non_reproducibility",
+            "reference_disagreement",
+            "input_error"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "contradicted",
+            "inconclusive"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "explanation": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "statement",
+        "cause",
+        "status",
+        "evidence_ids",
+        "explanation"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

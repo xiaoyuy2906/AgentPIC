@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/ElectromagneticRequest",
+  "$defs": {
+    "ElectromagneticRequest": {
+      "type": "object",
+      "properties": {
+        "geometry_artifact": {
+          "type": "string"
+        },
+        "wavelength_nm": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material_map": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "geometry_artifact",
+        "wavelength_nm",
+        "material_map",
+        "ports"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,180 @@
+import { readFile, stat, realpath } from 'node:fs/promises';
+import path from 'node:path';
+import { check, semanticChecks, endpointKey, canonical, sha256, validateIR } from './compiler.js';
+import {
+  EngineeringIRSchema,
+  LayoutResultSchema,
+  SimulationResultSchema,
+  type EngineeringIR,
+  type LayoutResult,
+  type CheckResult,
+  type RunResult,
+  type VerificationReport,
+  VerificationReportSchema,
+} from './contracts.js';
+import { PythonBackend, type ScientificBackend } from './backends.js';
+const limitations = [
+  'Illustrative SiN PDK; no foundry signoff rule deck.',
+  'Ideal compact models are mathematically checked, not EM- or measurement-calibrated.',
+  'No bend loss, manufacturing variation or thermal model.',
+  'Port-based connectivity with geometry checks is not full foundry LVS.',
+];
+export const readJSON = async (file: string) => JSON.parse(await readFile(file, 'utf8')) as unknown;
+function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] {
+  const edgeKey = (e: {
+    a: { instance: string; port: string };
+    b: { instance: string; port: string };
+  }) => [endpointKey(e.a), endpointKey(e.b)].sort().join('|');
+  const actual = layout.extracted_circuit;
+  const graphOK =
+    canonical(ir.netlist.connections.map(edgeKey).sort()) ===
+      canonical(actual.connections.map(edgeKey).sort()) &&
+    canonical(ir.netlist.ports) === canonical(actual.ports) &&
+    canonical(ir.netlist.instances.map((i) => i.name).sort()) ===
+      canonical(actual.instances.map((i) => i.name).sort());
+  let error = 0,
+    aligned = true;
+  for (const edge of ir.netlist.connections) {
+    const a = layout.ports[edge.a.instance]?.[edge.a.port],
+      b = layout.ports[edge.b.instance]?.[edge.b.port];
+    if (!a || !b) {
+      aligned = false;
+      continue;
+    }
+    error = Math.max(
+      error,
+      Math.hypot(a.center_um[0] - b.center_um[0], a.center_um[1] - b.center_um[1]),
+      Math.abs(a.width_um - b.width_um),
+    );
+    aligned &&=
+      Math.abs(((((a.orientation_deg - b.orientation_deg) % 360) + 360) % 360) - 180) < 1e-6;
+  }
+  const lengths = Object.fromEntries(
+    Object.entries(layout.centerlines_um).map(([name, p]) => [
+      name,
+      p.slice(1).reduce((sum, q, i) => sum + Math.hypot(q[0] - p[i][0], q[1] - p[i][1]), 0),
+    ]),
+  );
+  const lengthError = Math.max(
+    ...ir.netlist.instances
+      .filter((i) => i.kind === 'waveguide')
+      .map((i) => Math.abs(lengths[i.name] - (i.length_um ?? NaN))),
+  );
+  const deltaError = Math.abs(
+    lengths.top_arm - lengths.bottom_arm - ir.specification.delta_length_um,
+  );
+  return [
+    check(
+      'layout_netlist_agreement',
+      graphOK,
+      'Backend-neutral extracted circuit matches intended topology.',
+    ),
+    check(
+      'physical_port_alignment',
+      aligned && error <= 0.001,
+      'Connected ports coincide, widths match and orientations oppose.',
+      { maximum_error_um: error },
+    ),
+    check(
+      'physical_length_backannotation',
+      ir.layout_resolved && lengthError <= 0.001,
+      'Independent centerline sums match simulation lengths.',
+      { maximum_error_um: lengthError },
+    ),
+    check(
+      'requested_path_imbalance',
+      deltaError <= 0.002,
+      'Physical arm imbalance matches the specification.',
+      { error_um: deltaError },
+    ),
+  ];
+}
+export function report(designID: string, checks: CheckResult[]): VerificationReport {
+  for (const [id, detail] of [
+    ['electromagnetic_calibration', 'No electromagnetic solver or model calibration executed.'],
+    ['measurement_validation', 'No fabricated-device measurements supplied.'],
+    ['foundry_signoff', 'No foundry PDK/signoff checks available.'],
+  ])
+    checks.push({ id, status: 'not_run', detail, evidence: {} });
+  return VerificationReportSchema.parse({
+    design_id: designID,
+    status: checks.some((c) => c.status === 'fail') ? 'failed' : 'passed_with_limitations',
+    checks,
+    limitations,
+  });
+}
+export async function verifyArtifacts(
+  directory: string,
+  backend: ScientificBackend = new PythonBackend(),
+  artifacts?: RunResult['artifacts'],
+): Promise<VerificationReport> {
+  const checks: CheckResult[] = [];
+  let id = 'unknown';
+  if (artifacts) {
+    const mismatches: string[] = [];
+    for (const artifact of artifacts) {
+      try {
+        const file = path.join(directory, artifact.name);
+        if (
+          path.basename(artifact.name) !== artifact.name ||
+          path.dirname(await realpath(file)) !== (await realpath(directory)) ||
+          (await stat(file)).size !== artifact.size_bytes ||
+          sha256(await readFile(file)) !== artifact.sha256
+        )
+          mismatches.push(artifact.name);
+      } catch {
+        mismatches.push(artifact.name);
+      }
+    }
+    checks.push(
+      check(
+        'artifact_integrity',
+        mismatches.length === 0,
+        'Artifacts match the recorded SHA-256 inventory.',
+        { mismatches },
+      ),
+    );
+  }
+  try {
+    const ir = EngineeringIRSchema.parse(
+      await readJSON(path.join(directory, 'engineering_ir.json')),
+    );
+    id = ir.design_id;
+    checks.push(...semanticChecks(ir));
+    const layout = LayoutResultSchema.parse(await readJSON(path.join(directory, 'layout.json')));
+    const simulation = SimulationResultSchema.parse(
+      await readJSON(path.join(directory, 'simulation.json')),
+    );
+    checks.push(
+      check(
+        'netlist_artifact_consistency',
+        canonical(await readJSON(path.join(directory, 'netlist.json'))) === canonical(ir.netlist),
+        'Exported netlist equals resolved IR.',
+      ),
+    );
+    checks.push(...physicalChecks(ir, layout));
+    const [optical, geometry] = await Promise.all([
+      backend.verifySimulation(ir, simulation),
+      backend.verifyGeometry(ir, layout, directory),
+    ]);
+    checks.push(...optical, ...geometry);
+  } catch (error) {
+    checks.push(check('artifact_read_or_validation', false, String(error)));
+  }
+  return report(id, checks);
+}
+export async function simulateCircuit(
+  input: unknown,
+  backend: ScientificBackend = new PythonBackend(),
+) {
+  const ir = validateIR(input);
+  const simulation = await backend.simulate(ir);
+  return {
+    ir,
+    simulation,
+    verification: report(ir.design_id, [
+      ...semanticChecks(ir),
+      ...(await backend.verifySimulation(ir, simulation)),
+    ]),
+  };
+}

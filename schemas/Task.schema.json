@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Task",
+  "$defs": {
+    "Task": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "backend": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "depends_on",
+        "backend"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

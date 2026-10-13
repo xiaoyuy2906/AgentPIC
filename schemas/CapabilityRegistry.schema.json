@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/CapabilityRegistry",
+  "$defs": {
+    "CapabilityRegistry": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "const": "implemented"
+              },
+              "verification": {
+                "type": "string",
+                "const": "requires_evidence_for_each_run"
+              },
+              "criteria": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Criterion"
+                }
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "description",
+              "status",
+              "verification",
+              "criteria",
+              "limitations"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "capabilities"
+      ],
+      "additionalProperties": false
+    },
+    "Criterion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observable": {
+          "type": "string"
+        },
+        "comparison": {
+          "type": "string",
+          "enum": [
+            "lt",
+            "lte",
+            "gte",
+            "range"
+          ]
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "unit": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "observable",
+        "comparison",
+        "thresholds",
+        "unit",
+        "rationale"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

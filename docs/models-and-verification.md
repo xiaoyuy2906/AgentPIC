@@ -11,7 +11,7 @@ n_eff(λ) = n₀ + (n₀ − n_g) (λ − λ₀) / λ₀
 p(λ, L) = 10^(−α L / (10⁴ × 20)) exp(i 2π n_eff(λ) L / λ)
 ```
 
-α is power loss in dB/cm and is fixed to zero in this milestone. Both transmission directions use p and both reflections are zero. The length L is measured from the routed GDSFactory path, rounded to 0.001 µm, and recorded in resolved IR before simulation. Verification independently sums the sampled centerline and allows 0.001 µm annotation error.
+α is power loss in dB/cm and is fixed to zero in this milestone. Both transmission directions use p and both reflections are zero. Circuit-only compilation uses nominal lengths from the TypeScript compiler. In a full design run, L is measured from the routed GDSFactory path, rounded to 0.001 µm, and recorded in resolved IR before simulation. Verification independently sums the sampled centerline and allows 0.001 µm annotation error.
 
 ## Ideal coupler and complete MZI
 

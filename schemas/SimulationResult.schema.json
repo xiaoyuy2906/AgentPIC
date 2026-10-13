@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/SimulationResult",
+  "$defs": {
+    "SimulationResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "2.0"
+        },
+        "backend": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": "string"
+        },
+        "wavelength_nm": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "s_real": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "s_imag": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "input_port": {
+          "type": "string"
+        },
+        "transmission_out0": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "transmission_out1": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "physical_calibration": {
+          "type": "string",
+          "const": "not_performed"
+        }
+      },
+      "required": [
+        "schema_version",
+        "backend",
+        "model_version",
+        "wavelength_nm",
+        "ports",
+        "s_real",
+        "s_imag",
+        "input_port",
+        "transmission_out0",
+        "transmission_out1",
+        "physical_calibration"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

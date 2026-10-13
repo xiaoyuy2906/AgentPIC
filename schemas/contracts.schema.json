@@ -1,0 +1,1946 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Contracts",
+  "$defs": {
+    "Contracts": {
+      "type": "object",
+      "properties": {
+        "CapabilityRegistry": {
+          "$ref": "#/$defs/CapabilityRegistry"
+        },
+        "Length": {
+          "$ref": "#/$defs/Length"
+        },
+        "PhysicalModel": {
+          "$ref": "#/$defs/PhysicalModel"
+        },
+        "ReasoningProposal": {
+          "$ref": "#/$defs/ReasoningProposal"
+        },
+        "EngineeringGoal": {
+          "$ref": "#/$defs/EngineeringGoal"
+        },
+        "PhysicsConfiguration": {
+          "$ref": "#/$defs/PhysicsConfiguration"
+        },
+        "PhysicalResult": {
+          "$ref": "#/$defs/PhysicalResult"
+        },
+        "Criterion": {
+          "$ref": "#/$defs/Criterion"
+        },
+        "Experiment": {
+          "$ref": "#/$defs/Experiment"
+        },
+        "ConstraintEvaluation": {
+          "$ref": "#/$defs/ConstraintEvaluation"
+        },
+        "ExperimentEvidence": {
+          "$ref": "#/$defs/ExperimentEvidence"
+        },
+        "Hypothesis": {
+          "$ref": "#/$defs/Hypothesis"
+        },
+        "PhysicsDiagnostic": {
+          "$ref": "#/$defs/PhysicsDiagnostic"
+        },
+        "DevelopmentRequest": {
+          "$ref": "#/$defs/DevelopmentRequest"
+        },
+        "PhysicsReport": {
+          "$ref": "#/$defs/PhysicsReport"
+        },
+        "DesignSpec": {
+          "$ref": "#/$defs/DesignSpec"
+        },
+        "Port": {
+          "$ref": "#/$defs/Port"
+        },
+        "Component": {
+          "$ref": "#/$defs/Component"
+        },
+        "Endpoint": {
+          "$ref": "#/$defs/Endpoint"
+        },
+        "Connection": {
+          "$ref": "#/$defs/Connection"
+        },
+        "Circuit": {
+          "$ref": "#/$defs/Circuit"
+        },
+        "PDK": {
+          "$ref": "#/$defs/PDK"
+        },
+        "Task": {
+          "$ref": "#/$defs/Task"
+        },
+        "EngineeringIR": {
+          "$ref": "#/$defs/EngineeringIR"
+        },
+        "PhysicalPort": {
+          "$ref": "#/$defs/PhysicalPort"
+        },
+        "LayoutResult": {
+          "$ref": "#/$defs/LayoutResult"
+        },
+        "SimulationResult": {
+          "$ref": "#/$defs/SimulationResult"
+        },
+        "CheckResult": {
+          "$ref": "#/$defs/CheckResult"
+        },
+        "VerificationReport": {
+          "$ref": "#/$defs/VerificationReport"
+        },
+        "Artifact": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "RunResult": {
+          "$ref": "#/$defs/RunResult"
+        },
+        "CircuitSimulation": {
+          "$ref": "#/$defs/CircuitSimulation"
+        },
+        "ElectromagneticRequest": {
+          "$ref": "#/$defs/ElectromagneticRequest"
+        },
+        "ElectromagneticResult": {
+          "$ref": "#/$defs/ElectromagneticResult"
+        }
+      },
+      "required": [
+        "CapabilityRegistry",
+        "Length",
+        "PhysicalModel",
+        "ReasoningProposal",
+        "EngineeringGoal",
+        "PhysicsConfiguration",
+        "PhysicalResult",
+        "Criterion",
+        "Experiment",
+        "ConstraintEvaluation",
+        "ExperimentEvidence",
+        "Hypothesis",
+        "PhysicsDiagnostic",
+        "DevelopmentRequest",
+        "PhysicsReport",
+        "DesignSpec",
+        "Port",
+        "Component",
+        "Endpoint",
+        "Connection",
+        "Circuit",
+        "PDK",
+        "Task",
+        "EngineeringIR",
+        "PhysicalPort",
+        "LayoutResult",
+        "SimulationResult",
+        "CheckResult",
+        "VerificationReport",
+        "Artifact",
+        "RunResult",
+        "CircuitSimulation",
+        "ElectromagneticRequest",
+        "ElectromagneticResult"
+      ],
+      "additionalProperties": false
+    },
+    "CapabilityRegistry": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "const": "implemented"
+              },
+              "verification": {
+                "type": "string",
+                "const": "requires_evidence_for_each_run"
+              },
+              "criteria": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Criterion"
+                }
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "description",
+              "status",
+              "verification",
+              "criteria",
+              "limitations"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "capabilities"
+      ],
+      "additionalProperties": false
+    },
+    "Criterion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observable": {
+          "type": "string"
+        },
+        "comparison": {
+          "type": "string",
+          "enum": [
+            "lt",
+            "lte",
+            "gte",
+            "range"
+          ]
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "unit": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "observable",
+        "comparison",
+        "thresholds",
+        "unit",
+        "rationale"
+      ],
+      "additionalProperties": false
+    },
+    "Length": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "nm",
+            "um",
+            "m"
+          ]
+        },
+        "dimension": {
+          "default": "length",
+          "type": "string",
+          "const": "length"
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicalModel": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "materials": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "refractive_index": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "refractive_index"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "layers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "material": {
+                "type": "string"
+              },
+              "thickness": {
+                "$ref": "#/$defs/Length"
+              }
+            },
+            "required": [
+              "material",
+              "thickness"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "background_material": {
+          "type": "string"
+        },
+        "assumptions": {
+          "type": "object",
+          "properties": {
+            "linear": {
+              "type": "boolean"
+            },
+            "lossless": {
+              "type": "boolean"
+            },
+            "isotropic": {
+              "type": "boolean"
+            },
+            "nonmagnetic": {
+              "type": "boolean"
+            },
+            "propagation_invariant": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "linear",
+            "lossless",
+            "isotropic",
+            "nonmagnetic",
+            "propagation_invariant"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "kind",
+        "materials",
+        "layers",
+        "background_material",
+        "assumptions"
+      ],
+      "additionalProperties": false
+    },
+    "ReasoningProposal": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "const": "external_llm"
+        },
+        "claim": {
+          "type": "string"
+        },
+        "cause": {
+          "type": "string",
+          "enum": [
+            "discretization_error",
+            "boundary_truncation",
+            "non_reproducibility",
+            "reference_disagreement",
+            "input_error"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "claim",
+        "cause",
+        "rationale"
+      ],
+      "additionalProperties": false
+    },
+    "EngineeringGoal": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "1.0",
+          "type": "string",
+          "const": "1.0"
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capability_id": {
+          "type": "string"
+        },
+        "model": {
+          "$ref": "#/$defs/PhysicalModel"
+        },
+        "wavelength": {
+          "$ref": "#/$defs/Length"
+        },
+        "polarization": {
+          "type": "string",
+          "enum": [
+            "TE",
+            "TM"
+          ]
+        },
+        "numerical": {
+          "type": "object",
+          "properties": {
+            "grid_step": {
+              "$ref": "#/$defs/Length"
+            },
+            "padding": {
+              "$ref": "#/$defs/Length"
+            },
+            "max_points": {
+              "default": 12000,
+              "type": "integer",
+              "minimum": 64,
+              "maximum": 20000
+            }
+          },
+          "required": [
+            "grid_step",
+            "padding"
+          ],
+          "additionalProperties": false
+        },
+        "experiment_budget": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "reasoning_proposals": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReasoningProposal"
+          }
+        }
+      },
+      "required": [
+        "goal",
+        "capability_id",
+        "model",
+        "wavelength",
+        "polarization",
+        "numerical"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicsConfiguration": {
+      "type": "object",
+      "properties": {
+        "model_kind": {
+          "type": "string"
+        },
+        "wavelength_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "polarization": {
+          "type": "string",
+          "enum": [
+            "TE",
+            "TM"
+          ]
+        },
+        "layers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "thickness_um": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "refractive_index": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "thickness_um",
+              "refractive_index"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "background_index": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "grid_step_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "padding_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_points": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "model_kind",
+        "wavelength_um",
+        "polarization",
+        "layers",
+        "background_index",
+        "grid_step_um",
+        "padding_um",
+        "max_points"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicalResult": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "effective_index": {
+          "type": "number"
+        },
+        "beta_per_um": {
+          "type": "number"
+        },
+        "units": {
+          "type": "object",
+          "properties": {
+            "effective_index": {
+              "type": "string",
+              "const": "1"
+            },
+            "beta_per_um": {
+              "type": "string",
+              "const": "um^-1"
+            },
+            "coordinates": {
+              "type": "string",
+              "const": "um"
+            },
+            "field": {
+              "type": "string",
+              "const": "arbitrary_normalized"
+            }
+          },
+          "required": [
+            "effective_index",
+            "beta_per_um",
+            "coordinates",
+            "field"
+          ],
+          "additionalProperties": false
+        },
+        "x_um": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "field_amplitude": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "grid_points": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "actual_grid_step_um": {
+              "type": "number"
+            },
+            "relative_residual": {
+              "type": "number"
+            },
+            "edge_amplitude_ratio": {
+              "type": "number"
+            },
+            "elapsed_seconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "estimated_array_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "grid_points",
+            "actual_grid_step_um",
+            "relative_residual",
+            "edge_amplitude_ratio",
+            "elapsed_seconds",
+            "estimated_array_bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "backend",
+        "method",
+        "effective_index",
+        "beta_per_um",
+        "units",
+        "x_um",
+        "field_amplitude",
+        "diagnostics"
+      ],
+      "additionalProperties": false
+    },
+    "Experiment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "hypothesis_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configuration": {
+          "$ref": "#/$defs/PhysicsConfiguration"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Criterion"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "operation",
+        "purpose",
+        "hypothesis_ids",
+        "configuration",
+        "criteria"
+      ],
+      "additionalProperties": false
+    },
+    "ConstraintEvaluation": {
+      "type": "object",
+      "properties": {
+        "criterion_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "not_evaluated"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "criterion_id",
+        "status",
+        "value",
+        "evidence_ids",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "ExperimentEvidence": {
+      "type": "object",
+      "properties": {
+        "experiment": {
+          "$ref": "#/$defs/Experiment"
+        },
+        "configuration_sha256": {
+          "type": "string"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhysicalResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConstraintEvaluation"
+          }
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "experiment",
+        "configuration_sha256",
+        "result",
+        "checks",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "Hypothesis": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "deterministic_physics",
+            "external_llm"
+          ]
+        },
+        "statement": {
+          "type": "string"
+        },
+        "cause": {
+          "type": "string",
+          "enum": [
+            "discretization_error",
+            "boundary_truncation",
+            "non_reproducibility",
+            "reference_disagreement",
+            "input_error"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "contradicted",
+            "inconclusive"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "explanation": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "statement",
+        "cause",
+        "status",
+        "evidence_ids",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicsDiagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "possible_cause": {
+          "type": "string"
+        },
+        "suggested_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "possible_cause",
+        "suggested_action"
+      ],
+      "additionalProperties": false
+    },
+    "DevelopmentRequest": {
+      "type": "object",
+      "properties": {
+        "capability_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "const": "requires_implementation"
+        },
+        "technical_specification": {
+          "type": "string"
+        },
+        "library_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "depends_on": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "depends_on",
+              "description"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "promotion_gate": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability_id",
+        "status",
+        "technical_specification",
+        "library_candidates",
+        "tasks",
+        "promotion_gate"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicsReport": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1.0"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "goal_sha256": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "improved",
+            "rejected",
+            "inconclusive",
+            "invalid",
+            "unsupported"
+          ]
+        },
+        "artifact_directory": {
+          "type": "string"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Criterion"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhysicsDiagnostic"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExperimentEvidence"
+          }
+        },
+        "hypotheses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Hypothesis"
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConstraintEvaluation"
+          }
+        },
+        "baseline_verified": {
+          "type": "boolean"
+        },
+        "accepted_configuration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhysicsConfiguration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "development_request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DevelopmentRequest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "physical_principle",
+                  "llm_proposal",
+                  "numerical_evidence",
+                  "deterministic_verification",
+                  "engineering_judgment"
+                ]
+              },
+              "statement": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "statement",
+              "evidence_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "resource_usage": {
+          "type": "object",
+          "properties": {
+            "experiments_executed": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "wall_seconds": {
+              "type": "number"
+            },
+            "solver_seconds": {
+              "type": "number"
+            },
+            "maximum_grid_points": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "peak_estimated_array_bytes": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "experiments_executed",
+            "wall_seconds",
+            "solver_seconds",
+            "maximum_grid_points",
+            "peak_estimated_array_bytes"
+          ],
+          "additionalProperties": false
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "foundry_signoff": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "run_id",
+        "goal_sha256",
+        "status",
+        "artifact_directory",
+        "criteria",
+        "diagnostics",
+        "evidence",
+        "hypotheses",
+        "checks",
+        "baseline_verified",
+        "accepted_configuration",
+        "development_request",
+        "reasoning",
+        "provenance",
+        "resource_usage",
+        "limitations",
+        "foundry_signoff"
+      ],
+      "additionalProperties": false
+    },
+    "DesignSpec": {
+      "type": "object",
+      "properties": {
+        "device": {
+          "default": "mzi",
+          "type": "string",
+          "const": "mzi"
+        },
+        "platform": {
+          "default": "sin",
+          "type": "string",
+          "const": "sin"
+        },
+        "wavelength_nm": {
+          "default": 1550,
+          "type": "number",
+          "minimum": 1500,
+          "maximum": 1600
+        },
+        "outputs": {
+          "default": [
+            "netlist",
+            "simulation",
+            "gds",
+            "verification"
+          ],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ]
+          }
+        },
+        "delta_length_um": {
+          "default": 10,
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "sweep_span_nm": {
+          "default": 40,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "sweep_points": {
+          "default": 201,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 2001
+        }
+      },
+      "additionalProperties": false
+    },
+    "Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "domain": {
+          "default": "optical",
+          "type": "string",
+          "enum": [
+            "optical",
+            "electrical"
+          ]
+        },
+        "direction": {
+          "default": "bidirectional",
+          "type": "string",
+          "enum": [
+            "input",
+            "output",
+            "bidirectional"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Component": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ideal_coupler",
+            "waveguide"
+          ]
+        },
+        "ports": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Port"
+          }
+        },
+        "length_um": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coupling_ratio": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "Endpoint": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "instance",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "Connection": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/Endpoint"
+        },
+        "b": {
+          "$ref": "#/$defs/Endpoint"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "additionalProperties": false
+    },
+    "Circuit": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Component"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Endpoint"
+          }
+        }
+      },
+      "required": [
+        "instances",
+        "connections",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "PDK": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "default": "sin_demo_v1",
+          "type": "string",
+          "const": "sin_demo_v1"
+        },
+        "foundry": {
+          "default": null,
+          "type": "null"
+        },
+        "calibrated": {
+          "default": false,
+          "type": "boolean",
+          "const": false
+        },
+        "core_layer": {
+          "default": [
+            1,
+            0
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "width_um": {
+          "default": 1,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "thickness_um": {
+          "default": 0.4,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "bend_radius_um": {
+          "default": 50,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "minimum_width_um": {
+          "default": 0.5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "minimum_spacing_um": {
+          "default": 0.5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reference_wavelength_um": {
+          "default": 1.55,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "effective_index": {
+          "default": 1.8,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "group_index": {
+          "default": 1.9,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "loss_db_per_cm": {
+          "default": 0,
+          "type": "number",
+          "const": 0
+        },
+        "model_version": {
+          "default": "ideal_sin_v1",
+          "type": "string",
+          "const": "ideal_sin_v1"
+        },
+        "supported_components": {
+          "default": [
+            "ideal_coupler",
+            "waveguide"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ideal_coupler",
+              "waveguide"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Task": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "backend": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "depends_on",
+        "backend"
+      ],
+      "additionalProperties": false
+    },
+    "EngineeringIR": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "2.0",
+          "type": "string",
+          "const": "2.0"
+        },
+        "design_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "specification": {
+          "$ref": "#/$defs/DesignSpec"
+        },
+        "technology": {
+          "$ref": "#/$defs/PDK"
+        },
+        "netlist": {
+          "$ref": "#/$defs/Circuit"
+        },
+        "workflow": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Task"
+          }
+        },
+        "layout_resolved": {
+          "default": false,
+          "type": "boolean"
+        },
+        "length_source": {
+          "default": "specification",
+          "type": "string",
+          "enum": [
+            "specification",
+            "layout"
+          ]
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "design_id",
+        "specification",
+        "technology",
+        "netlist",
+        "workflow",
+        "assumptions"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicalPort": {
+      "type": "object",
+      "properties": {
+        "center_um": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "orientation_deg": {
+          "type": "number"
+        },
+        "width_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "center_um",
+        "orientation_deg",
+        "width_um"
+      ],
+      "additionalProperties": false
+    },
+    "LayoutResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "2.0"
+        },
+        "top_cell": {
+          "type": "string"
+        },
+        "technology": {
+          "type": "string"
+        },
+        "core_layer": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "lengths_um": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "centerlines_um": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/PhysicalPort"
+            }
+          }
+        },
+        "extracted_circuit": {
+          "$ref": "#/$defs/Circuit"
+        },
+        "bend_radius_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "delta_length_um": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "schema_version",
+        "top_cell",
+        "technology",
+        "core_layer",
+        "lengths_um",
+        "centerlines_um",
+        "ports",
+        "extracted_circuit",
+        "bend_radius_um",
+        "delta_length_um"
+      ],
+      "additionalProperties": false
+    },
+    "SimulationResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "2.0"
+        },
+        "backend": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": "string"
+        },
+        "wavelength_nm": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "s_real": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "s_imag": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "input_port": {
+          "type": "string"
+        },
+        "transmission_out0": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "transmission_out1": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "physical_calibration": {
+          "type": "string",
+          "const": "not_performed"
+        }
+      },
+      "required": [
+        "schema_version",
+        "backend",
+        "model_version",
+        "wavelength_nm",
+        "ports",
+        "s_real",
+        "s_imag",
+        "input_port",
+        "transmission_out0",
+        "transmission_out1",
+        "physical_calibration"
+      ],
+      "additionalProperties": false
+    },
+    "CheckResult": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "evidence": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "VerificationReport": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "2.0",
+          "type": "string",
+          "const": "2.0"
+        },
+        "design_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed_with_limitations",
+            "failed"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CheckResult"
+          }
+        },
+        "foundry_signoff": {
+          "default": false,
+          "type": "boolean",
+          "const": false
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "design_id",
+        "status",
+        "checks",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "Artifact": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "media_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "sha256",
+        "size_bytes",
+        "media_type"
+      ],
+      "additionalProperties": false
+    },
+    "RunResult": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "2.0",
+          "type": "string",
+          "const": "2.0"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "design_id": {
+          "type": "string"
+        },
+        "artifact_directory": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "verification_status": {
+          "type": "string",
+          "enum": [
+            "passed_with_limitations",
+            "failed",
+            "not_run"
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Artifact"
+          }
+        },
+        "error": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "run_id",
+        "design_id",
+        "artifact_directory",
+        "status",
+        "verification_status",
+        "artifacts"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitSimulation": {
+      "type": "object",
+      "properties": {
+        "ir": {
+          "$ref": "#/$defs/EngineeringIR"
+        },
+        "simulation": {
+          "$ref": "#/$defs/SimulationResult"
+        },
+        "verification": {
+          "$ref": "#/$defs/VerificationReport"
+        }
+      },
+      "required": [
+        "ir",
+        "simulation",
+        "verification"
+      ],
+      "additionalProperties": false
+    },
+    "ElectromagneticRequest": {
+      "type": "object",
+      "properties": {
+        "geometry_artifact": {
+          "type": "string"
+        },
+        "wavelength_nm": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material_map": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "geometry_artifact",
+        "wavelength_nm",
+        "material_map",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "ElectromagneticResult": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "model_artifact": {
+          "type": "string"
+        },
+        "verification_artifact": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend",
+        "model_artifact",
+        "verification_artifact"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

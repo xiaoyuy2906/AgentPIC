@@ -3,10 +3,8 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   milestone:
     runs-on: ubuntu-latest
@@ -19,20 +17,32 @@ jobs:
       JAX_PLATFORMS: cpu
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
       - uses: astral-sh/setup-uv@v6
         with:
           version: '0.9.26'
           python-version: ${{ matrix.python }}
           enable-cache: true
+      - run: npm ci
       - run: uv sync --locked
-      - run: uv run ruff check src tests scripts
-      - run: uv run ruff format --check src tests scripts
-      - run: uv run python scripts/export_schemas.py --check
+      - run: npm run generate
+      - run: git diff --exit-code -- schemas src/agentpic/ir.py
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
       - run: uv run pytest -q
-      - run: uv run python scripts/acceptance.py --output runs/ci-acceptance
+      - run: npm test
+      - run: npm run acceptance -- --output runs/ci-acceptance
+      - run: npm run benchmark:physics -- --output runs/physics-benchmarks
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mzi-evidence-python-${{ matrix.python }}
-          path: runs/ci-acceptance/
+          name: engineering-evidence-python-${{ matrix.python }}
+          path: |
+            runs/ci-acceptance/
+            runs/physics-benchmarks/
           if-no-files-found: ignore

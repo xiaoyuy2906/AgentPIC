@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/DesignSpec",
+  "$defs": {
+    "DesignSpec": {
+      "type": "object",
+      "properties": {
+        "device": {
+          "default": "mzi",
+          "type": "string",
+          "const": "mzi"
+        },
+        "platform": {
+          "default": "sin",
+          "type": "string",
+          "const": "sin"
+        },
+        "wavelength_nm": {
+          "default": 1550,
+          "type": "number",
+          "minimum": 1500,
+          "maximum": 1600
+        },
+        "outputs": {
+          "default": [
+            "netlist",
+            "simulation",
+            "gds",
+            "verification"
+          ],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ]
+          }
+        },
+        "delta_length_um": {
+          "default": 10,
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "sweep_span_nm": {
+          "default": 40,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "sweep_points": {
+          "default": 201,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 2001
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

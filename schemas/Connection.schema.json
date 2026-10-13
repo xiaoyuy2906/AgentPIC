@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Connection",
+  "$defs": {
+    "Connection": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/Endpoint"
+        },
+        "b": {
+          "$ref": "#/$defs/Endpoint"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "additionalProperties": false
+    },
+    "Endpoint": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "instance",
+        "port"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/PhysicalResult",
+  "$defs": {
+    "PhysicalResult": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "effective_index": {
+          "type": "number"
+        },
+        "beta_per_um": {
+          "type": "number"
+        },
+        "units": {
+          "type": "object",
+          "properties": {
+            "effective_index": {
+              "type": "string",
+              "const": "1"
+            },
+            "beta_per_um": {
+              "type": "string",
+              "const": "um^-1"
+            },
+            "coordinates": {
+              "type": "string",
+              "const": "um"
+            },
+            "field": {
+              "type": "string",
+              "const": "arbitrary_normalized"
+            }
+          },
+          "required": [
+            "effective_index",
+            "beta_per_um",
+            "coordinates",
+            "field"
+          ],
+          "additionalProperties": false
+        },
+        "x_um": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "field_amplitude": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "grid_points": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "actual_grid_step_um": {
+              "type": "number"
+            },
+            "relative_residual": {
+              "type": "number"
+            },
+            "edge_amplitude_ratio": {
+              "type": "number"
+            },
+            "elapsed_seconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "estimated_array_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "grid_points",
+            "actual_grid_step_um",
+            "relative_residual",
+            "edge_amplitude_ratio",
+            "elapsed_seconds",
+            "estimated_array_bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "backend",
+        "method",
+        "effective_index",
+        "beta_per_um",
+        "units",
+        "x_um",
+        "field_amplitude",
+        "diagnostics"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

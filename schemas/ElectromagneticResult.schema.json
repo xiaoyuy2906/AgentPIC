@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/ElectromagneticResult",
+  "$defs": {
+    "ElectromagneticResult": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "model_artifact": {
+          "type": "string"
+        },
+        "verification_artifact": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend",
+        "model_artifact",
+        "verification_artifact"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

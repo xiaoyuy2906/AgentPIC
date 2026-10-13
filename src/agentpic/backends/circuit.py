@@ -13,8 +13,8 @@ class SAXBackend:
 
 
 def simulate(ir: EngineeringIR) -> dict:
-    if not ir.layout_resolved:
-        raise ValueError("physical arm lengths must be resolved before circuit simulation")
+    if any(i.length_um is None for i in ir.netlist.instances if i.kind == "waveguide"):
+        raise ValueError("waveguide lengths must be resolved before circuit simulation")
     import jax
 
     jax.config.update("jax_enable_x64", True)
@@ -51,8 +51,14 @@ def simulate(ir: EngineeringIR) -> dict:
         instances[instance.name] = {"component": instance.kind, "settings": settings}
     netlist = {
         "instances": instances,
-        "connections": {edge.a.sax_key(): edge.b.sax_key() for edge in ir.netlist.connections},
-        "ports": {name: endpoint.sax_key() for name, endpoint in ir.netlist.ports.items()},
+        "connections": {
+            f"{edge.a.instance},{edge.a.port}": f"{edge.b.instance},{edge.b.port}"
+            for edge in ir.netlist.connections
+        },
+        "ports": {
+            name: f"{endpoint.instance},{endpoint.port}"
+            for name, endpoint in ir.netlist.ports.items()
+        },
     }
     model, _ = sax.circuit(
         netlist=netlist, models={"ideal_coupler": ideal_coupler, "waveguide": waveguide}
@@ -69,7 +75,7 @@ def simulate(ir: EngineeringIR) -> dict:
     for (output_port, input_port), value in scattering.items():
         matrix[:, ports.index(output_port), ports.index(input_port)] = np.asarray(value)
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "backend": "sax",
         "model_version": tech.model_version,
         "wavelength_nm": wavelengths.tolist(),
@@ -79,6 +85,5 @@ def simulate(ir: EngineeringIR) -> dict:
         "input_port": "in0",
         "transmission_out0": (np.abs(matrix[:, 2, 0]) ** 2).tolist(),
         "transmission_out1": (np.abs(matrix[:, 3, 0]) ** 2).tolist(),
-        "sax_netlist": netlist,
         "physical_calibration": "not_performed",
     }

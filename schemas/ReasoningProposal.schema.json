@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/ReasoningProposal",
+  "$defs": {
+    "ReasoningProposal": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "const": "external_llm"
+        },
+        "claim": {
+          "type": "string"
+        },
+        "cause": {
+          "type": "string",
+          "enum": [
+            "discretization_error",
+            "boundary_truncation",
+            "non_reproducibility",
+            "reference_disagreement",
+            "input_error"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "claim",
+        "cause",
+        "rationale"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

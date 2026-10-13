@@ -1,71 +1,1457 @@
 {
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgentPIC TypeScript Core",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/v1/physics/capabilities": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityRegistry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/physics/runs/{run_id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhysicsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/physics/runs/{run_id}/artifacts/{name}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versioned JSON experiment artifact"
+          },
+          "404": {
+            "description": "Unknown artifact"
+          }
+        }
+      }
+    },
+    "/v1/physics/workflows": {
+      "post": {
+        "description": "Execute an evidence-driven physics investigation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngineeringGoal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhysicsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/compile": {
+      "post": {
+        "description": "Compile MZI intent to validated Engineering IR",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignSpec"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineeringIR"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/validate": {
+      "post": {
+        "description": "Validate structure, ports, connections and topology",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngineeringIR"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineeringIR"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/simulations": {
+      "post": {
+        "description": "Circuit-only SAX simulation and numerical verification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngineeringIR"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "IR, simulation, verification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ir",
+                    "simulation",
+                    "verification"
+                  ],
+                  "properties": {
+                    "ir": {
+                      "$ref": "#/components/schemas/EngineeringIR"
+                    },
+                    "simulation": {
+                      "$ref": "#/components/schemas/SimulationResult"
+                    },
+                    "verification": {
+                      "$ref": "#/components/schemas/VerificationReport"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid IR"
+          }
+        }
+      }
+    },
+    "/v1/designs": {
+      "post": {
+        "description": "Execute layout, simulation and verification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignSpec"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Capability registry"
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/verify": {
+      "post": {
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/artifacts/{name}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary or text artifact"
+          },
+          "404": {
+            "description": "Unknown artifact"
+          }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
-      "Artifact": {
-        "additionalProperties": false,
+      "CapabilityRegistry": {
+        "type": "object",
         "properties": {
-          "media_type": {
-            "title": "Media Type",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "sha256": {
-            "title": "Sha256",
-            "type": "string"
-          },
-          "size_bytes": {
-            "title": "Size Bytes",
-            "type": "integer"
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "implemented"
+                },
+                "verification": {
+                  "type": "string",
+                  "const": "requires_evidence_for_each_run"
+                },
+                "criteria": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Criterion"
+                  }
+                },
+                "limitations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "status",
+                "verification",
+                "criteria",
+                "limitations"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
-          "name",
-          "sha256",
-          "size_bytes",
-          "media_type"
+          "capabilities"
         ],
-        "title": "Artifact",
-        "type": "object"
+        "additionalProperties": false
       },
-      "CheckResult": {
-        "additionalProperties": false,
+      "Criterion": {
+        "type": "object",
         "properties": {
-          "detail": {
-            "title": "Detail",
-            "type": "string"
-          },
-          "evidence": {
-            "additionalProperties": true,
-            "title": "Evidence",
-            "type": "object"
-          },
           "id": {
-            "title": "Id",
             "type": "string"
           },
-          "status": {
+          "observable": {
+            "type": "string"
+          },
+          "comparison": {
+            "type": "string",
             "enum": [
-              "pass",
-              "fail",
-              "not_run"
-            ],
-            "title": "Status",
+              "lt",
+              "lte",
+              "gte",
+              "range"
+            ]
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "unit": {
+            "type": "string"
+          },
+          "rationale": {
             "type": "string"
           }
         },
         "required": [
           "id",
+          "observable",
+          "comparison",
+          "thresholds",
+          "unit",
+          "rationale"
+        ],
+        "additionalProperties": false
+      },
+      "Length": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "nm",
+              "um",
+              "m"
+            ]
+          },
+          "dimension": {
+            "default": "length",
+            "type": "string",
+            "const": "length"
+          }
+        },
+        "required": [
+          "value",
+          "unit"
+        ],
+        "additionalProperties": false
+      },
+      "PhysicalModel": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "materials": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "refractive_index": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "refractive_index"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "layers": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "material": {
+                  "type": "string"
+                },
+                "thickness": {
+                  "$ref": "#/components/schemas/Length"
+                }
+              },
+              "required": [
+                "material",
+                "thickness"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "background_material": {
+            "type": "string"
+          },
+          "assumptions": {
+            "type": "object",
+            "properties": {
+              "linear": {
+                "type": "boolean"
+              },
+              "lossless": {
+                "type": "boolean"
+              },
+              "isotropic": {
+                "type": "boolean"
+              },
+              "nonmagnetic": {
+                "type": "boolean"
+              },
+              "propagation_invariant": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "linear",
+              "lossless",
+              "isotropic",
+              "nonmagnetic",
+              "propagation_invariant"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "kind",
+          "materials",
+          "layers",
+          "background_material",
+          "assumptions"
+        ],
+        "additionalProperties": false
+      },
+      "ReasoningProposal": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "external_llm"
+          },
+          "claim": {
+            "type": "string"
+          },
+          "cause": {
+            "type": "string",
+            "enum": [
+              "discretization_error",
+              "boundary_truncation",
+              "non_reproducibility",
+              "reference_disagreement",
+              "input_error"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "claim",
+          "cause",
+          "rationale"
+        ],
+        "additionalProperties": false
+      },
+      "EngineeringGoal": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "default": "1.0",
+            "type": "string",
+            "const": "1.0"
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "capability_id": {
+            "type": "string"
+          },
+          "model": {
+            "$ref": "#/components/schemas/PhysicalModel"
+          },
+          "wavelength": {
+            "$ref": "#/components/schemas/Length"
+          },
+          "polarization": {
+            "type": "string",
+            "enum": [
+              "TE",
+              "TM"
+            ]
+          },
+          "numerical": {
+            "type": "object",
+            "properties": {
+              "grid_step": {
+                "$ref": "#/components/schemas/Length"
+              },
+              "padding": {
+                "$ref": "#/components/schemas/Length"
+              },
+              "max_points": {
+                "default": 12000,
+                "type": "integer",
+                "minimum": 64,
+                "maximum": 20000
+              }
+            },
+            "required": [
+              "grid_step",
+              "padding"
+            ],
+            "additionalProperties": false
+          },
+          "experiment_budget": {
+            "default": 8,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "reasoning_proposals": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReasoningProposal"
+            }
+          }
+        },
+        "required": [
+          "goal",
+          "capability_id",
+          "model",
+          "wavelength",
+          "polarization",
+          "numerical"
+        ],
+        "additionalProperties": false
+      },
+      "PhysicsConfiguration": {
+        "type": "object",
+        "properties": {
+          "model_kind": {
+            "type": "string"
+          },
+          "wavelength_um": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "polarization": {
+            "type": "string",
+            "enum": [
+              "TE",
+              "TM"
+            ]
+          },
+          "layers": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "thickness_um": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "refractive_index": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "thickness_um",
+                "refractive_index"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "background_index": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "grid_step_um": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "padding_um": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "max_points": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "model_kind",
+          "wavelength_um",
+          "polarization",
+          "layers",
+          "background_index",
+          "grid_step_um",
+          "padding_um",
+          "max_points"
+        ],
+        "additionalProperties": false
+      },
+      "PhysicalResult": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "effective_index": {
+            "type": "number"
+          },
+          "beta_per_um": {
+            "type": "number"
+          },
+          "units": {
+            "type": "object",
+            "properties": {
+              "effective_index": {
+                "type": "string",
+                "const": "1"
+              },
+              "beta_per_um": {
+                "type": "string",
+                "const": "um^-1"
+              },
+              "coordinates": {
+                "type": "string",
+                "const": "um"
+              },
+              "field": {
+                "type": "string",
+                "const": "arbitrary_normalized"
+              }
+            },
+            "required": [
+              "effective_index",
+              "beta_per_um",
+              "coordinates",
+              "field"
+            ],
+            "additionalProperties": false
+          },
+          "x_um": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "field_amplitude": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "diagnostics": {
+            "type": "object",
+            "properties": {
+              "grid_points": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "actual_grid_step_um": {
+                "type": "number"
+              },
+              "relative_residual": {
+                "type": "number"
+              },
+              "edge_amplitude_ratio": {
+                "type": "number"
+              },
+              "elapsed_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "estimated_array_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "grid_points",
+              "actual_grid_step_um",
+              "relative_residual",
+              "edge_amplitude_ratio",
+              "elapsed_seconds",
+              "estimated_array_bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "backend",
+          "method",
+          "effective_index",
+          "beta_per_um",
+          "units",
+          "x_um",
+          "field_amplitude",
+          "diagnostics"
+        ],
+        "additionalProperties": false
+      },
+      "Experiment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "hypothesis_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/PhysicsConfiguration"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Criterion"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "operation",
+          "purpose",
+          "hypothesis_ids",
+          "configuration",
+          "criteria"
+        ],
+        "additionalProperties": false
+      },
+      "ConstraintEvaluation": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "not_evaluated"
+            ]
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_id",
           "status",
+          "value",
+          "evidence_ids",
           "detail"
         ],
-        "title": "CheckResult",
-        "type": "object"
+        "additionalProperties": false
+      },
+      "ExperimentEvidence": {
+        "type": "object",
+        "properties": {
+          "experiment": {
+            "$ref": "#/components/schemas/Experiment"
+          },
+          "configuration_sha256": {
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhysicalResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConstraintEvaluation"
+            }
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "experiment",
+          "configuration_sha256",
+          "result",
+          "checks",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "Hypothesis": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "deterministic_physics",
+              "external_llm"
+            ]
+          },
+          "statement": {
+            "type": "string"
+          },
+          "cause": {
+            "type": "string",
+            "enum": [
+              "discretization_error",
+              "boundary_truncation",
+              "non_reproducibility",
+              "reference_disagreement",
+              "input_error"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "contradicted",
+              "inconclusive"
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "statement",
+          "cause",
+          "status",
+          "evidence_ids",
+          "explanation"
+        ],
+        "additionalProperties": false
+      },
+      "PhysicsDiagnostic": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "possible_cause": {
+            "type": "string"
+          },
+          "suggested_action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "possible_cause",
+          "suggested_action"
+        ],
+        "additionalProperties": false
+      },
+      "DevelopmentRequest": {
+        "type": "object",
+        "properties": {
+          "capability_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "requires_implementation"
+          },
+          "technical_specification": {
+            "type": "string"
+          },
+          "library_candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "depends_on": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "depends_on",
+                "description"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "promotion_gate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "capability_id",
+          "status",
+          "technical_specification",
+          "library_candidates",
+          "tasks",
+          "promotion_gate"
+        ],
+        "additionalProperties": false
+      },
+      "PhysicsReport": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "goal_sha256": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "improved",
+              "rejected",
+              "inconclusive",
+              "invalid",
+              "unsupported"
+            ]
+          },
+          "artifact_directory": {
+            "type": "string"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Criterion"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhysicsDiagnostic"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExperimentEvidence"
+            }
+          },
+          "hypotheses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Hypothesis"
+            }
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConstraintEvaluation"
+            }
+          },
+          "baseline_verified": {
+            "type": "boolean"
+          },
+          "accepted_configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhysicsConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "development_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DevelopmentRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "physical_principle",
+                    "llm_proposal",
+                    "numerical_evidence",
+                    "deterministic_verification",
+                    "engineering_judgment"
+                  ]
+                },
+                "statement": {
+                  "type": "string"
+                },
+                "evidence_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "statement",
+                "evidence_ids"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "resource_usage": {
+            "type": "object",
+            "properties": {
+              "experiments_executed": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "wall_seconds": {
+                "type": "number"
+              },
+              "solver_seconds": {
+                "type": "number"
+              },
+              "maximum_grid_points": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "peak_estimated_array_bytes": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "experiments_executed",
+              "wall_seconds",
+              "solver_seconds",
+              "maximum_grid_points",
+              "peak_estimated_array_bytes"
+            ],
+            "additionalProperties": false
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "foundry_signoff": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": [
+          "schema_version",
+          "run_id",
+          "goal_sha256",
+          "status",
+          "artifact_directory",
+          "criteria",
+          "diagnostics",
+          "evidence",
+          "hypotheses",
+          "checks",
+          "baseline_verified",
+          "accepted_configuration",
+          "development_request",
+          "reasoning",
+          "provenance",
+          "resource_usage",
+          "limitations",
+          "foundry_signoff"
+        ],
+        "additionalProperties": false
+      },
+      "DesignSpec": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "default": "mzi",
+            "type": "string",
+            "const": "mzi"
+          },
+          "platform": {
+            "default": "sin",
+            "type": "string",
+            "const": "sin"
+          },
+          "wavelength_nm": {
+            "default": 1550,
+            "type": "number",
+            "minimum": 1500,
+            "maximum": 1600
+          },
+          "outputs": {
+            "default": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ],
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "netlist",
+                "simulation",
+                "gds",
+                "verification"
+              ]
+            }
+          },
+          "delta_length_um": {
+            "default": 10,
+            "type": "number",
+            "minimum": -200,
+            "maximum": 200
+          },
+          "sweep_span_nm": {
+            "default": 40,
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 100
+          },
+          "sweep_points": {
+            "default": 201,
+            "type": "integer",
+            "minimum": 3,
+            "maximum": 2001
+          }
+        },
+        "additionalProperties": false
+      },
+      "Port": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "domain": {
+            "default": "optical",
+            "type": "string",
+            "enum": [
+              "optical",
+              "electrical"
+            ]
+          },
+          "direction": {
+            "default": "bidirectional",
+            "type": "string",
+            "enum": [
+              "input",
+              "output",
+              "bidirectional"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "Component": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ideal_coupler",
+              "waveguide"
+            ]
+          },
+          "ports": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Port"
+            }
+          },
+          "length_um": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coupling_ratio": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "ports"
+        ],
+        "additionalProperties": false
+      },
+      "Endpoint": {
+        "type": "object",
+        "properties": {
+          "instance": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "port": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "required": [
+          "instance",
+          "port"
+        ],
+        "additionalProperties": false
       },
       "Connection": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
           "a": {
             "$ref": "#/components/schemas/Endpoint"
@@ -78,129 +1464,216 @@
           "a",
           "b"
         ],
-        "title": "Connection",
-        "type": "object"
+        "additionalProperties": false
       },
-      "DesignSpec": {
-        "additionalProperties": false,
+      "Circuit": {
+        "type": "object",
         "properties": {
-          "delta_length_um": {
-            "default": 10,
-            "maximum": 200.0,
-            "minimum": -200.0,
-            "title": "Delta Length Um",
-            "type": "number"
-          },
-          "device": {
-            "const": "mzi",
-            "default": "mzi",
-            "title": "Device",
-            "type": "string"
-          },
-          "outputs": {
+          "instances": {
+            "minItems": 1,
+            "type": "array",
             "items": {
-              "enum": [
-                "netlist",
-                "simulation",
-                "gds",
-                "verification"
-              ],
+              "$ref": "#/components/schemas/Component"
+            }
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            }
+          },
+          "ports": {
+            "type": "object",
+            "propertyNames": {
               "type": "string"
             },
-            "minItems": 1,
-            "title": "Outputs",
-            "type": "array"
-          },
-          "platform": {
-            "const": "sin",
-            "default": "sin",
-            "title": "Platform",
-            "type": "string"
-          },
-          "sweep_points": {
-            "default": 201,
-            "maximum": 2001.0,
-            "minimum": 3.0,
-            "title": "Sweep Points",
-            "type": "integer"
-          },
-          "sweep_span_nm": {
-            "default": 40,
-            "exclusiveMinimum": 0.0,
-            "maximum": 100.0,
-            "title": "Sweep Span Nm",
-            "type": "number"
-          },
-          "wavelength_nm": {
-            "default": 1550,
-            "maximum": 1600.0,
-            "minimum": 1500.0,
-            "title": "Wavelength Nm",
-            "type": "number"
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Endpoint"
+            }
           }
         },
-        "title": "DesignSpec",
-        "type": "object"
+        "required": [
+          "instances",
+          "connections",
+          "ports"
+        ],
+        "additionalProperties": false
       },
-      "Endpoint": {
-        "additionalProperties": false,
+      "PDK": {
+        "type": "object",
         "properties": {
-          "instance": {
-            "title": "Instance",
-            "type": "string"
+          "name": {
+            "default": "sin_demo_v1",
+            "type": "string",
+            "const": "sin_demo_v1"
           },
-          "port": {
-            "title": "Port",
+          "foundry": {
+            "default": null,
+            "type": "null"
+          },
+          "calibrated": {
+            "default": false,
+            "type": "boolean",
+            "const": false
+          },
+          "core_layer": {
+            "default": [
+              1,
+              0
+            ],
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "width_um": {
+            "default": 1,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "thickness_um": {
+            "default": 0.4,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "bend_radius_um": {
+            "default": 50,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "minimum_width_um": {
+            "default": 0.5,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "minimum_spacing_um": {
+            "default": 0.5,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "reference_wavelength_um": {
+            "default": 1.55,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "effective_index": {
+            "default": 1.8,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "group_index": {
+            "default": 1.9,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "loss_db_per_cm": {
+            "default": 0,
+            "type": "number",
+            "const": 0
+          },
+          "model_version": {
+            "default": "ideal_sin_v1",
+            "type": "string",
+            "const": "ideal_sin_v1"
+          },
+          "supported_components": {
+            "default": [
+              "ideal_coupler",
+              "waveguide"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ideal_coupler",
+                "waveguide"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+            }
+          },
+          "backend": {
             "type": "string"
           }
         },
         "required": [
-          "instance",
-          "port"
+          "name",
+          "depends_on",
+          "backend"
         ],
-        "title": "Endpoint",
-        "type": "object"
+        "additionalProperties": false
       },
       "EngineeringIR": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
-          "assumptions": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Assumptions",
-            "type": "array"
+          "schema_version": {
+            "default": "2.0",
+            "type": "string",
+            "const": "2.0"
           },
           "design_id": {
-            "title": "Design Id",
-            "type": "string"
-          },
-          "layout_resolved": {
-            "default": false,
-            "title": "Layout Resolved",
-            "type": "boolean"
-          },
-          "netlist": {
-            "$ref": "#/components/schemas/NetlistIR"
-          },
-          "schema_version": {
-            "const": "1.0",
-            "default": "1.0",
-            "title": "Schema Version",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
           },
           "specification": {
             "$ref": "#/components/schemas/DesignSpec"
           },
           "technology": {
-            "$ref": "#/components/schemas/TechnologyIR"
+            "$ref": "#/components/schemas/PDK"
+          },
+          "netlist": {
+            "$ref": "#/components/schemas/Circuit"
           },
           "workflow": {
+            "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TaskIR"
-            },
-            "title": "Workflow",
-            "type": "array"
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "layout_resolved": {
+            "default": false,
+            "type": "boolean"
+          },
+          "length_source": {
+            "default": "specification",
+            "type": "string",
+            "enum": [
+              "specification",
+              "layout"
+            ]
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -211,166 +1684,377 @@
           "workflow",
           "assumptions"
         ],
-        "title": "EngineeringIR",
-        "type": "object"
+        "additionalProperties": false
       },
-      "HTTPValidationError": {
+      "PhysicalPort": {
+        "type": "object",
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
+          "center_um": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "orientation_deg": {
+            "type": "number"
+          },
+          "width_um": {
+            "type": "number",
+            "exclusiveMinimum": 0
           }
         },
-        "title": "HTTPValidationError",
-        "type": "object"
+        "required": [
+          "center_um",
+          "orientation_deg",
+          "width_um"
+        ],
+        "additionalProperties": false
       },
-      "InstanceIR": {
-        "additionalProperties": false,
+      "LayoutResult": {
+        "type": "object",
         "properties": {
-          "coupling_ratio": {
-            "anyOf": [
-              {
-                "maximum": 1.0,
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Coupling Ratio"
+          "schema_version": {
+            "type": "string",
+            "const": "2.0"
           },
-          "kind": {
-            "enum": [
-              "ideal_coupler",
-              "waveguide"
-            ],
-            "title": "Kind",
+          "top_cell": {
             "type": "string"
           },
-          "length_um": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Length Um"
-          },
-          "name": {
-            "title": "Name",
+          "technology": {
             "type": "string"
           },
-          "ports": {
-            "items": {
+          "core_layer": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "lengths_um": {
+            "type": "object",
+            "propertyNames": {
               "type": "string"
             },
-            "title": "Ports",
-            "type": "array"
+            "additionalProperties": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "centerlines_um": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "minItems": 2,
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          },
+          "ports": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#/components/schemas/PhysicalPort"
+              }
+            }
+          },
+          "extracted_circuit": {
+            "$ref": "#/components/schemas/Circuit"
+          },
+          "bend_radius_um": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "delta_length_um": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "top_cell",
+          "technology",
+          "core_layer",
+          "lengths_um",
+          "centerlines_um",
+          "ports",
+          "extracted_circuit",
+          "bend_radius_um",
+          "delta_length_um"
+        ],
+        "additionalProperties": false
+      },
+      "SimulationResult": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "2.0"
+          },
+          "backend": {
+            "type": "string"
+          },
+          "model_version": {
+            "type": "string"
+          },
+          "wavelength_nm": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "s_real": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "s_imag": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "input_port": {
+            "type": "string"
+          },
+          "transmission_out0": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "transmission_out1": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "physical_calibration": {
+            "type": "string",
+            "const": "not_performed"
+          }
+        },
+        "required": [
+          "schema_version",
+          "backend",
+          "model_version",
+          "wavelength_nm",
+          "ports",
+          "s_real",
+          "s_imag",
+          "input_port",
+          "transmission_out0",
+          "transmission_out1",
+          "physical_calibration"
+        ],
+        "additionalProperties": false
+      },
+      "CheckResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "not_run"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "evidence": {
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationReport": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "default": "2.0",
+            "type": "string",
+            "const": "2.0"
+          },
+          "design_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed_with_limitations",
+              "failed"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckResult"
+            }
+          },
+          "foundry_signoff": {
+            "default": false,
+            "type": "boolean",
+            "const": false
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "design_id",
+          "status",
+          "checks",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "Artifact": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "media_type": {
+            "type": "string"
           }
         },
         "required": [
           "name",
-          "kind",
-          "ports"
+          "sha256",
+          "size_bytes",
+          "media_type"
         ],
-        "title": "InstanceIR",
-        "type": "object"
-      },
-      "NetlistIR": {
-        "additionalProperties": false,
-        "properties": {
-          "connections": {
-            "items": {
-              "$ref": "#/components/schemas/Connection"
-            },
-            "title": "Connections",
-            "type": "array"
-          },
-          "instances": {
-            "items": {
-              "$ref": "#/components/schemas/InstanceIR"
-            },
-            "title": "Instances",
-            "type": "array"
-          },
-          "ports": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Endpoint"
-            },
-            "title": "Ports",
-            "type": "object"
-          }
-        },
-        "required": [
-          "instances",
-          "connections",
-          "ports"
-        ],
-        "title": "NetlistIR",
-        "type": "object"
+        "additionalProperties": false
       },
       "RunResult": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
-          "artifact_directory": {
-            "title": "Artifact Directory",
-            "type": "string"
-          },
-          "artifacts": {
-            "items": {
-              "$ref": "#/components/schemas/Artifact"
-            },
-            "title": "Artifacts",
-            "type": "array"
-          },
-          "design_id": {
-            "title": "Design Id",
-            "type": "string"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
+          "schema_version": {
+            "default": "2.0",
+            "type": "string",
+            "const": "2.0"
           },
           "run_id": {
-            "title": "Run Id",
             "type": "string"
           },
-          "schema_version": {
-            "const": "1.0",
-            "default": "1.0",
-            "title": "Schema Version",
+          "design_id": {
+            "type": "string"
+          },
+          "artifact_directory": {
             "type": "string"
           },
           "status": {
+            "type": "string",
             "enum": [
               "completed",
               "failed"
-            ],
-            "title": "Status",
-            "type": "string"
+            ]
           },
           "verification_status": {
+            "type": "string",
             "enum": [
               "passed_with_limitations",
               "failed",
               "not_run"
-            ],
-            "title": "Verification Status",
-            "type": "string"
+            ]
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Artifact"
+            }
+          },
+          "error": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -381,446 +2065,85 @@
           "verification_status",
           "artifacts"
         ],
-        "title": "RunResult",
-        "type": "object"
+        "additionalProperties": false
       },
-      "TaskIR": {
-        "additionalProperties": false,
+      "CircuitSimulation": {
+        "type": "object",
+        "properties": {
+          "ir": {
+            "$ref": "#/components/schemas/EngineeringIR"
+          },
+          "simulation": {
+            "$ref": "#/components/schemas/SimulationResult"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/VerificationReport"
+          }
+        },
+        "required": [
+          "ir",
+          "simulation",
+          "verification"
+        ],
+        "additionalProperties": false
+      },
+      "ElectromagneticRequest": {
+        "type": "object",
+        "properties": {
+          "geometry_artifact": {
+            "type": "string"
+          },
+          "wavelength_nm": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "material_map": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "geometry_artifact",
+          "wavelength_nm",
+          "material_map",
+          "ports"
+        ],
+        "additionalProperties": false
+      },
+      "ElectromagneticResult": {
+        "type": "object",
         "properties": {
           "backend": {
-            "title": "Backend",
             "type": "string"
           },
-          "depends_on": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Depends On",
-            "type": "array"
+          "model_artifact": {
+            "type": "string"
           },
-          "name": {
-            "title": "Name",
+          "verification_artifact": {
             "type": "string"
           }
         },
         "required": [
-          "name",
-          "depends_on",
-          "backend"
+          "backend",
+          "model_artifact",
+          "verification_artifact"
         ],
-        "title": "TaskIR",
-        "type": "object"
-      },
-      "TechnologyIR": {
-        "additionalProperties": false,
-        "properties": {
-          "bend_radius_um": {
-            "default": 50.0,
-            "title": "Bend Radius Um",
-            "type": "number"
-          },
-          "calibrated": {
-            "const": false,
-            "default": false,
-            "title": "Calibrated",
-            "type": "boolean"
-          },
-          "core_layer": {
-            "default": [
-              1,
-              0
-            ],
-            "maxItems": 2,
-            "minItems": 2,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Core Layer",
-            "type": "array"
-          },
-          "effective_index": {
-            "default": 1.8,
-            "title": "Effective Index",
-            "type": "number"
-          },
-          "foundry": {
-            "title": "Foundry",
-            "type": "null"
-          },
-          "group_index": {
-            "default": 1.9,
-            "title": "Group Index",
-            "type": "number"
-          },
-          "loss_db_per_cm": {
-            "default": 0.0,
-            "title": "Loss Db Per Cm",
-            "type": "number"
-          },
-          "minimum_spacing_um": {
-            "default": 0.5,
-            "title": "Minimum Spacing Um",
-            "type": "number"
-          },
-          "minimum_width_um": {
-            "default": 0.5,
-            "title": "Minimum Width Um",
-            "type": "number"
-          },
-          "model_version": {
-            "const": "ideal_sin_v1",
-            "default": "ideal_sin_v1",
-            "title": "Model Version",
-            "type": "string"
-          },
-          "name": {
-            "const": "sin_demo_v1",
-            "default": "sin_demo_v1",
-            "title": "Name",
-            "type": "string"
-          },
-          "reference_wavelength_um": {
-            "default": 1.55,
-            "title": "Reference Wavelength Um",
-            "type": "number"
-          },
-          "thickness_um": {
-            "default": 0.4,
-            "title": "Thickness Um",
-            "type": "number"
-          },
-          "width_um": {
-            "default": 1.0,
-            "title": "Width Um",
-            "type": "number"
-          }
-        },
-        "title": "TechnologyIR",
-        "type": "object"
-      },
-      "ValidationError": {
-        "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      },
-      "VerificationReport": {
-        "additionalProperties": false,
-        "properties": {
-          "checks": {
-            "items": {
-              "$ref": "#/components/schemas/CheckResult"
-            },
-            "title": "Checks",
-            "type": "array"
-          },
-          "design_id": {
-            "title": "Design Id",
-            "type": "string"
-          },
-          "foundry_signoff": {
-            "const": false,
-            "default": false,
-            "title": "Foundry Signoff",
-            "type": "boolean"
-          },
-          "limitations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Limitations",
-            "type": "array"
-          },
-          "schema_version": {
-            "const": "1.0",
-            "default": "1.0",
-            "title": "Schema Version",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "passed_with_limitations",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "design_id",
-          "status",
-          "checks",
-          "limitations"
-        ],
-        "title": "VerificationReport",
-        "type": "object"
-      }
-    }
-  },
-  "info": {
-    "description": "Agent-native PIC EDA, milestone 1",
-    "title": "AgentPIC",
-    "version": "0.1.0"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/v1/capabilities": {
-      "get": {
-        "operationId": "get_capabilities_v1_capabilities_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Capabilities V1 Capabilities Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Capabilities"
-      }
-    },
-    "/v1/compile": {
-      "post": {
-        "operationId": "compile_specification_v1_compile_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DesignSpec"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EngineeringIR"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Compile Specification"
-      }
-    },
-    "/v1/designs": {
-      "post": {
-        "operationId": "design_v1_designs_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DesignSpec"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResult"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Design"
-      }
-    },
-    "/v1/runs/{run_id}": {
-      "get": {
-        "operationId": "get_run_v1_runs__run_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "run_id",
-            "required": true,
-            "schema": {
-              "title": "Run Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResult"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Run"
-      }
-    },
-    "/v1/runs/{run_id}/artifacts/{name}": {
-      "get": {
-        "operationId": "artifact_v1_runs__run_id__artifacts__name__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "run_id",
-            "required": true,
-            "schema": {
-              "title": "Run Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Artifact"
-      }
-    },
-    "/v1/runs/{run_id}/verify": {
-      "post": {
-        "operationId": "verify_v1_runs__run_id__verify_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "run_id",
-            "required": true,
-            "schema": {
-              "title": "Run Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerificationReport"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Verify"
+        "additionalProperties": false
       }
     }
   }

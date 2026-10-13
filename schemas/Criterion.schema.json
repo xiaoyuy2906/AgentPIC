@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Criterion",
+  "$defs": {
+    "Criterion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observable": {
+          "type": "string"
+        },
+        "comparison": {
+          "type": "string",
+          "enum": [
+            "lt",
+            "lte",
+            "gte",
+            "range"
+          ]
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "unit": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "observable",
+        "comparison",
+        "thresholds",
+        "unit",
+        "rationale"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

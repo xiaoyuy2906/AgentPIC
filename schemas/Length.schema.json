@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Length",
+  "$defs": {
+    "Length": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "nm",
+            "um",
+            "m"
+          ]
+        },
+        "dimension": {
+          "default": "length",
+          "type": "string",
+          "const": "length"
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

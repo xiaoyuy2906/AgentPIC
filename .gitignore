@@ -9,3 +9,4 @@ build/
 work/
 runs/
 .DS_Store
+node_modules/
