@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+import platform
 import sys
 from importlib.metadata import version
 from pathlib import Path
@@ -13,7 +14,7 @@ from agentpic.ir import EngineeringIR, LayoutResult, PhysicsConfiguration, Simul
 def dispatch(request: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
     operation = request["operation"]
     if operation == "versions":
-        return {
+        packages = {
             name: version(name)
             for name in (
                 "sax",
@@ -25,6 +26,11 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
                 "pydantic",
                 "scipy",
             )
+        }
+        return {
+            **packages,
+            "python": platform.python_version(),
+            "python_executable": sys.executable,
         }
     if operation in {"fdtdx", "fem", "eme"}:
         raise NotImplementedError(f"{operation} is reserved, not implemented")

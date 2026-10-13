@@ -17,7 +17,7 @@ npm ci
 uv sync --locked
 ```
 
-uv creates and manages `.venv`. Python 3.12–3.13 is supported; `.python-version` selects 3.13. Node and Python dependencies are locked independently.
+uv creates and manages `.venv`. Python 3.12–3.13 is supported; `.python-version` selects 3.13. Node and Python dependencies are locked independently. Scientific requests execute the prepared environment's Python directly and never install or synchronize packages during calculations. If you use `UV_PROJECT_ENVIRONMENT`, propagate that setting to the API/MCP process as well.
 
 ## Development order
 

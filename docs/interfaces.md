@@ -29,7 +29,7 @@ Schemas reject unknown fields. Semantic validation separately rejects unresolved
 
 ## Runtime and backend boundary
 
-The TS Runtime invokes the typed ScientificBackend interface. Its Python implementation runs a short-lived `uv run --locked python -m agentpic.worker` process, writes one JSON request to stdin, reads one JSON response, and validates the returned shape. Scientific logging uses stderr. Timeouts terminate the child. No SAX dictionaries or GDSFactory objects cross the adapter boundary.
+The TS Runtime invokes the typed ScientificBackend interface. Run `uv sync --locked` during setup. The adapter executes that prepared environment's Python with `-m agentpic.worker`, writes one JSON request to stdin, reads one JSON response, and validates the returned shape. It never resolves interpreters or synchronizes packages during scientific requests, avoiding environment replacement during concurrent calculations. `UV_PROJECT_ENVIRONMENT` selects a custom environment and must also be passed to any MCP subprocess. Scientific logging uses stderr. Timeouts terminate the child. No SAX dictionaries or GDSFactory objects cross the adapter boundary.
 
 Compilation assigns nominal lengths so circuit simulation is executable without layout. The full workflow runs compile → layout → backannotate → simulate → verify → manifest. State and events persist after transitions. Backend errors fail the task, block dependents and retain partial artifacts. A completed verification task may still report failed checks and cause overall failure. There is no automatic process-crash recovery or resume.
 

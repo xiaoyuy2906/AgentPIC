@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { z } from 'zod';
 import {
   CheckResultSchema,
@@ -25,7 +26,13 @@ export interface ScientificBackend {
 /** This is the sole process boundary; no backend-owned object crosses it. */
 export function pythonRequest(request: Record<string, unknown>): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    const process = spawn('uv', ['run', '--locked', 'python', '-m', 'agentpic.worker'], {
+    // uv sync prepares this environment once. Never mutate it during concurrent calculations.
+    const executable = path.resolve(
+      projectRoot,
+      process.env.UV_PROJECT_ENVIRONMENT ?? '.venv',
+      process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+    );
+    const child = spawn(executable, ['-m', 'agentpic.worker'], {
       cwd: projectRoot,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -33,23 +40,23 @@ export function pythonRequest(request: Record<string, unknown>): Promise<unknown
       stderr = '',
       finished = false;
     const timer = setTimeout(() => {
-      process.kill('SIGKILL');
+      child.kill('SIGKILL');
       reject(new Error('Scientific backend timed out after 120 seconds'));
     }, 120000);
-    process.stdout.on('data', (chunk) => {
+    child.stdout.on('data', (chunk) => {
       stdout += chunk;
-      if (stdout.length > 32 * 1024 * 1024) process.kill('SIGKILL');
+      if (stdout.length > 32 * 1024 * 1024) child.kill('SIGKILL');
     });
-    process.stderr.on('data', (chunk) => {
+    child.stderr.on('data', (chunk) => {
       stderr = (stderr + chunk).slice(-12000);
     });
-    process.on('error', (error) => {
+    child.on('error', (error) => {
       finished = true;
       clearTimeout(timer);
       reject(error);
     });
-    process.stdin.on('error', () => {});
-    process.on('close', (code) => {
+    child.stdin.on('error', () => {});
+    child.on('close', (code) => {
       clearTimeout(timer);
       if (finished) return;
       try {
@@ -60,7 +67,7 @@ export function pythonRequest(request: Record<string, unknown>): Promise<unknown
         reject(new Error(`${error instanceof Error ? error.message : error}\n${stderr}`));
       }
     });
-    process.stdin.end(JSON.stringify(request));
+    child.stdin.end(JSON.stringify(request));
   });
 }
 export class PythonBackend implements ScientificBackend {

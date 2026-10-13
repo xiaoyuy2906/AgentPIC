@@ -219,9 +219,14 @@ test('physics API executes the same goal contract and returns retrievable report
 test('physics MCP executes shared contract and reads experiment evidence', async () => {
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
   const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
-  const { projectRoot } = await import('../src/backends.js');
+  const { projectRoot, PythonBackend } = await import('../src/backends.js');
   const client = new Client({ name: 'physics-test', version: '1.0' });
   const transport = new StdioClientTransport({
+    env: Object.fromEntries(
+      Object.entries(process.env).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined,
+      ),
+    ),
     command: process.execPath,
     args: ['--import', 'tsx', 'core/src/cli.ts', 'mcp', '--runs-dir', root],
     cwd: projectRoot,
@@ -236,6 +241,7 @@ test('physics MCP executes shared contract and reads experiment evidence', async
     assert.ok(!response.isError, JSON.stringify(response));
     const report = response.structuredContent as typeof valid;
     assert.equal(report.status, 'accepted');
+    assert.deepEqual(report.provenance.python_packages, await new PythonBackend().versions());
     const evidence = await client.readResource({
       uri: `agentpic://physics/${report.run_id}/baseline.evidence.json`,
     });

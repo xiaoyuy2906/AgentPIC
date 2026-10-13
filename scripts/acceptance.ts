@@ -60,6 +60,11 @@ try {
 }
 const client = new Client({ name: 'AgentPIC acceptance', version: '0.2.0' });
 const transport = new StdioClientTransport({
+  env: Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  ),
   command: process.execPath,
   args: ['--import', 'tsx', 'core/src/cli.ts', 'mcp', '--runs-dir', runtime.runsDir],
   cwd: projectRoot,

@@ -33,6 +33,17 @@ test('MZI specification → TS IR → semantic validation → JSON → Python SA
 test('reserved EM adapters do not claim execution', async () => {
   await assert.rejects(() => pythonRequest({ operation: 'fdtdx' }), /not implemented/);
 });
+test('scientific requests use the prepared environment without interpreter resolution or sync', async () => {
+  const before = await pythonRequest({ operation: 'versions' });
+  const previous = process.env.UV_PYTHON;
+  process.env.UV_PYTHON = 'invalid-interpreter-selector';
+  try {
+    assert.deepEqual(await pythonRequest({ operation: 'versions' }), before);
+  } finally {
+    if (previous === undefined) delete process.env.UV_PYTHON;
+    else process.env.UV_PYTHON = previous;
+  }
+});
 test('full TS runtime creates real GDS and passes independent checks', async () => {
   run = await runtime.run(spec);
   assert.equal(run.status, 'completed', run.error ?? JSON.stringify(run));
@@ -148,6 +159,11 @@ test('real HTTP API reuses TS compiler and completes design', async () => {
 test('real MCP stdio tools use TS contract and retrieve binary GDS', async () => {
   const client = new Client({ name: 'acceptance', version: '1.0' });
   const transport = new StdioClientTransport({
+    env: Object.fromEntries(
+      Object.entries(process.env).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined,
+      ),
+    ),
     command: process.execPath,
     args: ['--import', 'tsx', 'core/src/cli.ts', 'mcp', '--runs-dir', root],
     cwd: projectRoot,
