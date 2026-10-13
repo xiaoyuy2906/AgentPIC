@@ -15,7 +15,7 @@ jobs:
     env:
       MPLBACKEND: Agg
       JAX_PLATFORMS: cpu
-      TMPDIR: ${{ runner.temp }}
+      TMPDIR: /tmp
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,5 +46,5 @@ jobs:
           path: |
             runs/ci-acceptance/
             runs/physics-benchmarks/
-            ${{ runner.temp }}/agentpic-*/
+            /tmp/agentpic-*/
           if-no-files-found: ignore
