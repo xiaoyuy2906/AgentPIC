@@ -19,7 +19,19 @@ uv sync --locked
 
 uv creates and manages `.venv`. Python 3.12–3.13 is supported; `.python-version` selects 3.13. Node and Python dependencies are locked independently.
 
-## Current milestone: autonomous physics reasoning and verification
+## Development order
+
+**Stage 1 builds the minimum complete agent-native PIC EDA. Stage 2 validates that EDA with an MZI.** The product is the reusable engineering core; the MZI is the first end-to-end benchmark. Stage 3 expands capabilities in response to more complex design requirements. See [the roadmap](docs/roadmap.md) and [Stage 1–2 acceptance criteria](docs/acceptance.md).
+
+The current EDA implements typed circuit IR, compilation, SAX simulation, GDSFactory layout, independent verification, API/MCP and reproducible artifacts. Run the complete machine-interface benchmark with:
+
+```sh
+npm run acceptance -- --output runs/acceptance
+```
+
+Physics reasoning and autonomous capability development support this engineering workflow. They do not replace the EDA or define a separate first-stage product.
+
+## Additional capability: physics reasoning and verification
 
 ```sh
 npm run --silent agentpic -- physics examples/straight_waveguide.json

@@ -173,6 +173,25 @@ test('missing capability yields an actionable development DAG, never fake execut
   assert.equal(capabilityRegistry()[0].verification, 'requires_evidence_for_each_run');
 });
 
+test('a reference with corrupted propagation units cannot validate a correct mode result', async () => {
+  class BrokenReference extends PythonExperimentBackend {
+    override async execute(e: Experiment) {
+      const result = await super.execute(e);
+      if (e.operation === 'reference_planar_te') result.beta_per_um *= 1000;
+      return result;
+    }
+  }
+  const result = await new PhysicsRuntime(root, new BrokenReference()).run(example);
+  const reference = result.evidence.find((e) => e.experiment.id === 'analytic_reference')!;
+  assert.equal(
+    reference.checks.find((c) => c.criterion_id === 'propagation_units')?.status,
+    'fail',
+  );
+  assert.equal(result.status, 'rejected');
+  assert.equal(result.baseline_verified, false);
+  assert.equal(result.accepted_configuration, null);
+});
+
 test('physics API executes the same goal contract and returns retrievable report', async () => {
   const { createAPI } = await import('../src/api.js');
   const { Runtime } = await import('../src/runtime.js');

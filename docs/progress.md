@@ -1,6 +1,6 @@
 # Persistent development progress
 
-Current goal: minimum viable autonomous physics reasoning and verification, using a straight optical waveguide as a benchmark. The latest scope preserves ADR-001 and the completed MZI circuit/layout capabilities while adding an extensible experiment/evidence workflow.
+Current goal (updated 2026-10-13): Stage 1 builds the minimum complete agent-native PIC EDA; Stage 2 validates it with an MZI. Stage 3 uses progressively more complex designs to expose and close capability gaps. ADR-001 remains mandatory. The MZI is a benchmark, not the product. The existing planar-mode physics module is an additional reusable capability, not the first-stage objective. See `docs/roadmap.md` and `docs/acceptance.md` for the current scope and acceptance gates.
 
 ## Implemented and locally executed
 
@@ -15,6 +15,8 @@ Current goal: minimum viable autonomous physics reasoning and verification, usin
 
 ## Latest verification state
 
-The final local TypeScript suite passed 50 tests and Python passed 8 tests, with zero failures. Strict TypeScript compilation, schema generation, formatting and Python lint checks passed. The eight-case physics benchmark suite passed its expected outcomes; the acceptance runner also requires every registered check for the valid baseline to pass. Hosted CI runs both Python 3.12 and 3.13 and uploads physics and MZI evidence. See [the current CI results](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml), `docs/roadmap.md` for dependencies and `benchmarks/registry.json` for benchmark acceptance requirements.
+The local acceptance suite comprises 51 TypeScript tests and 8 Python tests. Strict TypeScript compilation, schema generation, formatting and Python lint checks are required. The eight-case physics benchmark suite passed its expected outcomes; the acceptance runner also requires every registered check for the valid baseline to pass. Hosted CI runs both Python 3.12 and 3.13 and uploads physics and MZI evidence. See [the current CI results](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml), `docs/roadmap.md` for dependencies and `benchmarks/registry.json` for benchmark acceptance requirements.
+
+Final review found that failed checks on the independent reference did not block acceptance if its effective index agreed. A regression test reproduced the false acceptance by corrupting only the reference propagation units. The verdict now requires the reference's own deterministic checks to pass before either the baseline or a revised configuration can be accepted.
 
 No foundry signoff, full-vector channel solver, 3D EM implementation, fabricated-device calibration, embedded code-writing agent, or production solver deployment is claimed. uv continues to manage `.venv`; both dependency lock files are committed.

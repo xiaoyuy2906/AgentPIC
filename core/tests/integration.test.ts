@@ -57,7 +57,7 @@ test('full TS runtime creates real GDS and passes independent checks', async () 
 });
 test('same input reproduces GDS and circuit JSON across isolated backend processes', async () => {
   const second = await runtime.run(spec);
-  assert.equal(second.status, 'completed');
+  assert.equal(second.status, 'completed', JSON.stringify(second));
   for (const name of [
     'design.gds',
     'engineering_ir.json',
@@ -126,7 +126,7 @@ test('real HTTP API reuses TS compiler and completes design', async () => {
     });
     assert.equal(response.status, 200);
     const result = (await response.json()) as RunResult;
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'completed', JSON.stringify(result));
     const gds = await fetch(`${url}/v1/runs/${result.run_id}/artifacts/design.gds`);
     assert.equal(
       Buffer.from(await gds.arrayBuffer())
@@ -171,7 +171,7 @@ test('real MCP stdio tools use TS contract and retrieve binary GDS', async () =>
     });
     assert.ok(!response.isError, JSON.stringify(response));
     const result = response.structuredContent as RunResult;
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'completed', JSON.stringify(result));
     const resource = await client.readResource({
       uri: `agentpic://runs/${result.run_id}/design.gds`,
     });

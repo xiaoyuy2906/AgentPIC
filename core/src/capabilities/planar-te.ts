@@ -386,6 +386,8 @@ export const planarTE: PhysicsCapability = {
     const baselineError = b?.result && a?.result ? Math.abs(value(b)! - value(a)!) : null;
     const baselineVerified =
       !!b?.result &&
+      !!a?.result &&
+      a.checks.every((x) => x.status === 'pass') &&
       b.checks.every((x) => x.status === 'pass') &&
       baselineError !== null &&
       baselineError <= 1e-4;
@@ -393,7 +395,7 @@ export const planarTE: PhysicsCapability = {
     const acceptable =
       complete &&
       checks.every((x) => x.status === 'pass') &&
-      [r, f, d, c, p].every((e) => e?.result && e.checks.every((x) => x.status === 'pass'));
+      [a, r, f, d, c, p].every((e) => e?.result && e.checks.every((x) => x.status === 'pass'));
     const hypotheses: Hypothesis[] = [];
     const assess = (
       cause: Hypothesis['cause'],
