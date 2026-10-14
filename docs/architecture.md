@@ -30,7 +30,7 @@ The HTTP API and MCP use the same Zod contracts, compiler and runtime. Both retu
 
 ```mermaid
 flowchart LR
-  S[MZI specification] --> C[TS compiler and semantic validation]
+  S[PIC specification] --> C[TS compiler and semantic validation]
   C --> IR[Canonical Engineering JSON]
   IR --> SAX[Python SAX adapter]
   SAX --> N[Numerical checks]
@@ -52,6 +52,12 @@ Node.js 22+ runs the core; uv owns Python 3.12–3.13 in `.venv`. `package-lock.
 
 ## ADR-002: Evidence-driven physics investigations
 
-Accepted. The physics runtime is a generic experiment/evidence loop; capability policy plugins own model-specific semantics, physical principles, fixed criteria and experiment selection. Numerical algorithms and reference calculations execute behind a Python adapter. The first plugin uses SciPy for planar TE mode analysis, with independent dispersion and convergence evidence. This supersedes the MZI-only milestone as the primary acceptance workflow without duplicating its compiler.
+Accepted as a supporting EDA capability. The physics runtime is a generic experiment/evidence loop; capability policy plugins own model-specific semantics, physical principles, fixed criteria and experiment selection. Numerical algorithms and reference calculations execute behind a Python adapter. The first plugin uses SciPy for planar TE mode analysis, with independent dispersion and convergence evidence. The current roadmap keeps the complete EDA and MZI workflow as Stage 1–2 acceptance; standalone physics reasoning does not supersede that objective.
 
 A registered capability is implemented, not universally verified. Per-revision benchmark evidence and per-run acceptance checks are required. Missing capabilities produce technical specifications and development dependencies for an external coding agent. LLM proposals are testable hypotheses and cannot change deterministic criteria or supply numerical proof.
+
+## ADR-003: Logical hierarchy and explicit physical assembly
+
+Accepted. Reusable module definitions and alias resolution belong to the TypeScript compiler. Flattened primitive IDs encode hierarchy paths without collisions; source-path records preserve traceability. Backends receive neutral primitive circuits rather than library-specific hierarchy objects.
+
+Physical assembly is a separate explicit plan, bound to the submitted intent by semantic verification. The first implementation supports 2–4 MZI blocks connected in series. GDSFactory places their primitives and real interconnects, extracts connectivity and returns measured lengths. Nominal source definitions are preserved while resolved simulation lengths are backannotated. Independent numerical verification composes analytic transfer matrices rather than reusing the SAX network solver. This decision enables further supported design recipes without claiming arbitrary hierarchy placement, routing or optical calibration.

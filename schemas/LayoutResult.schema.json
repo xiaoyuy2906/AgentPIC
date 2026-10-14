@@ -90,7 +90,20 @@
           "exclusiveMinimum": 0
         },
         "delta_length_um": {
-          "type": "number"
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "path_imbalances_um": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number"
+          }
         }
       },
       "required": [

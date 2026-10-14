@@ -38,6 +38,7 @@ jobs:
       - run: uv run pytest -q
       - run: npm test
       - run: npm run acceptance -- --output runs/ci-acceptance
+      - run: npm run acceptance -- --specification examples/cascaded_mzi_1550.json --output runs/cascade-acceptance
       - run: npm run benchmark:physics -- --output runs/physics-benchmarks
       - uses: actions/upload-artifact@v4
         if: always()
@@ -45,6 +46,7 @@ jobs:
           name: engineering-evidence-python-${{ matrix.python }}
           path: |
             runs/ci-acceptance/
+            runs/cascade-acceptance/
             runs/physics-benchmarks/
             /tmp/agentpic-*/
           if-no-files-found: ignore

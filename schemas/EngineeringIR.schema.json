@@ -23,6 +23,43 @@
         "netlist": {
           "$ref": "#/$defs/Circuit"
         },
+        "hierarchy": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CircuitHierarchy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "instance_paths": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+            }
+          }
+        },
+        "assembly": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssemblyPlan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "workflow": {
           "type": "array",
           "items": {
@@ -59,13 +96,18 @@
       "additionalProperties": false
     },
     "DesignSpec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MZISpec"
+        },
+        {
+          "$ref": "#/$defs/CascadeSpec"
+        }
+      ]
+    },
+    "MZISpec": {
       "type": "object",
       "properties": {
-        "device": {
-          "default": "mzi",
-          "type": "string",
-          "const": "mzi"
-        },
         "platform": {
           "default": "sin",
           "type": "string",
@@ -96,11 +138,64 @@
             ]
           }
         },
+        "sweep_span_nm": {
+          "default": 40,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "sweep_points": {
+          "default": 201,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 2001
+        },
+        "device": {
+          "default": "mzi",
+          "type": "string",
+          "const": "mzi"
+        },
         "delta_length_um": {
           "default": 10,
           "type": "number",
           "minimum": -200,
           "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "CascadeSpec": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "default": "sin",
+          "type": "string",
+          "const": "sin"
+        },
+        "wavelength_nm": {
+          "default": 1550,
+          "type": "number",
+          "minimum": 1500,
+          "maximum": 1600
+        },
+        "outputs": {
+          "default": [
+            "netlist",
+            "simulation",
+            "gds",
+            "verification"
+          ],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ]
+          }
         },
         "sweep_span_nm": {
           "default": 40,
@@ -113,8 +208,49 @@
           "type": "integer",
           "minimum": 3,
           "maximum": 2001
+        },
+        "device": {
+          "type": "string",
+          "const": "mzi_cascade"
+        },
+        "stages": {
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CascadeStage"
+          }
+        },
+        "link_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 10,
+          "maximum": 1000
         }
       },
+      "required": [
+        "device",
+        "stages"
+      ],
+      "additionalProperties": false
+    },
+    "CascadeStage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "delta_length_um": {
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "name",
+        "delta_length_um"
+      ],
       "additionalProperties": false
     },
     "PDK": {
@@ -371,6 +507,186 @@
       "required": [
         "instance",
         "port"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitHierarchy": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "1.0",
+          "type": "string",
+          "const": "1.0"
+        },
+        "top": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "definitions": {
+          "minItems": 1,
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CircuitDefinition"
+          }
+        }
+      },
+      "required": [
+        "top",
+        "definitions"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitDefinition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "primitives": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Component"
+          }
+        },
+        "modules": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModuleInstance"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Endpoint"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "primitives",
+        "modules",
+        "connections",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "ModuleInstance": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "definition": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "name",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "AssemblyPlan": {
+      "type": "object",
+      "properties": {
+        "arrangement": {
+          "type": "string",
+          "const": "series"
+        },
+        "blocks": {
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LayoutBlock"
+          }
+        },
+        "link_length_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instance": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "a": {
+                "$ref": "#/$defs/Endpoint"
+              },
+              "b": {
+                "$ref": "#/$defs/Endpoint"
+              }
+            },
+            "required": [
+              "instance",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "arrangement",
+        "blocks",
+        "link_length_um",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "LayoutBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "cell": {
+          "type": "string",
+          "const": "mzi"
+        },
+        "primitives": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "delta_length_um": {
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "name",
+        "cell",
+        "primitives",
+        "delta_length_um"
       ],
       "additionalProperties": false
     },

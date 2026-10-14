@@ -6,15 +6,19 @@
 
 | Field | Default | Supported constraint |
 |---|---|---|
-| `device` | `mzi` | MZI only |
+| `device` | `mzi` | `mzi` or `mzi_cascade` |
 | `platform` | `sin` | Illustrative `sin_demo_v1` PDK |
 | `wavelength_nm` | 1550 | 1500–1600 nm |
 | `outputs` | All four | Nonempty unique subset of netlist/simulation/gds/verification |
-| `delta_length_um` | 10 | −200 to +200 µm, top minus bottom arm |
+| `delta_length_um` | 10 | Single MZI only: −200 to +200 µm, top minus bottom arm |
+| `stages` | Required for cascade | 2–4 records with unique `name` and `delta_length_um` in −200 to +200 µm |
+| `link_length_um` | 100 | Cascade only: 10–1000 µm between adjacent blocks |
 | `sweep_span_nm` | 40 | Greater than zero, at most 100 nm |
 | `sweep_points` | 201 | Odd integer, 3–2001 |
 
 The full sweep must lie in 1450–1650 nm. Unique outputs, odd samples and engineering bounds are checked by the TS compiler. These are software support ranges, not calibrated physical validity ranges.
+
+`DesignSpec` is a union generated from Zod. Python clients can validate it through `TypeAdapter(Contracts.model_fields["DesignSpec"].annotation)` using the generated `agentpic.ir.Contracts` catalog. Do not maintain a parallel handwritten Python union. Unknown or mixed single/cascade fields are rejected.
 
 ## Typed engineering records
 
@@ -23,7 +27,7 @@ The full sweep must lie in 1450–1650 nm. Unique outputs, odd samples and engin
 - **Connection:** two named component/port endpoints.
 - **Circuit:** components, connections and explicitly exposed external ports.
 - **PDK:** process identifier, layer/datatype, geometry rules, material-model assumptions and supported components. The current PDK is a demonstration declaration, not a foundry integration.
-- **EngineeringIR:** version, normalized design intent/ID, PDK, Circuit, assumptions and workflow DAG. `length_source` distinguishes specification lengths from measured layout lengths.
+- **EngineeringIR:** version, normalized design intent/ID, PDK, Circuit, assumptions and workflow DAG. `length_source` distinguishes specification lengths from measured layout lengths. Cascade IR also carries the source `hierarchy`, `instance_paths` and backend-neutral `assembly` plan; these must agree with the specification and flattened circuit.
 
 Schemas reject unknown fields. Semantic validation separately rejects unresolved references, duplicate names, double-used/dangling ports, incompatible domains/directions, disconnected circuits, missing model parameters, PDK violations and invalid task dependencies. Tests deliberately submit schema-valid but semantically invalid circuits.
 
@@ -33,9 +37,7 @@ The TS Runtime invokes the typed ScientificBackend interface. Run `uv sync --loc
 
 Compilation assigns nominal lengths so circuit simulation is executable without layout. The full workflow runs compile → layout → backannotate → simulate → verify → manifest. State and events persist after transitions. Backend errors fail the task, block dependents and retain partial artifacts. A completed verification task may still report failed checks and cause overall failure. There is no automatic process-crash recovery or resume.
 
-SAX can evaluate the supported model graph, while the present independent optical validation policy targets the emitted ideal MZI. Adding circuit families requires extending the compiler/model catalog and their independent verification policies. The placeholder EM request/result is not yet a complete material, mesh or solver configuration contract.
-
-## Results
+SAX can evaluate the supported model graph, while independent optical validation targets the emitted ideal single/cascaded MZI families. Adding circuit families requires extending the compiler/model catalog and their independent verification policies. The placeholder EM request/result is not yet a complete material, mesh or solver configuration contract.
 
 ## Reusable circuit hierarchy
 
@@ -43,7 +45,9 @@ SAX can evaluate the supported model graph, while the present independent optica
 
 Use HTTP `POST /v1/circuits/flatten`, MCP `flatten_circuit` with `{"hierarchy": ...}`, or CLI `flatten FILE`. Validation rejects missing/recursive definitions, duplicate names, unresolved aliases, port occupancy/domain/direction errors and disconnected expanded circuits. Expansion is bounded to 32 module levels and 10,000 primitives. Names encode segment lengths so underscores in user names cannot create collisions.
 
-This operation compiles topology. It does not by itself execute a solver, generate GDS or establish physical correctness. The existing `EngineeringIR` workflow remains the verified single-MZI pipeline while cascade integration proceeds.
+This operation compiles topology. It does not by itself execute a solver, generate GDS or establish physical correctness. The `mzi_cascade` specification compiler composes reusable definitions through it and emits an `AssemblyPlan` containing ordered MZI blocks, their primitive mappings and connecting waveguides. The complete design workflow executes that supported series arrangement. Generic arbitrary-hierarchy placement and routing are not implemented.
+
+Every arm and interconnect is measured from actual layout and backannotated into the flattened simulation circuit. Source definitions retain nominal lengths; `instance_paths` preserves their relationship to physical primitives. Reverification checks exported hierarchy/paths/assembly against resolved IR and separately checks topology, requested stage imbalances and interconnect lengths.
 
 ## Results
 

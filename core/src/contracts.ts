@@ -4,19 +4,39 @@ import { PhysicsContracts } from './physics/contracts.js';
 const name = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/);
 const positive = () => z.number().positive();
 const record = <T extends z.ZodType>(value: T) => z.record(z.string(), value);
-export const DesignSpecSchema = z
+const DesignFields = {
+  platform: z.literal('sin').default('sin'),
+  wavelength_nm: z.number().min(1500).max(1600).default(1550),
+  outputs: z
+    .array(z.enum(['netlist', 'simulation', 'gds', 'verification']))
+    .min(1)
+    .default(['netlist', 'simulation', 'gds', 'verification']),
+  sweep_span_nm: z.number().positive().max(100).default(40),
+  sweep_points: z.number().int().min(3).max(2001).default(201),
+};
+export const MZISpecSchema = z
   .strictObject({
+    ...DesignFields,
     device: z.literal('mzi').default('mzi'),
-    platform: z.literal('sin').default('sin'),
-    wavelength_nm: z.number().min(1500).max(1600).default(1550),
-    outputs: z
-      .array(z.enum(['netlist', 'simulation', 'gds', 'verification']))
-      .min(1)
-      .default(['netlist', 'simulation', 'gds', 'verification']),
     delta_length_um: z.number().min(-200).max(200).default(10),
-    sweep_span_nm: z.number().positive().max(100).default(40),
-    sweep_points: z.number().int().min(3).max(2001).default(201),
   })
+  .meta({ id: 'MZISpec' });
+export const CascadeStageSchema = z
+  .strictObject({
+    name,
+    delta_length_um: z.number().min(-200).max(200),
+  })
+  .meta({ id: 'CascadeStage' });
+export const CascadeSpecSchema = z
+  .strictObject({
+    ...DesignFields,
+    device: z.literal('mzi_cascade'),
+    stages: z.array(CascadeStageSchema).min(2).max(4),
+    link_length_um: z.number().min(10).max(1000).default(100),
+  })
+  .meta({ id: 'CascadeSpec' });
+export const DesignSpecSchema = z
+  .union([MZISpecSchema, CascadeSpecSchema])
   .meta({ id: 'DesignSpec' });
 export const PortSchema = z
   .strictObject({
@@ -100,6 +120,22 @@ export const PDKSchema = z
 export const TaskSchema = z
   .strictObject({ name, depends_on: z.array(name), backend: z.string() })
   .meta({ id: 'Task' });
+export const LayoutBlockSchema = z
+  .strictObject({
+    name,
+    cell: z.literal('mzi'),
+    primitives: z.record(name, name),
+    delta_length_um: z.number().min(-200).max(200),
+  })
+  .meta({ id: 'LayoutBlock' });
+export const AssemblyPlanSchema = z
+  .strictObject({
+    arrangement: z.literal('series'),
+    blocks: z.array(LayoutBlockSchema).min(2).max(4),
+    link_length_um: positive(),
+    links: z.array(z.strictObject({ instance: name, a: EndpointSchema, b: EndpointSchema })),
+  })
+  .meta({ id: 'AssemblyPlan' });
 export const EngineeringIRSchema = z
   .strictObject({
     schema_version: z.literal('2.0').default('2.0'),
@@ -107,6 +143,9 @@ export const EngineeringIRSchema = z
     specification: DesignSpecSchema,
     technology: PDKSchema,
     netlist: CircuitSchema,
+    hierarchy: CircuitHierarchySchema.nullable().default(null),
+    instance_paths: record(z.array(name).min(1)).default({}),
+    assembly: AssemblyPlanSchema.nullable().default(null),
     workflow: z.array(TaskSchema),
     layout_resolved: z.boolean().default(false),
     length_source: z.enum(['specification', 'layout']).default('specification'),
@@ -131,7 +170,8 @@ export const LayoutResultSchema = z
     ports: record(record(PhysicalPortSchema)),
     extracted_circuit: CircuitSchema,
     bend_radius_um: positive(),
-    delta_length_um: z.number(),
+    delta_length_um: z.number().nullable(),
+    path_imbalances_um: record(z.number()).default({}),
   })
   .meta({ id: 'LayoutResult' });
 export const SimulationResultSchema = z
@@ -212,6 +252,11 @@ export const CircuitSimulationSchema = z
 export const Contracts = {
   ...PhysicsContracts,
   DesignSpec: DesignSpecSchema,
+  MZISpec: MZISpecSchema,
+  CascadeSpec: CascadeSpecSchema,
+  CascadeStage: CascadeStageSchema,
+  LayoutBlock: LayoutBlockSchema,
+  AssemblyPlan: AssemblyPlanSchema,
   Port: PortSchema,
   Component: ComponentSchema,
   Endpoint: EndpointSchema,
@@ -236,6 +281,8 @@ export const Contracts = {
   ElectromagneticResult: ElectromagneticResultSchema,
 };
 export type DesignSpec = z.infer<typeof DesignSpecSchema>;
+export type CascadeSpec = z.infer<typeof CascadeSpecSchema>;
+export type AssemblyPlan = z.infer<typeof AssemblyPlanSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;
 export type Circuit = z.infer<typeof CircuitSchema>;
 export type CircuitHierarchy = z.infer<typeof CircuitHierarchySchema>;

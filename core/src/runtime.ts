@@ -110,6 +110,11 @@ export class Runtime {
       compile: async () => {
         await writeJSON(path.join(directory, 'specification.json'), ir.specification);
         await writeJSON(path.join(directory, 'compiled_ir.json'), ir);
+        if (ir.hierarchy) {
+          await writeJSON(path.join(directory, 'hierarchy.json'), ir.hierarchy);
+          await writeJSON(path.join(directory, 'instance-paths.json'), ir.instance_paths);
+          await writeJSON(path.join(directory, 'assembly.json'), ir.assembly);
+        }
       },
       layout: async () => {
         layout = await this.backend.layout(ir, directory);

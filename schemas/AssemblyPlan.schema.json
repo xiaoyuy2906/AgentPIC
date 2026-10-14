@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/AssemblyPlan",
+  "$defs": {
+    "AssemblyPlan": {
+      "type": "object",
+      "properties": {
+        "arrangement": {
+          "type": "string",
+          "const": "series"
+        },
+        "blocks": {
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LayoutBlock"
+          }
+        },
+        "link_length_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instance": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "a": {
+                "$ref": "#/$defs/Endpoint"
+              },
+              "b": {
+                "$ref": "#/$defs/Endpoint"
+              }
+            },
+            "required": [
+              "instance",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "arrangement",
+        "blocks",
+        "link_length_um",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "LayoutBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "cell": {
+          "type": "string",
+          "const": "mzi"
+        },
+        "primitives": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "delta_length_um": {
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "name",
+        "cell",
+        "primitives",
+        "delta_length_um"
+      ],
+      "additionalProperties": false
+    },
+    "Endpoint": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "instance",
+        "port"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

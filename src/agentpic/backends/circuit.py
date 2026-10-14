@@ -70,8 +70,8 @@ def simulate(ir: EngineeringIR) -> dict:
         spec.sweep_points,
     )
     scattering = model(wl=jnp.asarray(wavelengths / 1000))
-    ports = ["in0", "in1", "out0", "out1"]
-    matrix = np.zeros((len(wavelengths), 4, 4), dtype=complex)
+    ports = list(ir.netlist.ports)
+    matrix = np.zeros((len(wavelengths), len(ports), len(ports)), dtype=complex)
     for (output_port, input_port), value in scattering.items():
         matrix[:, ports.index(output_port), ports.index(input_port)] = np.asarray(value)
     return {
@@ -83,7 +83,11 @@ def simulate(ir: EngineeringIR) -> dict:
         "s_real": matrix.real.tolist(),
         "s_imag": matrix.imag.tolist(),
         "input_port": "in0",
-        "transmission_out0": (np.abs(matrix[:, 2, 0]) ** 2).tolist(),
-        "transmission_out1": (np.abs(matrix[:, 3, 0]) ** 2).tolist(),
+        "transmission_out0": (
+            np.abs(matrix[:, ports.index("out0"), ports.index("in0")]) ** 2
+        ).tolist(),
+        "transmission_out1": (
+            np.abs(matrix[:, ports.index("out1"), ports.index("in0")]) ** 2
+        ).tolist(),
         "physical_calibration": "not_performed",
     }

@@ -58,13 +58,39 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         * (wl - tech.reference_wavelength_um)
         / tech.reference_wavelength_um
     )
-    top = np.exp(2j * np.pi * index * lengths["top_arm"] / wl)
-    bottom = np.exp(2j * np.pi * index * lengths["bottom_arm"] / wl)
+
+    def propagation(name: str) -> np.ndarray:
+        return np.exp(2j * np.pi * index * lengths[name] / wl)
+
+    def mzi_transfer(top_name: str, bottom_name: str) -> np.ndarray:
+        top, bottom = propagation(top_name), propagation(bottom_name)
+        transfer = np.zeros((len(wl), 2, 2), dtype=complex)
+        transfer[:, 0, 0], transfer[:, 1, 1] = (bottom - top) / 2, (top - bottom) / 2
+        transfer[:, 0, 1] = transfer[:, 1, 0] = 1j * (bottom + top) / 2
+        return transfer
+
+    if ir.assembly is None:
+        transfer = mzi_transfer("top_arm", "bottom_arm")
+    else:
+        blocks = ir.assembly.blocks
+        transfer = mzi_transfer(blocks[0].primitives["top_arm"], blocks[0].primitives["bottom_arm"])
+        for previous, block in zip(blocks, blocks[1:]):
+            links = {
+                link.a.port: link.instance
+                for link in ir.assembly.links
+                if link.a.instance == previous.name and link.b.instance == block.name
+            }
+            connecting = np.zeros_like(transfer)
+            connecting[:, 0, 0] = propagation(links["out0"])
+            connecting[:, 1, 1] = propagation(links["out1"])
+            transfer = (
+                mzi_transfer(block.primitives["top_arm"], block.primitives["bottom_arm"])
+                @ connecting
+                @ transfer
+            )
     expected = np.zeros_like(matrix)
-    expected[:, 2, 0] = expected[:, 0, 2] = (bottom - top) / 2
-    expected[:, 3, 0] = expected[:, 0, 3] = 1j * (bottom + top) / 2
-    expected[:, 2, 1] = expected[:, 1, 2] = 1j * (bottom + top) / 2
-    expected[:, 3, 1] = expected[:, 1, 3] = (top - bottom) / 2
+    expected[:, 2:, :2] = transfer
+    expected[:, :2, 2:] = transfer.transpose(0, 2, 1)
     error = float(np.max(np.abs(matrix - expected)))
     reciprocity = float(np.max(np.abs(matrix - matrix.transpose(0, 2, 1))))
     unitary_error = float(np.max(np.abs(matrix.conj().transpose(0, 2, 1) @ matrix - np.eye(4))))
@@ -84,9 +110,9 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
             "Spectrum covers the requested wavelength range and center.",
         ),
         _check(
-            "analytic_mzi_agreement",
+            "analytic_cascade_agreement" if ir.assembly is not None else "analytic_mzi_agreement",
             error < 1e-9,
-            "Full complex SAX S-matrix agrees with an independent analytic ideal MZI.",
+            "Full complex SAX S-matrix agrees with independent analytic MZI transfer matrices and physical interconnect propagation.",
             max_complex_error=error,
             tolerance=1e-9,
         ),
@@ -163,7 +189,7 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
         _check(
             "gds_connected_core",
             connected_regions == 1,
-            "Merged core geometry forms one connected MZI region.",
+            "Merged core geometry forms one connected PIC region.",
             regions=connected_regions,
         ),
         _check(
@@ -183,7 +209,7 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
         _check(
             "gds_contains_arm_centerlines",
             corridor_missing_area < 1e-6,
-            "Both arm centerline corridors are contained in the exported GDS core.",
+            "Every waveguide centerline corridor is contained in the exported GDS core.",
             missing_area_um2=corridor_missing_area,
         ),
         _check(

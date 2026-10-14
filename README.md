@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml/badge.svg)](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml)
 
-An agent-native photonic circuit EDA platform with a **TypeScript engineering core** and **Python scientific backends**. Submit an MZI specification through API or MCP and receive circuit JSON, SAX simulation, GDSFactory layout, real GDS and a structured verification report. No GUI or paid solver is required.
+An agent-native photonic circuit EDA platform with a **TypeScript engineering core** and **Python scientific backends**. Submit a single or cascaded MZI specification through API or MCP and receive circuit JSON, SAX simulation, GDSFactory layout, real GDS and a structured verification report. No GUI or paid solver is required.
 
 **ADR-001 is accepted:** engineering logic lives in TypeScript; scientific libraries are replaceable adapters. Zod is the single source of truth and generates JSON Schema and Python Pydantic models. See [the architecture decision](docs/architecture.md).
 
@@ -31,7 +31,14 @@ npm run acceptance -- --output runs/acceptance
 
 Physics reasoning and autonomous capability development support this engineering workflow. They do not replace the EDA or define a separate first-stage product.
 
-Stage 3 has started with reusable circuit hierarchy compilation. `npm run --silent agentpic -- flatten examples/cascaded_mzi.hierarchy.json`, HTTP `POST /v1/circuits/flatten`, and MCP `flatten_circuit` validate module definitions and produce a neutral primitive circuit with source paths. The complete cascade simulation/layout workflow remains in development; see [its fixed acceptance gates](docs/stage3-cascade.md).
+Stage 3 adds reusable circuit hierarchy compilation and a complete **2–4 stage MZI cascade** benchmark. `npm run --silent agentpic -- flatten examples/cascaded_mzi.hierarchy.json`, HTTP `POST /v1/circuits/flatten`, and MCP `flatten_circuit` validate module definitions and produce a neutral primitive circuit with source paths. The cascade design recipe uses this compiler, places physical blocks and interconnects, backannotates every waveguide and checks SAX against independent transfer-matrix composition. See [its fixed acceptance gates](docs/stage3-cascade.md).
+
+```sh
+npm run --silent agentpic -- design examples/cascaded_mzi_1550.json
+npm run acceptance -- --specification examples/cascaded_mzi_1550.json --output runs/cascade-acceptance
+```
+
+Each cascade stage has a unique `name` and `delta_length_um`; `link_length_um` sets the two connecting waveguide lengths between adjacent stages. This is a supported series-assembly recipe. Arbitrary hierarchy-to-layout synthesis remains future work.
 
 ## Additional capability: physics reasoning and verification
 
@@ -97,7 +104,8 @@ curl --fail-with-body http://127.0.0.1:8000/v1/designs \
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/v1/capabilities` | Discover supported/unsupported capabilities |
-| POST | `/v1/compile` | MZI specification → semantically validated Engineering IR |
+| POST | `/v1/compile` | Single/cascaded MZI specification → semantically validated Engineering IR |
+| POST | `/v1/circuits/flatten` | Hierarchy → validated primitive circuit and source paths |
 | POST | `/v1/validate` | Validate an Engineering IR and its topology |
 | POST | `/v1/simulations` | Engineering IR → Python SAX result and verification |
 | POST | `/v1/designs` | Execute the complete layout/simulation/verification workflow |
@@ -126,7 +134,7 @@ The TypeScript MCP server uses standard stdio. Configure an MCP client with the 
 }
 ```
 
-Tools: `get_capabilities`, `get_design_schema`, `compile_pic`, `validate_circuit`, `simulate_circuit`, `design_pic`, `get_run`, `verify_run`. The compile/design tools accept `{"specification": {...}}`; validation/simulation accept `{"ir": {...}}`. The same Zod definitions and TS functions serve the API, MCP and CLI.
+Tools: `get_capabilities`, `get_design_schema`, `compile_pic`, `flatten_circuit`, `validate_circuit`, `simulate_circuit`, `design_pic`, `get_run`, `verify_run`. The compile/design tools accept `{"specification": {...}}`; validation/simulation accept `{"ir": {...}}`. The same Zod definitions and TS functions serve the API, MCP and CLI.
 
 Read artifacts at `agentpic://runs/{run_id}/{name}`. Binary GDS is transported as a base64 resource blob. Agents should inspect every verification check, including `not_run`, before using a result.
 
@@ -135,7 +143,8 @@ Read artifacts at `agentpic://runs/{run_id}/{name}`. Binary GDS is transported a
 | Artifact | Contents |
 |---|---|
 | `specification.json`, `compiled_ir.json` | Normalized intent and compiler output |
-| `engineering_ir.json`, `netlist.json` | Resolved circuit with physical arm lengths |
+| `engineering_ir.json`, `netlist.json` | Resolved circuit with physical arm and interconnect lengths |
+| `hierarchy.json`, `instance-paths.json`, `assembly.json` | Cascade module definitions, primitive source paths and physical assembly intent |
 | `layout.json` | Neutral extracted Circuit, physical ports, lengths and centerlines |
 | `design.gds`, `layout.svg` | Actual hierarchical geometry and static GDS-derived preview |
 | `simulation.json`, `spectrum.csv` | Full complex S-matrix and optical transmission |
@@ -150,11 +159,11 @@ Identical normalized intent has a stable `design_id`; each execution has a uniqu
 
 TypeScript checks references, port occupancy and compatibility, topology, model/PDK constraints, workflow dependencies, extracted connectivity and physical lengths. Python checks the full SAX matrix against independent analytic equations, reciprocity, passivity, lossless power balance, GDS readback, core connectivity and explicit demonstration width/spacing/bend rules. Schema validation alone cannot establish any of these engineering properties.
 
-The default full run has 26 passing checks; reverification adds artifact integrity for 27. EM calibration, measurement validation and foundry signoff remain explicitly `not_run`.
+The default single-MZI run has 26 passing checks; reverification adds artifact integrity for 27. A cascade adds hierarchy intent, hierarchy artifact consistency and interconnect-length checks, giving 30 passes after reverification. EM calibration, measurement validation and foundry signoff remain explicitly `not_run` in both workflows.
 
 `sin_demo_v1` assumes a 1 µm wide, 0.4 µm thick core, 50 µm bends, neff=1.8, ng=1.9 at 1550 nm, ideal 50:50 couplers and zero propagation loss. These are illustrative assumptions. The MMI polygons have not been optically calibrated to the compact model. GDS describes planar geometry; the thickness remains an IR assumption. No fabrication readiness is claimed.
 
-The circuit compiler currently supports parameterized SiN MZIs; the physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
+The design compiler currently supports parameterized SiN MZIs and 2–4 stage cascades; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
 
 ## Development
 

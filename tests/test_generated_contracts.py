@@ -2,10 +2,14 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
-from agentpic.ir import Component, DesignSpec
+from agentpic.ir import Component, Contracts
 from agentpic.worker import dispatch
+
+# The generator inlines union contracts into its catalog. Read that generated
+# annotation rather than maintaining a second Python union definition.
+design_spec = TypeAdapter(Contracts.model_fields["DesignSpec"].annotation)
 
 
 def test_python_models_are_generated_from_ts_contract():
@@ -23,16 +27,18 @@ def test_python_models_are_generated_from_ts_contract():
         {"wavelength_nm": float("nan")},
         {"delta_length_um": None},
         {"extra": 1},
+        {"device": "mzi_cascade"},
+        {"device": "mzi_cascade", "stages": [{"name": "only", "delta_length_um": 10}]},
     ],
 )
 def test_generated_contract_rejects_invalid_structure(invalid):
     with pytest.raises(ValidationError):
-        DesignSpec.model_validate(invalid)
+        design_spec.validate_python(invalid)
 
 
 def test_structure_is_not_semantic_verification():
     # Explicitly structural: odd-sample engineering policy is owned by TypeScript.
-    assert DesignSpec(sweep_points=4).sweep_points == 4
+    assert design_spec.validate_python({"sweep_points": 4}).sweep_points == 4
     with pytest.raises(ValidationError):
         Component(name="x", kind="waveguide", ports=[{"name": "p"}], length_um=-1)
 
@@ -40,3 +46,11 @@ def test_structure_is_not_semantic_verification():
 def test_reserved_em_backend_fails_explicitly():
     with pytest.raises(NotImplementedError):
         dispatch({"operation": "fdtdx"})
+
+
+def test_generated_cascade_contract_round_trips_serialized_data():
+    source = (Path(__file__).resolve().parents[1] / "examples/cascaded_mzi_1550.json").read_text()
+    parsed = design_spec.validate_json(source, strict=True)
+    assert parsed.device == "mzi_cascade"
+    assert len(parsed.stages) == 2
+    assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed

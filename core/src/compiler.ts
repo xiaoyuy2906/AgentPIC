@@ -1,3 +1,5 @@
+import { mziCircuit } from './cells/mzi.js';
+import { compileCascade, cascadeStructureCheck } from './cascade.js';
 import { createHash } from 'node:crypto';
 import {
   DesignSpecSchema,
@@ -83,6 +85,7 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
     for (const t of tasks.values())
       if (t.depends_on.every((d) => completed.has(d))) completed.add(t.name);
   return [
+    ...cascadeStructureCheck(ir),
     check(
       'specification_semantics',
       spec.sweep_points % 2 === 1 &&
@@ -153,51 +156,13 @@ export function validateIR(input: unknown): EngineeringIR {
 }
 export function compile(input: unknown): EngineeringIR {
   const s = DesignSpecSchema.parse(input);
-  const ports = (names: string[]) =>
-    names.map((name) => ({ name, domain: 'optical', direction: 'bidirectional' }));
-  const endpoint = (instance: string, port: string) => ({ instance, port });
-  const connection = (a: string, ap: string, b: string, bp: string) => ({
-    a: endpoint(a, ap),
-    b: endpoint(b, bp),
-  });
+  const circuit =
+    s.device === 'mzi' ? { netlist: mziCircuit(s.delta_length_um) } : compileCascade(s);
   return validateIR({
     design_id: sha256(canonical(s)).slice(0, 16),
     specification: s,
     technology: PDKSchema.parse({}),
-    netlist: {
-      instances: [
-        ...['splitter', 'combiner'].map((name) => ({
-          name,
-          kind: 'ideal_coupler',
-          ports: ports(['o1', 'o2', 'o3', 'o4']),
-          coupling_ratio: 0.5,
-        })),
-        {
-          name: 'top_arm',
-          kind: 'waveguide',
-          ports: ports(['o1', 'o2']),
-          length_um: 800 + Math.max(s.delta_length_um, 0),
-        },
-        {
-          name: 'bottom_arm',
-          kind: 'waveguide',
-          ports: ports(['o1', 'o2']),
-          length_um: 800 + Math.max(-s.delta_length_um, 0),
-        },
-      ],
-      connections: [
-        connection('splitter', 'o3', 'top_arm', 'o1'),
-        connection('top_arm', 'o2', 'combiner', 'o2'),
-        connection('splitter', 'o4', 'bottom_arm', 'o1'),
-        connection('bottom_arm', 'o2', 'combiner', 'o1'),
-      ],
-      ports: {
-        in0: endpoint('splitter', 'o1'),
-        in1: endpoint('splitter', 'o2'),
-        out0: endpoint('combiner', 'o4'),
-        out1: endpoint('combiner', 'o3'),
-      },
-    },
+    ...circuit,
     workflow: [
       { name: 'compile', depends_on: [], backend: 'core' },
       { name: 'layout', depends_on: ['compile'], backend: 'layout' },

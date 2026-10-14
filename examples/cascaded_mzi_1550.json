@@ -1,0 +1,11 @@
+{
+  "device": "mzi_cascade",
+  "platform": "sin",
+  "wavelength_nm": 1550,
+  "stages": [
+    { "name": "first", "delta_length_um": 10 },
+    { "name": "second", "delta_length_um": 20 }
+  ],
+  "link_length_um": 100,
+  "outputs": ["netlist", "simulation", "gds", "verification"]
+}

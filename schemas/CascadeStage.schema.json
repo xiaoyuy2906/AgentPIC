@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/CascadeStage",
+  "$defs": {
+    "CascadeStage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "delta_length_um": {
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "name",
+        "delta_length_um"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

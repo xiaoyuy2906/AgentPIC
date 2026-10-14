@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/CascadeSpec",
+  "$defs": {
+    "CascadeSpec": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "default": "sin",
+          "type": "string",
+          "const": "sin"
+        },
+        "wavelength_nm": {
+          "default": 1550,
+          "type": "number",
+          "minimum": 1500,
+          "maximum": 1600
+        },
+        "outputs": {
+          "default": [
+            "netlist",
+            "simulation",
+            "gds",
+            "verification"
+          ],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ]
+          }
+        },
+        "sweep_span_nm": {
+          "default": 40,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "sweep_points": {
+          "default": 201,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 2001
+        },
+        "device": {
+          "type": "string",
+          "const": "mzi_cascade"
+        },
+        "stages": {
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CascadeStage"
+          }
+        },
+        "link_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 10,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "device",
+        "stages"
+      ],
+      "additionalProperties": false
+    },
+    "CascadeStage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "delta_length_um": {
+          "type": "number",
+          "minimum": -200,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "name",
+        "delta_length_um"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

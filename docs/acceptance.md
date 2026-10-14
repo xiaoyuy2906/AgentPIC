@@ -37,7 +37,7 @@ The final simulation uses physical routed lengths. A nominal circuit-only simula
 
 ## Limits of acceptance
 
-The initial circuit specification compiler supports parameterized SiN MZIs. The architecture is modular, but arbitrary PIC synthesis, general hierarchy, automatic optimization, qualified foundry PDKs and fabrication signoff are not implemented.
+The Stage 1–2 benchmark covers parameterized SiN MZIs. Stage 3 separately adds generic circuit hierarchy compilation and complete 2–4 stage cascades under [its own acceptance gates](stage3-cascade.md). Arbitrary PIC synthesis or hierarchy placement/routing, automatic optimization, qualified foundry PDKs and fabrication signoff are not implemented.
 
 The demonstration compact model uses ideal couplers and explicit propagation assumptions. Mathematical checks validate those equations and their integration, not a fabricated device. The physical MMI has not been EM-calibrated to the ideal model. See `docs/models-and-verification.md`.
 

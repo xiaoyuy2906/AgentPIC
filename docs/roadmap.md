@@ -1,6 +1,6 @@
 # AgentPIC development roadmap
 
-Updated 2026-10-13: build the EDA, validate it with complete designs, and let increasingly demanding designs drive EDA development. The earlier standalone physics-reasoning milestone is superseded. Its implemented components remain supporting capabilities.
+Updated 2026-10-14: build the EDA, validate it with complete designs, and let increasingly demanding designs drive EDA development. The earlier standalone physics-reasoning milestone is superseded. Its implemented components remain supporting capabilities.
 
 ## Mission and architecture
 
@@ -25,14 +25,15 @@ Stages 4–7 are long-term research directions, not current feature commitments.
 | Task | Depends on | State |
 |---|---|---|
 | ADR-001 and generated shared contracts | — | Implemented; CI checks generation drift |
-| Circuit compiler and semantic validation | contracts | Implemented; initial specification compiler supports SiN MZIs |
+| Circuit compiler and semantic validation | contracts | Implemented; specification recipes support SiN MZIs and 2–4 stage cascades |
 | Circuit/layout backend interfaces | compiler, JSON transport | Implemented with SAX and GDSFactory |
 | Workflow, backannotation, verification and artifact inventory | adapters, compiler | Implemented |
 | API/MCP and complete MZI acceptance | workflow, verification | Implemented; real transport and binary GDS checks |
 | Tests, two-version CI and evidence | all above | Implemented; CI also preserves failed test evidence |
 | Physics experiment/hypothesis support | contracts, transport | Additional capability: planar TE calculations and independent analytical reference |
 | Missing-capability specification and dependencies | registry | Implemented; coding execution remains external to the runtime |
-| Generic hierarchy compiler, alias resolution and API/MCP | shared circuit contract | Implemented; cascaded-MZI simulation/layout integration in progress |
+| Generic hierarchy compiler, alias resolution and API/MCP | shared circuit contract | Implemented with bounded expansion and source-path traceability |
+| Complete cascaded-MZI benchmark | hierarchy, physical assembly, independent transfer reference | Implemented; real API/MCP GDS workflow and fault-injection checks pass |
 | Qualified PDKs, calibrated models, full-vector/3D EM | independent references and design demand | Future Stage 3 work |
 
 ## Design-driven capability development
@@ -45,4 +46,4 @@ Verification is layered: circuit references and port topology; model validity an
 
 ## Next development milestone
 
-After Stage 1–2 acceptance, choose a complete multi-component PIC benchmark that exposes a concrete limitation, starting with circuit hierarchy and a verified phase-shifter/model contract. Add vector mode or EM capabilities when the design needs them, with independent references. Broaden to rings, MMIs, couplers and wavelength multiplexers incrementally; device count does not substitute for verified engineering coverage.
+The first multi-component challenge, a series MZI cascade, now exercises hierarchy, physical composition and full-matrix verification. The next complete design should require programmable optical phase, exposing the need for a verified phase-shifter/model contract, control parameters and corresponding layout/verification evidence. Define its acceptance criteria before implementation. Add vector mode or EM capabilities when the design needs them, with independent references. Broaden to rings, MMIs, couplers and wavelength multiplexers incrementally; device count does not substitute for verified engineering coverage.

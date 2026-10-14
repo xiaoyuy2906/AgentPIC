@@ -9,9 +9,15 @@ import { projectRoot } from '../core/src/backends.js';
 import type { RunResult, VerificationReport } from '../core/src/contracts.js';
 const index = process.argv.indexOf('--output');
 const output = path.resolve(index < 0 ? 'runs/acceptance' : process.argv[index + 1]);
+const specIndex = process.argv.indexOf('--specification');
 await mkdir(output, { recursive: true });
 const specification = JSON.parse(
-  await readFile(path.join(projectRoot, 'examples/mzi_1550.json'), 'utf8'),
+  await readFile(
+    specIndex < 0
+      ? path.join(projectRoot, 'examples/mzi_1550.json')
+      : path.resolve(process.argv[specIndex + 1]),
+    'utf8',
+  ),
 );
 await writeJSON(path.join(output, 'request.json'), specification);
 const runtime = new Runtime(path.join(output, 'runs'));
@@ -109,6 +115,8 @@ const core = [
   'netlist.json',
   'simulation.json',
 ];
+if (httpRun!.artifacts.some((a) => a.name === 'hierarchy.json'))
+  core.push('hierarchy.json', 'instance-paths.json', 'assembly.json');
 for (const name of core)
   expect(
     httpRun!.artifacts.find((a) => a.name === name)?.sha256 ===
@@ -124,6 +132,7 @@ const layout = JSON.parse(
 const counts: Record<string, number> = {};
 for (const check of httpReport!.checks) counts[check.status] = (counts[check.status] ?? 0) + 1;
 const summary = {
+  device: specification.device ?? 'mzi',
   status: 'passed_with_limitations',
   core: 'typescript',
   contract: 'Zod → JSON Schema → generated Pydantic',
@@ -134,10 +143,10 @@ const summary = {
   mcp_tools: toolNames!,
   verification_counts: counts,
   transport_artifacts_identical: core,
-  center_wavelength_nm: 1550,
+  center_wavelength_nm: simulation.wavelength_nm[Math.floor(simulation.wavelength_nm.length / 2)],
   center_transmission: {
-    out0: simulation.transmission_out0[100],
-    out1: simulation.transmission_out1[100],
+    out0: simulation.transmission_out0[Math.floor(simulation.wavelength_nm.length / 2)],
+    out1: simulation.transmission_out1[Math.floor(simulation.wavelength_nm.length / 2)],
   },
   lengths_um: layout.lengths_um,
   foundry_signoff: false,

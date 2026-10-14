@@ -28,11 +28,25 @@ S = [[0, transpose(T)],
 
 For input `in0`, output powers are |S₂₀|² and |S₃₀|². At 1550 nm with ΔL = 10 µm, they are approximately 0.8793790613 and 0.1206209387. The full complex spectrum is compared with the independent formula, rather than just testing that a solver returned successfully. The complex tolerance is 10⁻⁹; reciprocity, passivity and unitarity tolerances are 10⁻¹⁰. JAX double precision is enabled.
 
+## Cascaded MZIs
+
+For stages numbered from input to output, let T_j be the independent MZI transfer above and D_j = diag(p(λ, L_j,0), p(λ, L_j,1)) represent the two physical interconnects after stage j. The composed forward transfer is:
+
+```text
+T_total = T_N D_(N−1) T_(N−1) ... T_2 D_1 T_1
+S_total = [[0, transpose(T_total)],
+           [T_total,            0]]
+```
+
+The independent reference multiplies these 2×2 matrices directly without importing SAX models or layout construction. SAX separately solves the flattened primitive network. Both use the resolved physical waveguide lengths. For two stages with equal link lengths, the input-0 output-0 power also satisfies cos²(π n_eff (ΔL₂ − ΔL₁) / λ), covered by a separate test. Complex error, reciprocity, passivity and unitarity limits are unchanged from the single-stage benchmark.
+
 ## Layout
 
 Two GDSFactory MMI cells are connected by two circular-bend arms with a 50 µm radius. The generated path changes by the specified imbalance; a negative imbalance lengthens the bottom arm. The waveguide width is 1 µm. MMI width/length are 5/40 µm with 10 µm tapers. This creates actual polygons and port connectivity but does not establish that those MMI dimensions realize a 50:50 splitter in a real material stack.
 
-The extracted port netlist is compared with compiler intent. KLayout independently opens the exported GDS, checks nonempty connected core geometry, minimum width/spacing, and that narrow corridors around both arm centerlines are covered by the core. Bend radii are checked from the sampled centerline. These checks detect missing connections, broken paths and some geometry violations; they do not constitute full polygon-extracted LVS, foundry DRC, density, enclosure, process-corner, packaging or yield checks.
+Cascades place 2–4 such blocks in a row and extrude two straight port-to-port links between adjacent blocks. All primitive references appear in one top-level assembly; logical module hierarchy remains traceable through the source-path map. Layout positions use a 0.001 µm grid. Interconnect-length and backannotation errors must be at most 0.001 µm, and each stage's imbalance error at most 0.002 µm.
+
+The extracted port netlist is compared with compiler intent. KLayout independently opens the exported GDS, checks nonempty connected core geometry, minimum width/spacing, and that narrow corridors around every arm and interconnect centerline are covered by the core. Bend radii are checked from the sampled centerline. These checks detect missing connections, broken paths and some geometry violations; they do not constitute full polygon-extracted LVS, foundry DRC, density, enclosure, process-corner, packaging or yield checks.
 
 ## Evidence interpretation
 

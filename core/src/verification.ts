@@ -60,10 +60,41 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
       .filter((i) => i.kind === 'waveguide')
       .map((i) => Math.abs(lengths[i.name] - (i.length_um ?? NaN))),
   );
-  const deltaError = Math.abs(
-    lengths.top_arm - lengths.bottom_arm - ir.specification.delta_length_um,
+  const targets = ir.assembly?.blocks.map((block) => ({
+    name: block.name,
+    top: block.primitives.top_arm,
+    bottom: block.primitives.bottom_arm,
+    delta: block.delta_length_um,
+  })) ?? [
+    {
+      name: 'mzi',
+      top: 'top_arm',
+      bottom: 'bottom_arm',
+      delta: ir.specification.device === 'mzi' ? ir.specification.delta_length_um : NaN,
+    },
+  ];
+  const deltaErrors = Object.fromEntries(
+    targets.map((t) => [t.name, Math.abs(lengths[t.top] - lengths[t.bottom] - t.delta)]),
   );
+  const deltaError = Math.max(...Object.values(deltaErrors));
+  const linkError = ir.assembly
+    ? Math.max(
+        ...ir.assembly.links.map((link) =>
+          Math.abs(lengths[link.instance] - ir.assembly!.link_length_um),
+        ),
+      )
+    : 0;
   return [
+    ...(ir.assembly
+      ? [
+          check(
+            'requested_interconnect_lengths',
+            linkError <= 0.001,
+            'Every connecting waveguide matches the requested physical length.',
+            { maximum_error_um: linkError },
+          ),
+        ]
+      : []),
     check(
       'layout_netlist_agreement',
       graphOK,
@@ -85,7 +116,7 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
       'requested_path_imbalance',
       deltaError <= 0.002,
       'Physical arm imbalance matches the specification.',
-      { error_um: deltaError },
+      { error_um: deltaError, stage_errors_um: deltaErrors },
     ),
   ];
 }
@@ -141,6 +172,19 @@ export async function verifyArtifacts(
     );
     id = ir.design_id;
     checks.push(...semanticChecks(ir));
+    if (ir.hierarchy)
+      checks.push(
+        check(
+          'hierarchy_artifact_consistency',
+          canonical(await readJSON(path.join(directory, 'hierarchy.json'))) ===
+            canonical(ir.hierarchy) &&
+            canonical(await readJSON(path.join(directory, 'instance-paths.json'))) ===
+              canonical(ir.instance_paths) &&
+            canonical(await readJSON(path.join(directory, 'assembly.json'))) ===
+              canonical(ir.assembly),
+          'Exported hierarchy, primitive source paths and assembly plan match the resolved engineering IR.',
+        ),
+      );
     const layout = LayoutResultSchema.parse(await readJSON(path.join(directory, 'layout.json')));
     const simulation = SimulationResultSchema.parse(
       await readJSON(path.join(directory, 'simulation.json')),
