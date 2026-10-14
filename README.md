@@ -31,6 +31,8 @@ npm run acceptance -- --output runs/acceptance
 
 Physics reasoning and autonomous capability development support this engineering workflow. They do not replace the EDA or define a separate first-stage product.
 
+Stage 3 has started with reusable circuit hierarchy compilation. `npm run --silent agentpic -- flatten examples/cascaded_mzi.hierarchy.json`, HTTP `POST /v1/circuits/flatten`, and MCP `flatten_circuit` validate module definitions and produce a neutral primitive circuit with source paths. The complete cascade simulation/layout workflow remains in development; see [its fixed acceptance gates](docs/stage3-cascade.md).
+
 ## Additional capability: physics reasoning and verification
 
 ```sh

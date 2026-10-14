@@ -37,6 +37,16 @@ SAX can evaluate the supported model graph, while the present independent optica
 
 ## Results
 
+## Reusable circuit hierarchy
+
+`CircuitHierarchy` (schema version 1.0) names a top definition and a library of `CircuitDefinition` records. Definitions contain primitive components, named module instances, connections and exposed port aliases. Modules refer to definitions rather than backend-specific model objects. `flattenCircuit` returns `FlattenedCircuit`: a neutral primitive `Circuit` and a map from every generated instance name to its original hierarchy path.
+
+Use HTTP `POST /v1/circuits/flatten`, MCP `flatten_circuit` with `{"hierarchy": ...}`, or CLI `flatten FILE`. Validation rejects missing/recursive definitions, duplicate names, unresolved aliases, port occupancy/domain/direction errors and disconnected expanded circuits. Expansion is bounded to 32 module levels and 10,000 primitives. Names encode segment lengths so underscores in user names cannot create collisions.
+
+This operation compiles topology. It does not by itself execute a solver, generate GDS or establish physical correctness. The existing `EngineeringIR` workflow remains the verified single-MZI pipeline while cascade integration proceeds.
+
+## Results
+
 `RunResult` contains run/design IDs, status, verification status, server-local artifact directory, hashes and optional error. HTTP clients download through the artifact route; MCP uses resource URIs. `VerificationReport` includes per-check pass/fail/not_run, evidence, limitations and literal `foundry_signoff: false`.
 
 `manifest.json` and `run.json` are not included in their own hash inventories. Local hashes are an integrity reference, not a signed attestation. Reverification returns a fresh report without altering the original evidence. Format 1.0 prototype artifacts are not accepted as version 2.0 runs.

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, constr
 from typing_extensions import TypeAliasType
 
 from agentpic.model_base import ContractModel
@@ -375,6 +375,53 @@ class Circuit(ContractModel):
     ports: dict[str, Endpoint]
 
 
+class ModuleInstance(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    definition: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+class CircuitDefinition(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    primitives: Annotated[list[Component], Field(max_length=256)]
+    modules: Annotated[list[ModuleInstance], Field(max_length=256)]
+    connections: list[Connection]
+    ports: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), Endpoint]
+
+
+class CircuitHierarchy(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal["1.0"] = "1.0"
+    top: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    definitions: Annotated[list[CircuitDefinition], Field(max_length=256, min_length=1)]
+
+
+type InstancePathsAdditionalPropertyItem = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+InstancePathsAdditionalProperty = TypeAliasType(
+    "InstancePathsAdditionalProperty",
+    Annotated[list[InstancePathsAdditionalPropertyItem], Field(min_length=1)],
+)
+
+
+class FlattenedCircuit(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal["1.0"]
+    top: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    circuit: Circuit
+    instance_paths: dict[str, InstancePathsAdditionalProperty]
+
+
 type CoreLayerItem = Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
@@ -611,6 +658,10 @@ class Contracts(ContractModel):
     Endpoint_1: Annotated[Endpoint, Field(alias="Endpoint")]
     Connection_1: Annotated[Connection, Field(alias="Connection")]
     Circuit_1: Annotated[Circuit, Field(alias="Circuit")]
+    ModuleInstance_1: Annotated[ModuleInstance, Field(alias="ModuleInstance")]
+    CircuitDefinition_1: Annotated[CircuitDefinition, Field(alias="CircuitDefinition")]
+    CircuitHierarchy_1: Annotated[CircuitHierarchy, Field(alias="CircuitHierarchy")]
+    FlattenedCircuit_1: Annotated[FlattenedCircuit, Field(alias="FlattenedCircuit")]
     PDK_1: Annotated[PDK, Field(alias="PDK")]
     Task_1: Annotated[Task, Field(alias="Task")]
     EngineeringIR_1: Annotated[EngineeringIR, Field(alias="EngineeringIR")]

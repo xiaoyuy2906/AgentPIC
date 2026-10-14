@@ -8,8 +8,11 @@ import {
   RunResultSchema,
   VerificationReportSchema,
   CircuitSimulationSchema,
+  CircuitHierarchySchema,
+  FlattenedCircuitSchema,
 } from './contracts.js';
 import { compile, validateIR } from './compiler.js';
+import { flattenCircuit } from './hierarchy.js';
 import { PhysicsRuntime } from './physics/runtime.js';
 import { capabilityRegistry } from './physics/registry.js';
 import {
@@ -41,6 +44,15 @@ export function createMCP(runtime = new Runtime()) {
     'get_design_schema',
     { description: 'Read the Zod-generated input JSON Schema.' },
     async () => structured(z.toJSONSchema(DesignSpecSchema, { io: 'input' })),
+  );
+  server.registerTool(
+    'flatten_circuit',
+    {
+      description: 'Validate and flatten reusable circuit modules into neutral primitive IR.',
+      inputSchema: { hierarchy: CircuitHierarchySchema },
+      outputSchema: FlattenedCircuitSchema.shape,
+    },
+    async ({ hierarchy }) => structured(flattenCircuit(hierarchy)),
   );
   server.registerTool(
     'compile_pic',

@@ -100,6 +100,7 @@ export const capabilities = () => ({
   technology: 'sin_demo_v1',
   circuit: { backend: 'sax', status: 'implemented' },
   layout: { backend: 'gdsfactory', status: 'implemented' },
+  hierarchy: { compilation: 'implemented', cascade_layout: 'not_implemented' },
   electromagnetic: { fdtdx: 'not_implemented', fem: 'not_implemented', eme: 'not_implemented' },
   foundry_signoff: false,
   physical_model_calibration: 'not_performed',

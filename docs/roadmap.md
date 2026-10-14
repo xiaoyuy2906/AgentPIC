@@ -32,7 +32,8 @@ Stages 4–7 are long-term research directions, not current feature commitments.
 | Tests, two-version CI and evidence | all above | Implemented; CI also preserves failed test evidence |
 | Physics experiment/hypothesis support | contracts, transport | Additional capability: planar TE calculations and independent analytical reference |
 | Missing-capability specification and dependencies | registry | Implemented; coding execution remains external to the runtime |
-| Qualified PDKs, calibrated models, full-vector/3D EM, general hierarchy | independent references and design demand | Future Stage 3 work |
+| Generic hierarchy compiler, alias resolution and API/MCP | shared circuit contract | Implemented; cascaded-MZI simulation/layout integration in progress |
+| Qualified PDKs, calibrated models, full-vector/3D EM | independent references and design demand | Future Stage 3 work |
 
 ## Design-driven capability development
 

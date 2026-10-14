@@ -68,6 +68,18 @@
         "Circuit": {
           "$ref": "#/$defs/Circuit"
         },
+        "ModuleInstance": {
+          "$ref": "#/$defs/ModuleInstance"
+        },
+        "CircuitDefinition": {
+          "$ref": "#/$defs/CircuitDefinition"
+        },
+        "CircuitHierarchy": {
+          "$ref": "#/$defs/CircuitHierarchy"
+        },
+        "FlattenedCircuit": {
+          "$ref": "#/$defs/FlattenedCircuit"
+        },
         "PDK": {
           "$ref": "#/$defs/PDK"
         },
@@ -130,6 +142,10 @@
         "Endpoint",
         "Connection",
         "Circuit",
+        "ModuleInstance",
+        "CircuitDefinition",
+        "CircuitHierarchy",
+        "FlattenedCircuit",
         "PDK",
         "Task",
         "EngineeringIR",
@@ -1293,6 +1309,135 @@
         "instances",
         "connections",
         "ports"
+      ],
+      "additionalProperties": false
+    },
+    "ModuleInstance": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "definition": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "name",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitDefinition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "primitives": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Component"
+          }
+        },
+        "modules": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModuleInstance"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Endpoint"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "primitives",
+        "modules",
+        "connections",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitHierarchy": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "1.0",
+          "type": "string",
+          "const": "1.0"
+        },
+        "top": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "definitions": {
+          "minItems": 1,
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CircuitDefinition"
+          }
+        }
+      },
+      "required": [
+        "top",
+        "definitions"
+      ],
+      "additionalProperties": false
+    },
+    "FlattenedCircuit": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1.0"
+        },
+        "top": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "circuit": {
+          "$ref": "#/$defs/Circuit"
+        },
+        "instance_paths": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+            }
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "top",
+        "circuit",
+        "instance_paths"
       ],
       "additionalProperties": false
     },

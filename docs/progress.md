@@ -1,6 +1,6 @@
 # Persistent development progress
 
-Current goal (updated 2026-10-13): Stage 1 builds the minimum complete agent-native PIC EDA; Stage 2 validates it with an MZI. Stage 3 uses progressively more complex designs to expose and close capability gaps. ADR-001 remains mandatory. The MZI is a benchmark, not the product. The existing planar-mode physics module is an additional reusable capability, not the first-stage objective. See `docs/roadmap.md` and `docs/acceptance.md` for the current scope and acceptance gates.
+Current goal (updated 2026-10-14): Stage 1 builds the minimum complete agent-native PIC EDA; Stage 2 validates it with an MZI. Stage 3 uses progressively more complex designs to expose and close capability gaps. ADR-001 remains mandatory. The MZI is a benchmark, not the product. The existing planar-mode physics module is an additional reusable capability, not the first-stage objective. See `docs/roadmap.md` and `docs/acceptance.md` for the current scope and acceptance gates.
 
 ## Implemented and locally executed
 
@@ -15,7 +15,11 @@ Current goal (updated 2026-10-13): Stage 1 builds the minimum complete agent-nat
 
 ## Latest verification state
 
-The local acceptance suite comprises 52 TypeScript tests and 8 Python tests. Strict TypeScript compilation, schema generation, formatting and Python lint checks are required. The eight-case physics benchmark suite passed its expected outcomes; the acceptance runner also requires every registered check for the valid baseline to pass. Hosted CI runs both Python 3.12 and 3.13 and uploads physics and MZI evidence. See [the current CI results](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml), `docs/roadmap.md` for dependencies and `benchmarks/registry.json` for benchmark acceptance requirements.
+The Stage 1–2 baseline is commit `1262411ffc31f6a21ca35d941e332370d4945998`: 52 TypeScript tests, 8 Python tests, real MZI HTTP/MCP acceptance and eight physics benchmarks passed on both Python 3.12 and 3.13 in [CI run 38414150524](https://github.com/xiaoyuy2906/AgentPIC/actions/runs/38414150524). A reproducible local delivery bundle preserves the original source commit, manifests, GDS and verification evidence.
+
+Stage 3 now adds generic module definitions, recursive alias resolution, deterministic collision-free primitive naming, instance-path traceability and bounded expansion. HTTP `/v1/circuits/flatten`, MCP `flatten_circuit` and CLI `flatten` execute the same contract. Sixteen new tests cover reusable/nested modules, invalid topology, expansion bounds and real HTTP/MCP transport; the current local suite passes all 68 TypeScript and 8 Python tests. Strict compilation, generation and lint checks passed. See [current CI](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml) for the hosted result at each revision.
+
+The two-MZI example flattens into 10 primitives, 12 connections and four external ports. Complete cascade simulation, physical composition, independent numerical reference and end-to-end acceptance are still pending; the predeclared gates and dependencies are in `docs/stage3-cascade.md`. Do not count hierarchy-only compilation as complete cascade verification.
 
 Final review found that failed checks on the independent reference did not block acceptance if its effective index agreed. A regression test reproduced the false acceptance by corrupting only the reference propagation units. The verdict now requires the reference's own deterministic checks to pass before either the baseline or a revised configuration can be accepted.
 

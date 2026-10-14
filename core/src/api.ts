@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 import { Contracts } from './contracts.js';
 import { compile, validateIR, SemanticError } from './compiler.js';
+import { flattenCircuit, HierarchyError } from './hierarchy.js';
 import { capabilities } from './backends.js';
 import { PhysicsRuntime } from './physics/runtime.js';
 import { capabilityRegistry } from './physics/registry.js';
@@ -35,6 +36,11 @@ export function openAPI() {
     openapi: '3.1.0',
     info: { title: 'AgentPIC TypeScript Core', version: '0.2.0' },
     paths: {
+      '/v1/circuits/flatten': post(
+        'CircuitHierarchy',
+        'FlattenedCircuit',
+        'Validate and flatten module hierarchy with traceable primitive paths',
+      ),
       '/v1/physics/capabilities': { get: { responses: response('CapabilityRegistry') } },
       '/v1/physics/runs/{run_id}': {
         get: { parameters: [id], responses: response('PhysicsReport') },
@@ -136,6 +142,7 @@ export function createAPI(runtime = new Runtime()) {
         req.method === 'POST' &&
         [
           '/v1/compile',
+          '/v1/circuits/flatten',
           '/v1/validate',
           '/v1/designs',
           '/v1/simulations',
@@ -148,6 +155,7 @@ export function createAPI(runtime = new Runtime()) {
           if (body.length > 1024 * 1024) return json(413, { error: 'Request exceeds 1 MiB' });
         }
         const value = JSON.parse(body);
+        if (url.pathname === '/v1/circuits/flatten') return json(200, flattenCircuit(value));
         if (url.pathname === '/v1/physics/workflows') return json(200, await physics.run(value));
         if (url.pathname === '/v1/compile') return json(200, compile(value));
         if (url.pathname === '/v1/validate') return json(200, validateIR(value));
@@ -196,12 +204,16 @@ export function createAPI(runtime = new Runtime()) {
     } catch (error) {
       json(
         error instanceof z.ZodError ||
+          error instanceof HierarchyError ||
           error instanceof SemanticError ||
           error instanceof SyntaxError
           ? 422
           : 500,
         {
           error: String(error),
+          ...(error instanceof HierarchyError
+            ? { code: error.code, location: error.location }
+            : {}),
           ...(error instanceof SemanticError ? { checks: error.checks } : {}),
         },
       );

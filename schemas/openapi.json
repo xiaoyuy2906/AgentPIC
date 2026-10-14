@@ -5,6 +5,36 @@
     "version": "0.2.0"
   },
   "paths": {
+    "/v1/circuits/flatten": {
+      "post": {
+        "description": "Validate and flatten module hierarchy with traceable primitive paths",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircuitHierarchy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Structured result; inspect engineering status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlattenedCircuit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid structure or engineering semantics"
+          }
+        }
+      }
+    },
     "/v1/physics/capabilities": {
       "get": {
         "responses": {
@@ -1496,6 +1526,135 @@
           "instances",
           "connections",
           "ports"
+        ],
+        "additionalProperties": false
+      },
+      "ModuleInstance": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "definition": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        },
+        "required": [
+          "name",
+          "definition"
+        ],
+        "additionalProperties": false
+      },
+      "CircuitDefinition": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "primitives": {
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Component"
+            }
+          },
+          "modules": {
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModuleInstance"
+            }
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            }
+          },
+          "ports": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Endpoint"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "primitives",
+          "modules",
+          "connections",
+          "ports"
+        ],
+        "additionalProperties": false
+      },
+      "CircuitHierarchy": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "default": "1.0",
+            "type": "string",
+            "const": "1.0"
+          },
+          "top": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "definitions": {
+            "minItems": 1,
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CircuitDefinition"
+            }
+          }
+        },
+        "required": [
+          "top",
+          "definitions"
+        ],
+        "additionalProperties": false
+      },
+      "FlattenedCircuit": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "top": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "circuit": {
+            "$ref": "#/components/schemas/Circuit"
+          },
+          "instance_paths": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              }
+            }
+          }
+        },
+        "required": [
+          "schema_version",
+          "top",
+          "circuit",
+          "instance_paths"
         ],
         "additionalProperties": false
       },

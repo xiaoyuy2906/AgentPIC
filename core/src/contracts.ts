@@ -47,6 +47,33 @@ export const CircuitSchema = z
     ports: record(EndpointSchema),
   })
   .meta({ id: 'Circuit' });
+export const ModuleInstanceSchema = z
+  .strictObject({ name, definition: name })
+  .meta({ id: 'ModuleInstance' });
+export const CircuitDefinitionSchema = z
+  .strictObject({
+    name,
+    primitives: z.array(ComponentSchema).max(256),
+    modules: z.array(ModuleInstanceSchema).max(256),
+    connections: z.array(ConnectionSchema),
+    ports: z.record(name, EndpointSchema),
+  })
+  .meta({ id: 'CircuitDefinition' });
+export const CircuitHierarchySchema = z
+  .strictObject({
+    schema_version: z.literal('1.0').default('1.0'),
+    top: name,
+    definitions: z.array(CircuitDefinitionSchema).min(1).max(256),
+  })
+  .meta({ id: 'CircuitHierarchy' });
+export const FlattenedCircuitSchema = z
+  .strictObject({
+    schema_version: z.literal('1.0'),
+    top: name,
+    circuit: CircuitSchema,
+    instance_paths: record(z.array(name).min(1)),
+  })
+  .meta({ id: 'FlattenedCircuit' });
 export const PDKSchema = z
   .strictObject({
     name: z.literal('sin_demo_v1').default('sin_demo_v1'),
@@ -190,6 +217,10 @@ export const Contracts = {
   Endpoint: EndpointSchema,
   Connection: ConnectionSchema,
   Circuit: CircuitSchema,
+  ModuleInstance: ModuleInstanceSchema,
+  CircuitDefinition: CircuitDefinitionSchema,
+  CircuitHierarchy: CircuitHierarchySchema,
+  FlattenedCircuit: FlattenedCircuitSchema,
   PDK: PDKSchema,
   Task: TaskSchema,
   EngineeringIR: EngineeringIRSchema,
@@ -207,6 +238,9 @@ export const Contracts = {
 export type DesignSpec = z.infer<typeof DesignSpecSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;
 export type Circuit = z.infer<typeof CircuitSchema>;
+export type CircuitHierarchy = z.infer<typeof CircuitHierarchySchema>;
+export type CircuitDefinition = z.infer<typeof CircuitDefinitionSchema>;
+export type FlattenedCircuit = z.infer<typeof FlattenedCircuitSchema>;
 export type Endpoint = z.infer<typeof EndpointSchema>;
 export type LayoutResult = z.infer<typeof LayoutResultSchema>;
 export type SimulationResult = z.infer<typeof SimulationResultSchema>;

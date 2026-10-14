@@ -1,6 +1,7 @@
 import { PhysicsRuntime } from './physics/runtime.js';
 import { readFile } from 'node:fs/promises';
 import { compile, validateIR } from './compiler.js';
+import { flattenCircuit } from './hierarchy.js';
 import { capabilities } from './backends.js';
 import { Runtime } from './runtime.js';
 import { createAPI } from './api.js';
@@ -23,9 +24,10 @@ try {
     );
     print(result);
     if (!['accepted', 'improved'].includes(result.status)) process.exitCode = 1;
-  } else if (['compile', 'validate', 'design', 'simulate'].includes(command)) {
+  } else if (['compile', 'flatten', 'validate', 'design', 'simulate'].includes(command)) {
     const input = JSON.parse(await readFile(args[1], 'utf8'));
     if (command === 'compile') print(compile(input));
+    else if (command === 'flatten') print(flattenCircuit(input));
     else if (command === 'validate') print(validateIR(input));
     else if (command === 'simulate') {
       const result = await simulateCircuit(input);
@@ -54,7 +56,7 @@ try {
     );
   } else {
     console.error(
-      'Usage: agentpic physics GOAL; compile|validate|simulate|design FILE; verify RUN_ID; serve; mcp; capabilities; schema [--runs-dir DIR]',
+      'Usage: agentpic physics GOAL; compile|flatten|validate|simulate|design FILE; verify RUN_ID; serve; mcp; capabilities; schema [--runs-dir DIR]',
     );
     process.exitCode = command === '--help' ? 0 : 2;
   }
