@@ -67,8 +67,39 @@
           "type": "number",
           "minimum": -200,
           "maximum": 200
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
+      "additionalProperties": false
+    },
+    "PhaseControl": {
+      "type": "object",
+      "properties": {
+        "phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        },
+        "active_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 20,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "phase_rad"
+      ],
       "additionalProperties": false
     },
     "CascadeSpec": {
@@ -152,6 +183,17 @@
           "type": "number",
           "minimum": -200,
           "maximum": 200
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [

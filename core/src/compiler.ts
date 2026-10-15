@@ -121,24 +121,34 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
       c.instances.every(
         (i) =>
           ir.technology.supported_components.includes(i.kind) &&
-          i.ports.every((p) => p.domain === 'optical') &&
-          (i.kind === 'waveguide'
+          (i.kind === 'phase_shifter'
             ? i.length_um !== null &&
-              i.ports
-                .map((p) => p.name)
-                .sort()
-                .join(',') === 'o1,o2'
-            : i.coupling_ratio !== null &&
-              i.ports
-                .map((p) => p.name)
-                .sort()
-                .join(',') === 'o1,o2,o3,o4'),
+              i.coupling_ratio === null &&
+              i.phase_control !== null &&
+              canonical(i.ports.map((p) => `${p.name}:${p.domain}`).sort()) ===
+                canonical(['e1:electrical', 'e2:electrical', 'o1:optical', 'o2:optical'])
+            : i.phase_control === null &&
+              i.ports.every((p) => p.domain === 'optical') &&
+              (i.kind === 'waveguide'
+                ? i.length_um !== null &&
+                  i.coupling_ratio === null &&
+                  i.ports
+                    .map((p) => p.name)
+                    .sort()
+                    .join(',') === 'o1,o2'
+                : i.coupling_ratio !== null &&
+                  i.ports
+                    .map((p) => p.name)
+                    .sort()
+                    .join(',') === 'o1,o2,o3,o4')),
       ),
       'Component parameters and named ports must match the declared model and PDK support.',
     ),
     check(
       'pdk_geometry',
-      ir.technology.width_um >= ir.technology.minimum_width_um,
+      ir.technology.width_um >= ir.technology.minimum_width_um &&
+        canonical(ir.technology.heater_layer) !== canonical(ir.technology.core_layer) &&
+        ir.technology.heater_width_um >= ir.technology.minimum_width_um,
       'Core width must satisfy the declared PDK minimum width.',
     ),
     check(
@@ -157,7 +167,9 @@ export function validateIR(input: unknown): EngineeringIR {
 export function compile(input: unknown): EngineeringIR {
   const s = DesignSpecSchema.parse(input);
   const circuit =
-    s.device === 'mzi' ? { netlist: mziCircuit(s.delta_length_um) } : compileCascade(s);
+    s.device === 'mzi'
+      ? { netlist: mziCircuit(s.delta_length_um, s.phase_control) }
+      : compileCascade(s);
   return validateIR({
     design_id: sha256(canonical(s)).slice(0, 16),
     specification: s,
@@ -183,7 +195,7 @@ export function compile(input: unknown): EngineeringIR {
 export function backannotate(input: EngineeringIR, layout: LayoutResult): EngineeringIR {
   const ir = structuredClone(input);
   for (const instance of ir.netlist.instances)
-    if (instance.kind === 'waveguide') instance.length_um = layout.lengths_um[instance.name];
+    if (instance.kind !== 'ideal_coupler') instance.length_um = layout.lengths_um[instance.name];
   ir.layout_resolved = true;
   ir.length_source = 'layout';
   return validateIR(ir);

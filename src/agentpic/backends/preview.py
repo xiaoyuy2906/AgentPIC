@@ -15,19 +15,24 @@ def write_preview(directory: Path, metadata: dict) -> None:
     elements = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {y} {width} {height}">',
         f'<rect x="{x}" y="{y}" width="{width}" height="{height}" fill="#f8fafc"/>',
-        '<g fill="#2563eb" fill-rule="evenodd">',
     ]
-    for polygon in region.each():
-        rings = [list(polygon.each_point_hull())] + [
-            list(polygon.each_point_hole(i)) for i in range(polygon.holes())
-        ]
-        commands = []
-        for ring in rings:
-            commands.append(
-                "M "
-                + " L ".join(f"{p.x * layout.dbu:.3f},{-p.y * layout.dbu:.3f}" for p in ring)
-                + " Z"
-            )
-        elements.append(f'<path d="{" ".join(commands)}"/>')
-    elements.extend(["</g>", "</svg>"])
+    regions = [(region, "#2563eb")]
+    for layer in sorted({tuple(a["layer"]) for a in metadata.get("actuators", {}).values()}):
+        regions.append((kdb.Region(top.begin_shapes_rec(layout.find_layer(*layer))), "#d97706"))
+    for shapes, color in regions:
+        elements.append(f'<g fill="{color}" fill-rule="evenodd">')
+        for polygon in shapes.each():
+            rings = [list(polygon.each_point_hull())] + [
+                list(polygon.each_point_hole(i)) for i in range(polygon.holes())
+            ]
+            commands = []
+            for ring in rings:
+                commands.append(
+                    "M "
+                    + " L ".join(f"{p.x * layout.dbu:.3f},{-p.y * layout.dbu:.3f}" for p in ring)
+                    + " Z"
+                )
+            elements.append(f'<path d="{" ".join(commands)}"/>')
+        elements.append("</g>")
+    elements.append("</svg>")
     (directory / "layout.svg").write_text("\n".join(elements))

@@ -21,7 +21,7 @@ import {
   type VerificationReport,
 } from './contracts.js';
 import { PythonBackend, projectRoot, type ScientificBackend } from './backends.js';
-import { readJSON, verifyArtifacts } from './verification.js';
+import { readJSON, verifyArtifacts, controlSettings } from './verification.js';
 export async function writeJSON(file: string, data: unknown) {
   await writeFile(`${file}.tmp`, JSON.stringify(data, null, 2) + '\n');
   await rename(`${file}.tmp`, file);
@@ -110,6 +110,8 @@ export class Runtime {
       compile: async () => {
         await writeJSON(path.join(directory, 'specification.json'), ir.specification);
         await writeJSON(path.join(directory, 'compiled_ir.json'), ir);
+        if (Object.keys(controlSettings(ir)).length)
+          await writeJSON(path.join(directory, 'controls.json'), controlSettings(ir));
         if (ir.hierarchy) {
           await writeJSON(path.join(directory, 'hierarchy.json'), ir.hierarchy);
           await writeJSON(path.join(directory, 'instance-paths.json'), ir.instance_paths);

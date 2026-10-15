@@ -29,6 +29,9 @@ def test_python_models_are_generated_from_ts_contract():
         {"extra": 1},
         {"device": "mzi_cascade"},
         {"device": "mzi_cascade", "stages": [{"name": "only", "delta_length_um": 10}]},
+        {"phase_control": {"voltage": 1}},
+        {"phase_control": {"phase_rad": 20}},
+        {"phase_control": {"phase_rad": 0, "active_length_um": 201}},
     ],
 )
 def test_generated_contract_rejects_invalid_structure(invalid):
@@ -54,3 +57,10 @@ def test_generated_cascade_contract_round_trips_serialized_data():
     assert parsed.device == "mzi_cascade"
     assert len(parsed.stages) == 2
     assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
+
+
+def test_generated_phase_control_contract_preserves_units_and_values():
+    source = (Path(__file__).resolve().parents[1] / "examples/tunable_mzi_1550.json").read_text()
+    parsed = design_spec.validate_json(source, strict=True)
+    assert parsed.phase_control.phase_rad == pytest.approx(3.141592653589793)
+    assert parsed.phase_control.active_length_um == 100

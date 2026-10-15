@@ -1,6 +1,6 @@
-import { CircuitSchema, type Circuit } from '../contracts.js';
+import { CircuitSchema, type Circuit, type PhaseControl } from '../contracts.js';
 
-export function mziCircuit(deltaLength: number): Circuit {
+export function mziCircuit(deltaLength: number, phaseControl: PhaseControl | null = null): Circuit {
   const ports = (names: string[]) =>
     names.map((name) => ({ name, domain: 'optical', direction: 'bidirectional' }));
   const endpoint = (instance: string, port: string) => ({ instance, port });
@@ -18,9 +18,19 @@ export function mziCircuit(deltaLength: number): Circuit {
       })),
       {
         name: 'top_arm',
-        kind: 'waveguide',
-        ports: ports(['o1', 'o2']),
+        kind: phaseControl ? 'phase_shifter' : 'waveguide',
+        ports: [
+          ...ports(['o1', 'o2']),
+          ...(phaseControl
+            ? ['e1', 'e2'].map((name) => ({
+                name,
+                domain: 'electrical',
+                direction: 'bidirectional',
+              }))
+            : []),
+        ],
         length_um: 800 + Math.max(deltaLength, 0),
+        phase_control: phaseControl,
       },
       {
         name: 'bottom_arm',
@@ -40,6 +50,9 @@ export function mziCircuit(deltaLength: number): Circuit {
       in1: endpoint('splitter', 'o2'),
       out0: endpoint('combiner', 'o4'),
       out1: endpoint('combiner', 'o3'),
+      ...(phaseControl
+        ? { phase_e1: endpoint('top_arm', 'e1'), phase_e2: endpoint('top_arm', 'e2') }
+        : {}),
     },
   });
 }

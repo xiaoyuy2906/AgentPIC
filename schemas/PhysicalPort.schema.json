@@ -25,6 +25,14 @@
         "width_um": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "domain": {
+          "default": "optical",
+          "type": "string",
+          "enum": [
+            "optical",
+            "electrical"
+          ]
         }
       },
       "required": [

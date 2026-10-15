@@ -117,6 +117,7 @@ const core = [
 ];
 if (httpRun!.artifacts.some((a) => a.name === 'hierarchy.json'))
   core.push('hierarchy.json', 'instance-paths.json', 'assembly.json');
+if (httpRun!.artifacts.some((a) => a.name === 'controls.json')) core.push('controls.json');
 for (const name of core)
   expect(
     httpRun!.artifacts.find((a) => a.name === name)?.sha256 ===

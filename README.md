@@ -40,6 +40,15 @@ npm run acceptance -- --specification examples/cascaded_mzi_1550.json --output r
 
 Each cascade stage has a unique `name` and `delta_length_um`; `link_length_um` sets the two connecting waveguide lengths between adjacent stages. This is a supported series-assembly recipe. Arbitrary hierarchy-to-layout synthesis remains future work.
 
+Single MZIs and cascade stages also accept `phase_control`, containing a commanded optical `phase_rad` at 1550 nm and an `active_length_um` metal footprint. The shared phase-shifter primitive exposes optical and electrical ports; SAX solves only the optical projection, while layout and verification retain both domains.
+
+```sh
+npm run --silent agentpic -- design examples/tunable_mzi_1550.json
+npm run acceptance -- --specification examples/tunable_cascade_1550.json --output runs/phase-acceptance
+```
+
+This produces actual core and heater-metal geometry and verifies switching, phase behavior, metal coverage and electrical terminal positions. Phase is specified directly: voltage, current, heating power and temperature-to-phase conversion are **not calibrated or simulated**. See [phase-control acceptance](docs/stage3-phase-control.md).
+
 ## Additional capability: physics reasoning and verification
 
 ```sh
@@ -145,6 +154,7 @@ Read artifacts at `agentpic://runs/{run_id}/{name}`. Binary GDS is transported a
 | `specification.json`, `compiled_ir.json` | Normalized intent and compiler output |
 | `engineering_ir.json`, `netlist.json` | Resolved circuit with physical arm and interconnect lengths |
 | `hierarchy.json`, `instance-paths.json`, `assembly.json` | Cascade module definitions, primitive source paths and physical assembly intent |
+| `controls.json` | Optional optical phase settings, active lengths, reference wavelength and uncalibrated electrical mapping |
 | `layout.json` | Neutral extracted Circuit, physical ports, lengths and centerlines |
 | `design.gds`, `layout.svg` | Actual hierarchical geometry and static GDS-derived preview |
 | `simulation.json`, `spectrum.csv` | Full complex S-matrix and optical transmission |
@@ -161,9 +171,11 @@ TypeScript checks references, port occupancy and compatibility, topology, model/
 
 The default single-MZI run has 26 passing checks; reverification adds artifact integrity for 27. A cascade adds hierarchy intent, hierarchy artifact consistency and interconnect-length checks, giving 30 passes after reverification. EM calibration, measurement validation and foundry signoff remain explicitly `not_run` in both workflows.
 
+Controlled designs additionally verify control intent/artifacts, metal geometry, active dimensions and electrical terminals. They also carry a fourth `not_run` item for electrical-to-phase calibration. Changing the optical phase does not change the physical polygons; tests compare core and metal geometry independently of GDS cell names.
+
 `sin_demo_v1` assumes a 1 µm wide, 0.4 µm thick core, 50 µm bends, neff=1.8, ng=1.9 at 1550 nm, ideal 50:50 couplers and zero propagation loss. These are illustrative assumptions. The MMI polygons have not been optically calibrated to the compact model. GDS describes planar geometry; the thickness remains an IR assumption. No fabrication readiness is claimed.
 
-The design compiler currently supports parameterized SiN MZIs and 2–4 stage cascades; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
+The design compiler currently supports parameterized SiN MZIs and 2–4 stage cascades, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
 
 ## Development
 

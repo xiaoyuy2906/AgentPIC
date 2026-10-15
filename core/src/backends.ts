@@ -101,6 +101,12 @@ export const capabilities = () => ({
   circuit: { backend: 'sax', status: 'implemented' },
   layout: { backend: 'gdsfactory', status: 'implemented' },
   hierarchy: { compilation: 'implemented', cascade_layout: 'implemented' },
+  phase_control: {
+    optical_phase: 'implemented',
+    metal_geometry: 'implemented',
+    electrical_to_phase_calibration: 'not_performed',
+    electrical_solver: 'not_implemented',
+  },
   electromagnetic: { fdtdx: 'not_implemented', fem: 'not_implemented', eme: 'not_implemented' },
   foundry_signoff: false,
   physical_model_calibration: 'not_performed',

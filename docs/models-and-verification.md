@@ -13,6 +13,14 @@ p(λ, L) = 10^(−α L / (10⁴ × 20)) exp(i 2π n_eff(λ) L / λ)
 
 α is power loss in dB/cm and is fixed to zero in this milestone. Both transmission directions use p and both reflections are zero. Circuit-only compilation uses nominal lengths from the TypeScript compiler. In a full design run, L is measured from the routed GDSFactory path, rounded to 0.001 µm, and recorded in resolved IR before simulation. Verification independently sums the sampled centerline and allows 0.001 µm annotation error.
 
+## Controlled optical phase
+
+The `phase_shifter` model retains the waveguide's passive propagation over its complete routed length and multiplies it by exp(i φ₀ λ₀ / λ). The specified φ₀ is an optical phase at λ₀, not an electrical bias. The independent verifier instead constructs induced optical-path difference ΔOPL = φ₀ λ₀ / (2π) and evaluates exp(i 2π (n_eff L + ΔOPL) / λ). The change is reciprocal and lossless under the explicit ideal assumptions.
+
+A balanced MZI therefore has output-0 power sin²(φ₀ λ₀ / (2λ)): at λ₀, phases 0, π/2, π and 2π give powers 0, 1/2, 1 and 0. These values and the wavelength dependence are independently tested. Cascades reuse the same controlled primitive and transfer composition.
+
+The active metal length sets a geometry footprint, not an actuator efficiency. There is no calibrated relation between voltage, current, power, temperature, induced refractive index and commanded optical phase. Software bounds do not establish thermal feasibility. Controlled designs explicitly report `phase_actuation_calibration: not_run`.
+
 ## Ideal coupler and complete MZI
 
 The ideal reciprocal couplers have through amplitude √(1−κ) and cross amplitude i√κ with κ = 0.5. There is no reflection, loss, coupler dispersion, taper phase or bend-induced phase correction. Port names and the chosen orientation are explicit in the netlist.
@@ -46,10 +54,12 @@ Two GDSFactory MMI cells are connected by two circular-bend arms with a 50 µm r
 
 Cascades place 2–4 such blocks in a row and extrude two straight port-to-port links between adjacent blocks. All primitive references appear in one top-level assembly; logical module hierarchy remains traceable through the source-path map. Layout positions use a 0.001 µm grid. Interconnect-length and backannotation errors must be at most 0.001 µm, and each stage's imbalance error at most 0.002 µm.
 
+Controlled arms use GDSFactory metal cross sections to place a 2.5 µm-wide metal segment on layer/datatype 2/0, centered over the longest straight top-arm segment. Its 20–200 µm length is user specified. Electrical terminals at both metal ends are exposed; vias, bond pads, electrical routing and a qualified material stack are not supplied. KLayout independently compares actual metal polygons with the expected footprint, checks dimensions within 0.001 µm, checks coverage over the optical path and checks metal width/spacing under the demonstration rules. Terminal position/orientation/domain checks are separate. Blue in the static SVG is optical core; orange is metal.
+
 The extracted port netlist is compared with compiler intent. KLayout independently opens the exported GDS, checks nonempty connected core geometry, minimum width/spacing, and that narrow corridors around every arm and interconnect centerline are covered by the core. Bend radii are checked from the sampled centerline. These checks detect missing connections, broken paths and some geometry violations; they do not constitute full polygon-extracted LVS, foundry DRC, density, enclosure, process-corner, packaging or yield checks.
 
 ## Evidence interpretation
 
-`passed_with_limitations` means every implemented check passed for the stated model and demonstration geometry rules. Three required capabilities remain `not_run`: electromagnetic calibration, fabricated-device measurement validation, and foundry signoff. They are present in every verification report, including failed reports. `foundry_signoff` is constrained to `false` in the public report schema.
+`passed_with_limitations` means every implemented check passed for the stated model and demonstration geometry rules. Three required capabilities remain `not_run`: electromagnetic calibration, fabricated-device measurement validation, and foundry signoff. They are present in every verification report, including failed reports. Controlled optical calculations also report missing electrical-to-phase calibration. `foundry_signoff` is constrained to `false` in the public report schema.
 
 Tests deliberately corrupt the complex scattering matrix, extracted netlist, GDS geometry and stored artifacts to ensure verification detects failures. Boundary cases include balanced arms and positive/negative imbalances through ±200 µm. Backend exceptions are tested separately from failed engineering checks.

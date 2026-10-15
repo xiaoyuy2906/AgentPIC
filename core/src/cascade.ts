@@ -19,7 +19,7 @@ const edge = (a: string, ap: string, b: string, bp: string) => ({
 /** A design recipe composes reusable blocks through the generic hierarchy compiler. */
 export function compileCascade(spec: CascadeSpec) {
   const definitions = spec.stages.map((stage, i) => {
-    const circuit = mziCircuit(stage.delta_length_um);
+    const circuit = mziCircuit(stage.delta_length_um, stage.phase_control);
     return {
       name: `definition${i}`,
       primitives: circuit.instances,
@@ -61,6 +61,16 @@ export function compileCascade(spec: CascadeSpec) {
           in1: endpoint(spec.stages[0].name, 'in1'),
           out0: endpoint(spec.stages.at(-1)!.name, 'out0'),
           out1: endpoint(spec.stages.at(-1)!.name, 'out1'),
+          ...Object.fromEntries(
+            spec.stages.flatMap((stage) =>
+              stage.phase_control
+                ? ['e1', 'e2'].map((port) => [
+                    instanceName([stage.name, port]),
+                    endpoint(stage.name, `phase_${port}`),
+                  ])
+                : [],
+            ),
+          ),
         },
       },
     ],
@@ -110,18 +120,36 @@ const topology = (circuit: Circuit, ignoreLengths: boolean) => ({
 
 export function cascadeStructureCheck(ir: EngineeringIR): CheckResult[] {
   if (ir.specification.device !== 'mzi_cascade') {
-    return ir.hierarchy === null &&
-      ir.assembly === null &&
-      Object.keys(ir.instance_paths).length === 0
-      ? []
-      : [
-          {
-            id: 'hierarchy_intent_consistency',
-            status: 'fail',
-            detail: 'A single-MZI specification cannot carry a different assembly or hierarchy.',
-            evidence: {},
-          },
-        ];
+    const emptyHierarchy =
+      ir.hierarchy === null && ir.assembly === null && Object.keys(ir.instance_paths).length === 0;
+    if (!emptyHierarchy)
+      return [
+        {
+          id: 'hierarchy_intent_consistency',
+          status: 'fail',
+          detail: 'A single-MZI specification cannot carry a different assembly or hierarchy.',
+          evidence: {},
+        },
+      ];
+    if (
+      ir.specification.phase_control ||
+      ir.netlist.instances.some((i) => i.phase_control || i.kind === 'phase_shifter')
+    ) {
+      const expected = mziCircuit(ir.specification.delta_length_um, ir.specification.phase_control);
+      return [
+        {
+          id: 'phase_intent_consistency',
+          status:
+            normalized(topology(ir.netlist, ir.layout_resolved)) ===
+            normalized(topology(expected, ir.layout_resolved))
+              ? 'pass'
+              : 'fail',
+          detail: 'Controlled circuit and electrical terminals match the declared phase intent.',
+          evidence: {},
+        },
+      ];
+    }
+    return [];
   }
   try {
     const expected = compileCascade(ir.specification);

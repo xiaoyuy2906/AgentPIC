@@ -4,6 +4,15 @@ import { PhysicsContracts } from './physics/contracts.js';
 const name = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/);
 const positive = () => z.number().positive();
 const record = <T extends z.ZodType>(value: T) => z.record(z.string(), value);
+export const PhaseControlSchema = z
+  .strictObject({
+    phase_rad: z
+      .number()
+      .min(-4 * Math.PI)
+      .max(4 * Math.PI),
+    active_length_um: z.number().min(20).max(200).default(100),
+  })
+  .meta({ id: 'PhaseControl' });
 const DesignFields = {
   platform: z.literal('sin').default('sin'),
   wavelength_nm: z.number().min(1500).max(1600).default(1550),
@@ -19,12 +28,14 @@ export const MZISpecSchema = z
     ...DesignFields,
     device: z.literal('mzi').default('mzi'),
     delta_length_um: z.number().min(-200).max(200).default(10),
+    phase_control: PhaseControlSchema.nullable().default(null),
   })
   .meta({ id: 'MZISpec' });
 export const CascadeStageSchema = z
   .strictObject({
     name,
     delta_length_um: z.number().min(-200).max(200),
+    phase_control: PhaseControlSchema.nullable().default(null),
   })
   .meta({ id: 'CascadeStage' });
 export const CascadeSpecSchema = z
@@ -48,10 +59,11 @@ export const PortSchema = z
 export const ComponentSchema = z
   .strictObject({
     name,
-    kind: z.enum(['ideal_coupler', 'waveguide']),
+    kind: z.enum(['ideal_coupler', 'waveguide', 'phase_shifter']),
     ports: z.array(PortSchema).min(1),
     length_um: positive().nullable().default(null),
     coupling_ratio: z.number().min(0).max(1).nullable().default(null),
+    phase_control: PhaseControlSchema.nullable().default(null),
   })
   .meta({ id: 'Component' });
 export const EndpointSchema = z
@@ -107,14 +119,18 @@ export const PDKSchema = z
     bend_radius_um: positive().default(50),
     minimum_width_um: positive().default(0.5),
     minimum_spacing_um: positive().default(0.5),
+    heater_layer: z
+      .tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])
+      .default([2, 0]),
+    heater_width_um: positive().default(2.5),
     reference_wavelength_um: positive().default(1.55),
     effective_index: positive().default(1.8),
     group_index: positive().default(1.9),
     loss_db_per_cm: z.literal(0).default(0),
     model_version: z.literal('ideal_sin_v1').default('ideal_sin_v1'),
     supported_components: z
-      .array(z.enum(['ideal_coupler', 'waveguide']))
-      .default(['ideal_coupler', 'waveguide']),
+      .array(z.enum(['ideal_coupler', 'waveguide', 'phase_shifter']))
+      .default(['ideal_coupler', 'waveguide', 'phase_shifter']),
   })
   .meta({ id: 'PDK' });
 export const TaskSchema = z
@@ -157,8 +173,16 @@ export const PhysicalPortSchema = z
     center_um: z.tuple([z.number(), z.number()]),
     orientation_deg: z.number(),
     width_um: positive(),
+    domain: z.enum(['optical', 'electrical']).default('optical'),
   })
   .meta({ id: 'PhysicalPort' });
+export const ActuatorLayoutSchema = z
+  .strictObject({
+    centerline_um: z.tuple([z.tuple([z.number(), z.number()]), z.tuple([z.number(), z.number()])]),
+    layer: z.tuple([z.number().int(), z.number().int()]),
+    width_um: positive(),
+  })
+  .meta({ id: 'ActuatorLayout' });
 export const LayoutResultSchema = z
   .strictObject({
     schema_version: z.literal('2.0'),
@@ -172,6 +196,7 @@ export const LayoutResultSchema = z
     bend_radius_um: positive(),
     delta_length_um: z.number().nullable(),
     path_imbalances_um: record(z.number()).default({}),
+    actuators: record(ActuatorLayoutSchema).default({}),
   })
   .meta({ id: 'LayoutResult' });
 export const SimulationResultSchema = z
@@ -252,6 +277,8 @@ export const CircuitSimulationSchema = z
 export const Contracts = {
   ...PhysicsContracts,
   DesignSpec: DesignSpecSchema,
+  PhaseControl: PhaseControlSchema,
+  ActuatorLayout: ActuatorLayoutSchema,
   MZISpec: MZISpecSchema,
   CascadeSpec: CascadeSpecSchema,
   CascadeStage: CascadeStageSchema,
@@ -281,6 +308,7 @@ export const Contracts = {
   ElectromagneticResult: ElectromagneticResultSchema,
 };
 export type DesignSpec = z.infer<typeof DesignSpecSchema>;
+export type PhaseControl = z.infer<typeof PhaseControlSchema>;
 export type CascadeSpec = z.infer<typeof CascadeSpecSchema>;
 export type AssemblyPlan = z.infer<typeof AssemblyPlanSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;

@@ -13,16 +13,19 @@
 | `delta_length_um` | 10 | Single MZI only: −200 to +200 µm, top minus bottom arm |
 | `stages` | Required for cascade | 2–4 records with unique `name` and `delta_length_um` in −200 to +200 µm |
 | `link_length_um` | 100 | Cascade only: 10–1000 µm between adjacent blocks |
+| `phase_control` | null | Single MZI or each cascade stage: optional `{phase_rad, active_length_um}` |
 | `sweep_span_nm` | 40 | Greater than zero, at most 100 nm |
 | `sweep_points` | 201 | Odd integer, 3–2001 |
 
 The full sweep must lie in 1450–1650 nm. Unique outputs, odd samples and engineering bounds are checked by the TS compiler. These are software support ranges, not calibrated physical validity ranges.
 
+Phase controls accept −4π to +4π radians at the PDK reference wavelength (default 1550 nm), with active metal lengths of 20–200 µm (default 100). The controlled top-arm primitive retains its full optical path length and adds electrical terminals `e1`/`e2`. Single-MZI external aliases are `phase_e1`/`phase_e2`; cascade aliases use collision-free stage paths. Electrical ports are exposed in IR/layout, excluded from the optical S-matrix, and have no electrical circuit solver. Voltage/power/temperature fields are rejected rather than silently interpreted as phase.
+
 `DesignSpec` is a union generated from Zod. Python clients can validate it through `TypeAdapter(Contracts.model_fields["DesignSpec"].annotation)` using the generated `agentpic.ir.Contracts` catalog. Do not maintain a parallel handwritten Python union. Unknown or mixed single/cascade fields are rejected.
 
 ## Typed engineering records
 
-- **Component:** instance name, model identifier, typed ports, optional length/coupling parameters.
+- **Component:** instance name, model identifier (`ideal_coupler`, `waveguide`, `phase_shifter`), typed ports, optional length/coupling/control parameters. Controls are valid only for phase-shifter instances.
 - **Port:** name, physical domain and input/output/bidirectional direction. The present solver models support optical ports.
 - **Connection:** two named component/port endpoints.
 - **Circuit:** components, connections and explicitly exposed external ports.
@@ -48,6 +51,8 @@ Use HTTP `POST /v1/circuits/flatten`, MCP `flatten_circuit` with `{"hierarchy": 
 This operation compiles topology. It does not by itself execute a solver, generate GDS or establish physical correctness. The `mzi_cascade` specification compiler composes reusable definitions through it and emits an `AssemblyPlan` containing ordered MZI blocks, their primitive mappings and connecting waveguides. The complete design workflow executes that supported series arrangement. Generic arbitrary-hierarchy placement and routing are not implemented.
 
 Every arm and interconnect is measured from actual layout and backannotated into the flattened simulation circuit. Source definitions retain nominal lengths; `instance_paths` preserves their relationship to physical primitives. Reverification checks exported hierarchy/paths/assembly against resolved IR and separately checks topology, requested stage imbalances and interconnect lengths.
+
+`LayoutResult.actuators` maps controlled primitive names to their physical metal layer, width and two-ended centerline. Physical port records carry their domain. Verification compares these dimensions and electrical endpoints with the IR, optical centerline and independently read GDS polygons. `controls.json` records the requested optical operating point separately from layout data and explicitly marks the electrical mapping `not_calibrated`.
 
 ## Results
 

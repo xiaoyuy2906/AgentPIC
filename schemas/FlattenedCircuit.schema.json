@@ -83,7 +83,8 @@
           "type": "string",
           "enum": [
             "ideal_coupler",
-            "waveguide"
+            "waveguide",
+            "phase_shifter"
           ]
         },
         "ports": {
@@ -112,6 +113,17 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
             },
             {
               "type": "null"
@@ -153,6 +165,26 @@
       },
       "required": [
         "name"
+      ],
+      "additionalProperties": false
+    },
+    "PhaseControl": {
+      "type": "object",
+      "properties": {
+        "phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        },
+        "active_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 20,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "phase_rad"
       ],
       "additionalProperties": false
     },

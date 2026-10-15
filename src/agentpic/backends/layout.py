@@ -34,11 +34,44 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         gap_mmi=1,
         cross_section=cross_section,
     )
-    references, lengths, centerlines, block_ports, imbalances = {}, {}, {}, {}, {}
+    references, lengths, centerlines, block_ports, imbalances, actuators = {}, {}, {}, {}, {}, {}
+    instances = {i.name: i for i in ir.netlist.instances}
 
     def add_path(name: str, path: gf.Path) -> None:
         waveguide = gf.path.extrude(path, cross_section=cross_section)
-        waveguide.name = f"{name}_{ir.design_id}"
+        control = instances[name].phase_control
+        if control is not None:
+            cell = gf.Component(f"{name}_{ir.design_id}")
+            optical = cell.add_ref(waveguide)
+            cell.add_ports(optical.ports)
+            # The longest horizontal segment is the straight section of the arm.
+            points = path.points
+            segments = [
+                (a, b)
+                for a, b in zip(points, points[1:])
+                if abs(b[1] - a[1]) < 1e-9 and b[0] > a[0]
+            ]
+            a, b = max(segments, key=lambda pair: pair[1][0] - pair[0][0])
+            if b[0] - a[0] < control.active_length_um:
+                raise ValueError("No straight section can contain the specified actuator")
+            heater = cell.add_ref(
+                gf.components.straight(
+                    length=control.active_length_um,
+                    cross_section=gf.cross_section.heater_metal(
+                        width=tech.heater_width_um, layer=tech.heater_layer
+                    ),
+                )
+            )
+            heater.dmove(((a[0] + b[0] - control.active_length_um) / 2, a[1]))
+            cell.add_ports(heater.ports)
+            actuators[name] = {
+                "centerline_um": [list(map(float, heater.ports[p].center)) for p in ("e1", "e2")],
+                "layer": list(tech.heater_layer),
+                "width_um": float(heater.ports["e1"].width),
+            }
+            waveguide = cell
+        else:
+            waveguide.name = f"{name}_{ir.design_id}"
         references[name] = component.add_ref(waveguide, name=name)
         lengths[name] = float(path.length())
         centerlines[name] = path.points.tolist()
@@ -127,7 +160,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
             {
                 **instance.model_dump(mode="json"),
                 "ports": [
-                    {"name": port.name, "domain": "optical", "direction": "bidirectional"}
+                    {"name": port.name, "domain": port.port_type, "direction": "bidirectional"}
                     for port in references[instance.name].ports
                 ],
             }
@@ -145,6 +178,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
                 "center_um": list(map(float, port.center)),
                 "orientation_deg": float(port.orientation),
                 "width_um": float(port.width),
+                "domain": port.port_type,
             }
             for port in ref.ports
         }
@@ -165,4 +199,5 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         "bend_radius_um": tech.bend_radius_um,
         "delta_length_um": imbalances["mzi"] if ir.assembly is None else None,
         "path_imbalances_um": imbalances,
+        "actuators": actuators,
     }

@@ -13,7 +13,7 @@ class SAXBackend:
 
 
 def simulate(ir: EngineeringIR) -> dict:
-    if any(i.length_um is None for i in ir.netlist.instances if i.kind == "waveguide"):
+    if any(i.length_um is None for i in ir.netlist.instances if i.kind != "ideal_coupler"):
         raise ValueError("waveguide lengths must be resolved before circuit simulation")
     import jax
 
@@ -35,6 +35,12 @@ def simulate(ir: EngineeringIR) -> dict:
         propagation = amplitude * jnp.exp(2j * jnp.pi * index * length_um / wl)
         return sax.reciprocal({("o1", "o2"): propagation})
 
+    def phase_shifter(wl=1.55, length_um=1.0, neff=1.8, ng=1.9, wl0=1.55, loss=0.0, phase_rad=0.0):
+        passive = waveguide(wl, length_um, neff, ng, wl0, loss)
+        # Commanded optical path change; no electrical-to-phase calibration is implied.
+        tuning = jnp.exp(1j * phase_rad * wl0 / jnp.asarray(wl))
+        return {ports: value * tuning for ports, value in passive.items()}
+
     tech = ir.technology
     instances = {}
     for instance in ir.netlist.instances:
@@ -48,20 +54,30 @@ def simulate(ir: EngineeringIR) -> dict:
                 "wl0": tech.reference_wavelength_um,
                 "loss": tech.loss_db_per_cm,
             }
+            if instance.kind == "phase_shifter":
+                settings["phase_rad"] = instance.phase_control.phase_rad
         instances[instance.name] = {"component": instance.kind, "settings": settings}
+    domains = {(i.name, p.name): p.domain for i in ir.netlist.instances for p in i.ports}
     netlist = {
         "instances": instances,
         "connections": {
             f"{edge.a.instance},{edge.a.port}": f"{edge.b.instance},{edge.b.port}"
             for edge in ir.netlist.connections
+            if domains[(edge.a.instance, edge.a.port)] == "optical"
         },
         "ports": {
             name: f"{endpoint.instance},{endpoint.port}"
             for name, endpoint in ir.netlist.ports.items()
+            if domains[(endpoint.instance, endpoint.port)] == "optical"
         },
     }
     model, _ = sax.circuit(
-        netlist=netlist, models={"ideal_coupler": ideal_coupler, "waveguide": waveguide}
+        netlist=netlist,
+        models={
+            "ideal_coupler": ideal_coupler,
+            "waveguide": waveguide,
+            "phase_shifter": phase_shifter,
+        },
     )
     spec = ir.specification
     wavelengths = np.linspace(
@@ -70,7 +86,7 @@ def simulate(ir: EngineeringIR) -> dict:
         spec.sweep_points,
     )
     scattering = model(wl=jnp.asarray(wavelengths / 1000))
-    ports = list(ir.netlist.ports)
+    ports = list(netlist["ports"])
     matrix = np.zeros((len(wavelengths), len(ports), len(ports)), dtype=complex)
     for (output_port, input_port), value in scattering.items():
         matrix[:, ports.index(output_port), ports.index(input_port)] = np.asarray(value)

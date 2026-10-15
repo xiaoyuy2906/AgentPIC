@@ -160,8 +160,39 @@
           "type": "number",
           "minimum": -200,
           "maximum": 200
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
+      "additionalProperties": false
+    },
+    "PhaseControl": {
+      "type": "object",
+      "properties": {
+        "phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        },
+        "active_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 20,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "phase_rad"
+      ],
       "additionalProperties": false
     },
     "CascadeSpec": {
@@ -245,6 +276,17 @@
           "type": "number",
           "minimum": -200,
           "maximum": 200
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -317,6 +359,33 @@
           "type": "number",
           "exclusiveMinimum": 0
         },
+        "heater_layer": {
+          "default": [
+            2,
+            0
+          ],
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "heater_width_um": {
+          "default": 2.5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
         "reference_wavelength_um": {
           "default": 1.55,
           "type": "number",
@@ -345,14 +414,16 @@
         "supported_components": {
           "default": [
             "ideal_coupler",
-            "waveguide"
+            "waveguide",
+            "phase_shifter"
           ],
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
               "ideal_coupler",
-              "waveguide"
+              "waveguide",
+              "phase_shifter"
             ]
           }
         }
@@ -403,7 +474,8 @@
           "type": "string",
           "enum": [
             "ideal_coupler",
-            "waveguide"
+            "waveguide",
+            "phase_shifter"
           ]
         },
         "ports": {
@@ -432,6 +504,17 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
             },
             {
               "type": "null"

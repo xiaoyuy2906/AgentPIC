@@ -309,19 +309,12 @@ class PhysicsReport(ContractModel):
     foundry_signoff: Literal[False]
 
 
-class MZISpec(ContractModel):
+class PhaseControl(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    platform: Literal["sin"] = "sin"
-    wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
-    outputs: Annotated[
-        list[Literal["netlist", "simulation", "gds", "verification"]], Field(min_length=1)
-    ] = ["netlist", "simulation", "gds", "verification"]
-    sweep_span_nm: Annotated[float, Field(gt=0.0, le=100.0)] = 40
-    sweep_points: Annotated[int, Field(ge=3, le=2001)] = 201
-    device: Literal["mzi"] = "mzi"
-    delta_length_um: Annotated[float, Field(ge=-200.0, le=200.0)] = 10
+    phase_rad: Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)]
+    active_length_um: Annotated[float, Field(ge=20.0, le=200.0)] = 100
 
 
 class CascadeStage(ContractModel):
@@ -330,6 +323,22 @@ class CascadeStage(ContractModel):
     )
     name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
     delta_length_um: Annotated[float, Field(ge=-200.0, le=200.0)]
+    phase_control: PhaseControl | None = None
+
+
+type CenterlineUmItem = Annotated[tuple[float, float], Field(max_length=2, min_length=2)]
+
+
+type LayerItem = Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+
+
+class ActuatorLayout(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    centerline_um: tuple[CenterlineUmItem, CenterlineUmItem]
+    layer: tuple[LayerItem, LayerItem]
+    width_um: Annotated[float, Field(gt=0.0)]
 
 
 PrimitivesAdditionalProperty = TypeAliasType(
@@ -375,10 +384,11 @@ class Component(ContractModel):
         extra="forbid",
     )
     name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    kind: Literal["ideal_coupler", "waveguide"]
+    kind: Literal["ideal_coupler", "waveguide", "phase_shifter"]
     ports: Annotated[list[Port], Field(min_length=1)]
     length_um: LengthUm | None = None
     coupling_ratio: CouplingRatio | None = None
+    phase_control: PhaseControl | None = None
 
 
 class Connection(ContractModel):
@@ -448,6 +458,9 @@ class FlattenedCircuit(ContractModel):
 type CoreLayerItem = Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
+type HeaterLayerItem = Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 class PDK(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -461,14 +474,17 @@ class PDK(ContractModel):
     bend_radius_um: Annotated[float, Field(gt=0.0)] = 50
     minimum_width_um: Annotated[float, Field(gt=0.0)] = 0.5
     minimum_spacing_um: Annotated[float, Field(gt=0.0)] = 0.5
+    heater_layer: tuple[HeaterLayerItem, HeaterLayerItem] = [2, 0]
+    heater_width_um: Annotated[float, Field(gt=0.0)] = 2.5
     reference_wavelength_um: Annotated[float, Field(gt=0.0)] = 1.55
     effective_index: Annotated[float, Field(gt=0.0)] = 1.8
     group_index: Annotated[float, Field(gt=0.0)] = 1.9
     loss_db_per_cm: Literal[0] = 0
     model_version: Literal["ideal_sin_v1"] = "ideal_sin_v1"
-    supported_components: list[Literal["ideal_coupler", "waveguide"]] = [
+    supported_components: list[Literal["ideal_coupler", "waveguide", "phase_shifter"]] = [
         "ideal_coupler",
         "waveguide",
+        "phase_shifter",
     ]
 
 
@@ -500,6 +516,7 @@ class PhysicalPort(ContractModel):
     center_um: tuple[float, float]
     orientation_deg: float
     width_um: Annotated[float, Field(gt=0.0)]
+    domain: Literal["optical", "electrical"] = "optical"
 
 
 type CoreLayerItem2 = Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
@@ -536,6 +553,7 @@ class LayoutResult(ContractModel):
     bend_radius_um: Annotated[float, Field(gt=0.0)]
     delta_length_um: float | None
     path_imbalances_um: dict[str, float] = {}
+    actuators: Annotated[dict[str, ActuatorLayout], Field(validate_default=True)] = {}
 
 
 type WavelengthNmItem = Annotated[float, Field(gt=0.0)]
@@ -642,6 +660,22 @@ class CapabilityRegistry(ContractModel):
     capabilities: list[Capability]
 
 
+class MZISpec(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    platform: Literal["sin"] = "sin"
+    wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
+    outputs: Annotated[
+        list[Literal["netlist", "simulation", "gds", "verification"]], Field(min_length=1)
+    ] = ["netlist", "simulation", "gds", "verification"]
+    sweep_span_nm: Annotated[float, Field(gt=0.0, le=100.0)] = 40
+    sweep_points: Annotated[int, Field(ge=3, le=2001)] = 201
+    device: Literal["mzi"] = "mzi"
+    delta_length_um: Annotated[float, Field(ge=-200.0, le=200.0)] = 10
+    phase_control: PhaseControl | None = None
+
+
 class CascadeSpec(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -724,6 +758,8 @@ class Contracts(ContractModel):
     DevelopmentRequest_1: Annotated[DevelopmentRequest, Field(alias="DevelopmentRequest")]
     PhysicsReport_1: Annotated[PhysicsReport, Field(alias="PhysicsReport")]
     DesignSpec: MZISpec | CascadeSpec
+    PhaseControl_1: Annotated[PhaseControl, Field(alias="PhaseControl")]
+    ActuatorLayout_1: Annotated[ActuatorLayout, Field(alias="ActuatorLayout")]
     MZISpec_1: Annotated[MZISpec, Field(alias="MZISpec")]
     CascadeSpec_1: Annotated[CascadeSpec, Field(alias="CascadeSpec")]
     CascadeStage_1: Annotated[CascadeStage, Field(alias="CascadeStage")]

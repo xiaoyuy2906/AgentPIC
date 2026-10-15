@@ -30,6 +30,19 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
     matrix = np.asarray(simulation["s_real"]) + 1j * np.asarray(simulation["s_imag"])
     spec, tech = ir.specification, ir.technology
+    controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
+    calibration = (
+        [
+            CheckResult(
+                id="phase_actuation_calibration",
+                status="not_run",
+                detail="Optical phase is specified directly; voltage, current, power and temperature-to-phase mapping is not calibrated.",
+                evidence={},
+            )
+        ]
+        if controls
+        else []
+    )
     expected_grid = np.linspace(
         spec.wavelength_nm - spec.sweep_span_nm / 2,
         spec.wavelength_nm + spec.sweep_span_nm / 2,
@@ -42,14 +55,14 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         or not np.all(np.isfinite(wavelengths))
         or simulation["ports"] != ["in0", "in1", "out0", "out1"]
     ):
-        return [
+        return calibration + [
             _check(
                 "simulation_shape_and_finiteness",
                 False,
                 "Invalid scattering data shape, values or ports.",
             )
         ]
-    lengths = {i.name: i.length_um for i in ir.netlist.instances if i.kind == "waveguide"}
+    lengths = {i.name: i.length_um for i in ir.netlist.instances if i.kind != "ideal_coupler"}
     wl = wavelengths / 1000
     # Independent closed-form MZI, derived directly from its two-path interference.
     index = (
@@ -60,7 +73,12 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     )
 
     def propagation(name: str) -> np.ndarray:
-        return np.exp(2j * np.pi * index * lengths[name] / wl)
+        induced_path = (
+            controls[name].phase_rad * tech.reference_wavelength_um / (2 * np.pi)
+            if name in controls
+            else 0.0
+        )
+        return np.exp(2j * np.pi * (index * lengths[name] + induced_path) / wl)
 
     def mzi_transfer(top_name: str, bottom_name: str) -> np.ndarray:
         top, bottom = propagation(top_name), propagation(bottom_name)
@@ -103,7 +121,7 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         and np.allclose(out0, np.abs(matrix[:, 2, 0]) ** 2, atol=1e-12, rtol=0)
         and np.allclose(out1, np.abs(matrix[:, 3, 0]) ** 2, atol=1e-12, rtol=0)
     )
-    return [
+    return calibration + [
         _check(
             "simulation_grid",
             np.allclose(wavelengths, expected_grid, rtol=0, atol=1e-9),
@@ -178,7 +196,7 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
             minimum_radius = min(
                 minimum_radius, float(np.min(numerator[curved] / (2 * cross[curved])))
             )
-    return [
+    return verify_actuators(ir, metadata, layout, top, region) + [
         _check(
             "gds_readback",
             not region.is_empty() and top.name == metadata["top_cell"],
@@ -217,5 +235,98 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
             np.isfinite(minimum_radius) and minimum_radius >= tech.bend_radius_um - 0.01,
             "Centerline circumradii meet the demonstration bend-radius rule.",
             minimum_radius_um=minimum_radius if np.isfinite(minimum_radius) else None,
+        ),
+    ]
+
+
+def verify_actuators(ir, metadata, layout, top, core):
+    """Read actual metal polygons independently; infer placement from optical centerlines."""
+    import klayout.db as kdb
+
+    controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
+    actual = metadata.get("actuators", {})
+    if not controls and not actual:
+        return []
+    if set(controls) != set(actual):
+        return [
+            _check(
+                "phase_layout_intent",
+                False,
+                "Actuator instances do not match controlled primitives.",
+            )
+        ]
+    tech = ir.technology
+    layer = layout.find_layer(*tech.heater_layer)
+    metal = kdb.Region(top.begin_shapes_rec(layer)).merged() if layer is not None else kdb.Region()
+    expected = kdb.Region()
+    intent_ok, terminal_ok = True, True
+    max_length_error = 0.0
+    for name, control in controls.items():
+        actuator = actual[name]
+        points = np.asarray(actuator["centerline_um"], dtype=float)
+        route = np.asarray(metadata["centerlines_um"][name], dtype=float)
+        straight = [
+            (a, b) for a, b in zip(route, route[1:]) if abs(b[1] - a[1]) < 1e-9 and b[0] > a[0]
+        ]
+        a, b = max(straight, key=lambda pair: pair[1][0] - pair[0][0])
+        midpoint = (a + b) / 2
+        intent_ok &= (
+            tuple(actuator["layer"]) == tuple(tech.heater_layer)
+            and abs(actuator["width_um"] - tech.heater_width_um) <= 0.001
+            and np.linalg.norm(points.mean(axis=0) - midpoint) <= 0.001
+            and abs(points[1, 1] - points[0, 1]) <= 0.001
+            and points[1, 0] > points[0, 0]
+            and b[0] - a[0] >= control.active_length_um
+        )
+        length_error = abs(np.linalg.norm(points[1] - points[0]) - control.active_length_um)
+        max_length_error = max(max_length_error, float(length_error))
+        for j, port_name in enumerate(("e1", "e2")):
+            port = metadata["ports"][name].get(port_name)
+            terminal_ok &= bool(port) and (
+                port["domain"] == "electrical"
+                and np.linalg.norm(np.asarray(port["center_um"]) - points[j]) <= 0.001
+                and abs(port["width_um"] - tech.heater_width_um) <= 0.001
+                and abs(port["orientation_deg"] - (180 if j == 0 else 0)) <= 1e-6
+            )
+        integer_points = [
+            kdb.Point(round(x / layout.dbu), round(y / layout.dbu)) for x, y in points
+        ]
+        expected += kdb.Region(
+            kdb.Path(integer_points, round(tech.heater_width_um / layout.dbu)).polygon()
+        )
+        optical_corridor = kdb.Region(
+            kdb.Path(integer_points, round(0.4 * tech.width_um / layout.dbu)).polygon()
+        )
+        intent_ok &= (optical_corridor - core).area() == 0
+    discrepancy = float((metal ^ expected.merged()).area() * layout.dbu**2)
+    rule = round(tech.minimum_width_um / layout.dbu)
+    violations = (
+        metal.width_check(rule).count()
+        + metal.space_check(round(tech.minimum_spacing_um / layout.dbu)).count()
+    )
+    return [
+        _check(
+            "phase_layout_intent",
+            bool(intent_ok) and max_length_error <= 0.001,
+            "Active metal lies on the intended straight optical segment with declared dimensions.",
+            maximum_length_error_um=max_length_error,
+        ),
+        _check(
+            "gds_actuator_geometry",
+            discrepancy < 1e-6 and metal.count() == len(controls),
+            "Actual GDS metal matches every intended actuator footprint.",
+            symmetric_difference_area_um2=discrepancy,
+            metal_regions=metal.count(),
+        ),
+        _check(
+            "actuator_terminal_alignment",
+            bool(terminal_ok),
+            "Exposed electrical terminals match the two physical metal ends.",
+        ),
+        _check(
+            "demo_metal_rules",
+            violations == 0,
+            "Metal satisfies explicit demonstration width/spacing rules.",
+            violations=violations,
         ),
     ]

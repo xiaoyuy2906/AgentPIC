@@ -20,6 +20,19 @@ const limitations = [
   'Port-based connectivity with geometry checks is not full foundry LVS.',
 ];
 export const readJSON = async (file: string) => JSON.parse(await readFile(file, 'utf8')) as unknown;
+export const controlSettings = (ir: EngineeringIR) =>
+  Object.fromEntries(
+    ir.netlist.instances
+      .filter((i) => i.phase_control !== null)
+      .map((i) => [
+        i.name,
+        {
+          ...i.phase_control,
+          reference_wavelength_um: ir.technology.reference_wavelength_um,
+          electrical_mapping: 'not_calibrated',
+        },
+      ]),
+  );
 function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] {
   const edgeKey = (e: {
     a: { instance: string; port: string };
@@ -30,10 +43,20 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
     canonical(ir.netlist.connections.map(edgeKey).sort()) ===
       canonical(actual.connections.map(edgeKey).sort()) &&
     canonical(ir.netlist.ports) === canonical(actual.ports) &&
-    canonical(ir.netlist.instances.map((i) => i.name).sort()) ===
-      canonical(actual.instances.map((i) => i.name).sort());
+    canonical(
+      ir.netlist.instances
+        .map((i) => [i.name, i.ports.map((p) => `${p.name}:${p.domain}`).sort()])
+        .sort(),
+    ) ===
+      canonical(
+        actual.instances
+          .map((i) => [i.name, i.ports.map((p) => `${p.name}:${p.domain}`).sort()])
+          .sort(),
+      );
   let error = 0,
-    aligned = true;
+    aligned = ir.netlist.instances.every((i) =>
+      i.ports.every((p) => layout.ports[i.name]?.[p.name]?.domain === p.domain),
+    );
   for (const edge of ir.netlist.connections) {
     const a = layout.ports[edge.a.instance]?.[edge.a.port],
       b = layout.ports[edge.b.instance]?.[edge.b.port];
@@ -57,7 +80,7 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
   );
   const lengthError = Math.max(
     ...ir.netlist.instances
-      .filter((i) => i.kind === 'waveguide')
+      .filter((i) => i.kind !== 'ideal_coupler')
       .map((i) => Math.abs(lengths[i.name] - (i.length_um ?? NaN))),
   );
   const targets = ir.assembly?.blocks.map((block) => ({
@@ -172,6 +195,15 @@ export async function verifyArtifacts(
     );
     id = ir.design_id;
     checks.push(...semanticChecks(ir));
+    if (Object.keys(controlSettings(ir)).length)
+      checks.push(
+        check(
+          'control_artifact_consistency',
+          canonical(await readJSON(path.join(directory, 'controls.json'))) ===
+            canonical(controlSettings(ir)),
+          'Exported optical controls and calibration boundary match engineering intent.',
+        ),
+      );
     if (ir.hierarchy)
       checks.push(
         check(

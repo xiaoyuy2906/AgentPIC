@@ -39,6 +39,7 @@ jobs:
       - run: npm test
       - run: npm run acceptance -- --output runs/ci-acceptance
       - run: npm run acceptance -- --specification examples/cascaded_mzi_1550.json --output runs/cascade-acceptance
+      - run: npm run acceptance -- --specification examples/tunable_cascade_1550.json --output runs/phase-acceptance
       - run: npm run benchmark:physics -- --output runs/physics-benchmarks
       - uses: actions/upload-artifact@v4
         if: always()
@@ -47,6 +48,7 @@ jobs:
           path: |
             runs/ci-acceptance/
             runs/cascade-acceptance/
+            runs/phase-acceptance/
             runs/physics-benchmarks/
             /tmp/agentpic-*/
           if-no-files-found: ignore

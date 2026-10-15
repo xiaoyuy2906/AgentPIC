@@ -104,6 +104,16 @@
           "additionalProperties": {
             "type": "number"
           }
+        },
+        "actuators": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ActuatorLayout"
+          }
         }
       },
       "required": [
@@ -143,6 +153,14 @@
         "width_um": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "domain": {
+          "default": "optical",
+          "type": "string",
+          "enum": [
+            "optical",
+            "electrical"
+          ]
         }
       },
       "required": [
@@ -196,7 +214,8 @@
           "type": "string",
           "enum": [
             "ideal_coupler",
-            "waveguide"
+            "waveguide",
+            "phase_shifter"
           ]
         },
         "ports": {
@@ -225,6 +244,17 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
             },
             {
               "type": "null"
@@ -269,6 +299,26 @@
       ],
       "additionalProperties": false
     },
+    "PhaseControl": {
+      "type": "object",
+      "properties": {
+        "phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        },
+        "active_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 20,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "phase_rad"
+      ],
+      "additionalProperties": false
+    },
     "Connection": {
       "type": "object",
       "properties": {
@@ -300,6 +350,75 @@
       "required": [
         "instance",
         "port"
+      ],
+      "additionalProperties": false
+    },
+    "ActuatorLayout": {
+      "type": "object",
+      "properties": {
+        "centerline_um": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "layer": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "width_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "centerline_um",
+        "layer",
+        "width_um"
       ],
       "additionalProperties": false
     }
