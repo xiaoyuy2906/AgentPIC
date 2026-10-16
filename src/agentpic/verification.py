@@ -26,42 +26,9 @@ def _check(identifier: str, passed: bool, detail: str, **evidence) -> CheckResul
     )
 
 
-def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
-    wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
-    matrix = np.asarray(simulation["s_real"]) + 1j * np.asarray(simulation["s_imag"])
-    spec, tech = ir.specification, ir.technology
+def analytic_scattering(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarray:
+    tech = ir.technology
     controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
-    calibration = (
-        [
-            CheckResult(
-                id="phase_actuation_calibration",
-                status="not_run",
-                detail="Optical phase is specified directly; voltage, current, power and temperature-to-phase mapping is not calibrated.",
-                evidence={},
-            )
-        ]
-        if controls
-        else []
-    )
-    expected_grid = np.linspace(
-        spec.wavelength_nm - spec.sweep_span_nm / 2,
-        spec.wavelength_nm + spec.sweep_span_nm / 2,
-        spec.sweep_points,
-    )
-    if (
-        matrix.shape != (spec.sweep_points, 4, 4)
-        or wavelengths.shape != expected_grid.shape
-        or not np.all(np.isfinite(matrix))
-        or not np.all(np.isfinite(wavelengths))
-        or simulation["ports"] != ["in0", "in1", "out0", "out1"]
-    ):
-        return calibration + [
-            _check(
-                "simulation_shape_and_finiteness",
-                False,
-                "Invalid scattering data shape, values or ports.",
-            )
-        ]
     lengths = {i.name: i.length_um for i in ir.netlist.instances if i.kind != "ideal_coupler"}
     wl = wavelengths / 1000
     # Independent closed-form MZI, derived directly from its two-path interference.
@@ -106,9 +73,49 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
                 @ connecting
                 @ transfer
             )
-    expected = np.zeros_like(matrix)
+    expected = np.zeros((len(wl), 4, 4), dtype=complex)
     expected[:, 2:, :2] = transfer
     expected[:, :2, 2:] = transfer.transpose(0, 2, 1)
+    return expected
+
+
+def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
+    wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
+    matrix = np.asarray(simulation["s_real"]) + 1j * np.asarray(simulation["s_imag"])
+    spec = ir.specification
+    controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
+    calibration = (
+        [
+            CheckResult(
+                id="phase_actuation_calibration",
+                status="not_run",
+                detail="Optical phase is specified directly; voltage, current, power and temperature-to-phase mapping is not calibrated.",
+                evidence={},
+            )
+        ]
+        if controls
+        else []
+    )
+    expected_grid = np.linspace(
+        spec.wavelength_nm - spec.sweep_span_nm / 2,
+        spec.wavelength_nm + spec.sweep_span_nm / 2,
+        spec.sweep_points,
+    )
+    if (
+        matrix.shape != (spec.sweep_points, 4, 4)
+        or wavelengths.shape != expected_grid.shape
+        or not np.all(np.isfinite(matrix))
+        or not np.all(np.isfinite(wavelengths))
+        or simulation["ports"] != ["in0", "in1", "out0", "out1"]
+    ):
+        return calibration + [
+            _check(
+                "simulation_shape_and_finiteness",
+                False,
+                "Invalid scattering data shape, values or ports.",
+            )
+        ]
+    expected = analytic_scattering(ir, wavelengths)
     error = float(np.max(np.abs(matrix - expected)))
     reciprocity = float(np.max(np.abs(matrix - matrix.transpose(0, 2, 1))))
     unitary_error = float(np.max(np.abs(matrix.conj().transpose(0, 2, 1) @ matrix - np.eye(4))))
@@ -329,4 +336,39 @@ def verify_actuators(ir, metadata, layout, top, core):
             "Metal satisfies explicit demonstration width/spacing rules.",
             violations=violations,
         ),
+    ]
+
+
+def verify_tuning(ir: EngineeringIR, tuning: dict) -> list[CheckResult]:
+    """Replay every recorded candidate with independent transfer composition, without SAX."""
+    request = ir.specification.tuning
+    if request is None:
+        return [_check("tuning_trace_reference", False, "No tuning request")]
+    wavelengths = np.array([t.wavelength_nm for t in request.targets])
+    ports = ["in0", "in1", "out0", "out1"]
+    error = 0.0
+    for entry in tuning["evaluation_trace"]:
+        candidate = ir.model_copy(deep=True)
+        for component in candidate.netlist.instances:
+            if component.name in entry["controls"] and component.phase_control is not None:
+                component.phase_control.phase_rad = entry["controls"][component.name]
+        scattering = analytic_scattering(candidate, wavelengths)
+        powers = np.array(
+            [
+                abs(scattering[i, ports.index(t.output_port), ports.index(t.input_port)]) ** 2
+                for i, t in enumerate(request.targets)
+            ]
+        )
+        recorded = np.asarray(entry["powers"])
+        if recorded.shape != powers.shape or not np.all(np.isfinite(recorded)):
+            return [_check("tuning_trace_reference", False, "Invalid candidate powers")]
+        error = max(error, float(np.max(np.abs(powers - recorded))))
+    return [
+        _check(
+            "tuning_trace_reference",
+            error < 1e-9,
+            "Every candidate agrees with independent transfer composition; this is not physical calibration.",
+            maximum_power_error=error,
+            candidates=len(tuning["evaluation_trace"]),
+        )
     ]

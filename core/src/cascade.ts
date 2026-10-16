@@ -1,3 +1,4 @@
+import { circuitAtPoint } from './tuning.js';
 import {
   CircuitHierarchySchema,
   AssemblyPlanSchema,
@@ -141,7 +142,7 @@ export function cascadeStructureCheck(ir: EngineeringIR): CheckResult[] {
           id: 'phase_intent_consistency',
           status:
             normalized(topology(ir.netlist, ir.layout_resolved)) ===
-            normalized(topology(expected, ir.layout_resolved))
+            normalized(topology(circuitAtPoint(expected, ir.operating_point), ir.layout_resolved))
               ? 'pass'
               : 'fail',
           detail: 'Controlled circuit and electrical terminals match the declared phase intent.',
@@ -158,7 +159,9 @@ export function cascadeStructureCheck(ir: EngineeringIR): CheckResult[] {
       normalized(ir.instance_paths) === normalized(expected.instance_paths) &&
       normalized(ir.assembly) === normalized(expected.assembly) &&
       normalized(topology(ir.netlist, ir.layout_resolved)) ===
-        normalized(topology(expected.netlist, ir.layout_resolved));
+        normalized(
+          topology(circuitAtPoint(expected.netlist, ir.operating_point), ir.layout_resolved),
+        );
     return [
       {
         id: 'hierarchy_intent_consistency',

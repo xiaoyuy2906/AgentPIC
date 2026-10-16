@@ -4,6 +4,63 @@ import { PhysicsContracts } from './physics/contracts.js';
 const name = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/);
 const positive = () => z.number().positive();
 const record = <T extends z.ZodType>(value: T) => z.record(z.string(), value);
+const phase = () =>
+  z
+    .number()
+    .min(-4 * Math.PI)
+    .max(4 * Math.PI);
+export const TuningSpecSchema = z
+  .strictObject({
+    targets: z
+      .array(
+        z.strictObject({
+          input_port: name,
+          output_port: name,
+          wavelength_nm: z.number().min(1450).max(1650),
+          power: z.number().min(0).max(1),
+        }),
+      )
+      .min(1)
+      .max(16),
+    variables: z
+      .array(
+        z.strictObject({
+          instance_path: z.array(name).min(1),
+          min_phase_rad: phase(),
+          max_phase_rad: phase(),
+        }),
+      )
+      .min(1)
+      .max(4),
+    power_tolerance: z.number().min(1e-9).max(1e-3).default(1e-6),
+    max_evaluations: z.number().int().min(1).max(512).default(128),
+  })
+  .meta({ id: 'TuningSpec' });
+export const ResolvedTuningVariableSchema = z
+  .strictObject({
+    instance: name,
+    min_phase_rad: phase(),
+    max_phase_rad: phase(),
+  })
+  .meta({ id: 'ResolvedTuningVariable' });
+export const TuningCandidateSchema = z
+  .strictObject({
+    controls: record(phase()),
+    powers: z.array(z.number().nonnegative()),
+  })
+  .meta({ id: 'TuningCandidate' });
+export const TuningResultSchema = z
+  .strictObject({
+    backend: z.string().min(1),
+    status: z.enum(['target_met', 'target_not_met', 'budget_exhausted']),
+    controls: record(phase()),
+    predicted_powers: z.array(z.number().nonnegative()),
+    maximum_error: z.number().nonnegative(),
+    evaluations: z.number().int().min(1).max(512),
+    evaluation_trace: z.array(TuningCandidateSchema).min(1).max(512),
+    termination_reason: z.string(),
+  })
+  .meta({ id: 'TuningResult' });
 export const PhaseControlSchema = z
   .strictObject({
     phase_rad: z
@@ -14,6 +71,7 @@ export const PhaseControlSchema = z
   })
   .meta({ id: 'PhaseControl' });
 const DesignFields = {
+  tuning: TuningSpecSchema.nullable().default(null),
   platform: z.literal('sin').default('sin'),
   wavelength_nm: z.number().min(1500).max(1600).default(1550),
   outputs: z
@@ -162,6 +220,7 @@ export const EngineeringIRSchema = z
     hierarchy: CircuitHierarchySchema.nullable().default(null),
     instance_paths: record(z.array(name).min(1)).default({}),
     assembly: AssemblyPlanSchema.nullable().default(null),
+    operating_point: record(phase()).nullable().default(null),
     workflow: z.array(TaskSchema),
     layout_resolved: z.boolean().default(false),
     length_source: z.enum(['specification', 'layout']).default('specification'),
@@ -269,12 +328,17 @@ export const ElectromagneticResultSchema = z
   .meta({ id: 'ElectromagneticResult' });
 export const CircuitSimulationSchema = z
   .strictObject({
+    tuning: TuningResultSchema.nullable().default(null),
     ir: EngineeringIRSchema,
     simulation: SimulationResultSchema,
     verification: VerificationReportSchema,
   })
   .meta({ id: 'CircuitSimulation' });
 export const Contracts = {
+  TuningSpec: TuningSpecSchema,
+  TuningCandidate: TuningCandidateSchema,
+  TuningResult: TuningResultSchema,
+  ResolvedTuningVariable: ResolvedTuningVariableSchema,
   ...PhysicsContracts,
   DesignSpec: DesignSpecSchema,
   PhaseControl: PhaseControlSchema,
@@ -309,6 +373,8 @@ export const Contracts = {
 };
 export type DesignSpec = z.infer<typeof DesignSpecSchema>;
 export type PhaseControl = z.infer<typeof PhaseControlSchema>;
+export type TuningResult = z.infer<typeof TuningResultSchema>;
+export type ResolvedTuningVariable = z.infer<typeof ResolvedTuningVariableSchema>;
 export type CascadeSpec = z.infer<typeof CascadeSpecSchema>;
 export type AssemblyPlan = z.infer<typeof AssemblyPlanSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;

@@ -12,7 +12,8 @@ class SAXBackend:
         return simulate(ir)
 
 
-def simulate(ir: EngineeringIR) -> dict:
+def build_circuit(ir: EngineeringIR):
+    """Build once; callers may override per-instance phase settings for each evaluation."""
     if any(i.length_um is None for i in ir.netlist.instances if i.kind != "ideal_coupler"):
         raise ValueError("waveguide lengths must be resolved before circuit simulation")
     import jax
@@ -79,21 +80,25 @@ def simulate(ir: EngineeringIR) -> dict:
             "phase_shifter": phase_shifter,
         },
     )
+    return model, list(netlist["ports"])
+
+
+def simulate(ir: EngineeringIR) -> dict:
+    model, ports = build_circuit(ir)
     spec = ir.specification
     wavelengths = np.linspace(
         spec.wavelength_nm - spec.sweep_span_nm / 2,
         spec.wavelength_nm + spec.sweep_span_nm / 2,
         spec.sweep_points,
     )
-    scattering = model(wl=jnp.asarray(wavelengths / 1000))
-    ports = list(netlist["ports"])
+    scattering = model(wl=wavelengths / 1000)
     matrix = np.zeros((len(wavelengths), len(ports), len(ports)), dtype=complex)
     for (output_port, input_port), value in scattering.items():
         matrix[:, ports.index(output_port), ports.index(input_port)] = np.asarray(value)
     return {
         "schema_version": "2.0",
         "backend": "sax",
-        "model_version": tech.model_version,
+        "model_version": ir.technology.model_version,
         "wavelength_nm": wavelengths.tolist(),
         "ports": ports,
         "s_real": matrix.real.tolist(),

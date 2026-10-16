@@ -88,9 +88,12 @@ export function openAPI() {
                 'application/json': {
                   schema: {
                     type: 'object',
-                    required: ['ir', 'simulation', 'verification'],
+                    required: ['ir', 'simulation', 'verification', 'tuning'],
                     properties: {
                       ir: { $ref: '#/components/schemas/EngineeringIR' },
+                      tuning: {
+                        anyOf: [{ $ref: '#/components/schemas/TuningResult' }, { type: 'null' }],
+                      },
                       simulation: { $ref: '#/components/schemas/SimulationResult' },
                       verification: { $ref: '#/components/schemas/VerificationReport' },
                     },

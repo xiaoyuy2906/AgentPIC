@@ -1,6 +1,6 @@
 # AgentPIC development roadmap
 
-Updated 2026-10-15: build the EDA, validate it with complete designs, and let increasingly demanding designs drive EDA development. The earlier standalone physics-reasoning milestone is superseded. Its implemented components remain supporting capabilities.
+Updated 2026-10-16: build the EDA, validate it with complete designs, and let increasingly demanding designs drive EDA development. The earlier standalone physics-reasoning milestone is superseded. Its implemented components remain supporting capabilities.
 
 ## Mission and architecture
 
@@ -35,6 +35,7 @@ Stages 4–7 are long-term research directions, not current feature commitments.
 | Generic hierarchy compiler, alias resolution and API/MCP | shared circuit contract | Implemented with bounded expansion and source-path traceability |
 | Complete cascaded-MZI benchmark | hierarchy, physical assembly, independent transfer reference | Implemented; real API/MCP GDS workflow and fault-injection checks pass |
 | Controlled optical phase and metal actuators | mixed-domain component contract, optical projection, metal verification | Implemented in single/cascaded MZI workflows; electrical-to-phase calibration remains absent |
+| Target-driven optical operating points | control contract, reusable SAX evaluation, SciPy search, independent trace/target checks | Implemented with bounded local optimization and explicit failed-target evidence |
 | Qualified PDKs, calibrated models, full-vector/3D EM | independent references and design demand | Future Stage 3 work |
 
 ## Design-driven capability development
@@ -47,4 +48,4 @@ Verification is layered: circuit references and port topology; model validity an
 
 ## Next development milestone
 
-The passive and controlled MZI cascade challenges now exercise hierarchy, physical composition, mixed optical/electrical terminals and full-matrix verification. The next design should specify a desired optical transmission and require the runtime to select, verify and record an operating phase. This exposes the need for bounded control optimization and evidence linking requested function to achieved behavior. Define acceptance criteria before implementation and reuse an established numerical optimizer. Voltage/power actuation still requires a separately calibrated model; optical tuning cannot imply electrical efficiency or fabrication readiness. Add vector mode or EM capabilities when the design needs them, with independent references. Broaden to rings, couplers and wavelength multiplexers incrementally; device count does not substitute for verified engineering coverage.
+The passive, controlled and target-driven cascade workflows now exercise hierarchy, physical composition, mixed optical/electrical terminals, bounded search and independent full-matrix/trace verification. Further design challenges should require wavelength-selective components and richer reusable models, exposing gaps in resonant topology, couplers, routing and model validity. Define each design's acceptance criteria before implementation and reuse established numerical tools. Voltage/power actuation still requires a separately calibrated model; optical tuning cannot imply electrical efficiency or fabrication readiness. Add vector mode or EM capabilities when the design needs them, with independent references. Broaden to rings, couplers and wavelength multiplexers incrementally; device count does not substitute for verified engineering coverage.

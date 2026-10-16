@@ -8,7 +8,14 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
-from agentpic.ir import EngineeringIR, LayoutResult, PhysicsConfiguration, SimulationResult
+from agentpic.ir import (
+    EngineeringIR,
+    LayoutResult,
+    PhysicsConfiguration,
+    ResolvedTuningVariable,
+    SimulationResult,
+    TuningResult,
+)
 
 
 def dispatch(request: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
@@ -44,6 +51,13 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
             mode="json"
         )
     ir = EngineeringIR.model_validate_json(json.dumps(request["ir"]), strict=True)
+    if operation == "optimize":
+        from agentpic.backends.tuning import optimize
+
+        variables = [
+            ResolvedTuningVariable.model_validate(v, strict=True) for v in request["variables"]
+        ]
+        return optimize(ir, variables).model_dump(mode="json")
     if operation == "simulate":
         from agentpic.backends.circuit import simulate
 
@@ -57,6 +71,11 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
         result = LayoutResult.model_validate(build_layout(ir, directory)).model_dump(mode="json")
         write_preview(directory, result)
         return result
+    if operation == "verify_tuning":
+        from agentpic.verification import verify_tuning
+
+        tuning = TuningResult.model_validate(request["tuning"]).model_dump(mode="json")
+        return [c.model_dump(mode="json") for c in verify_tuning(ir, tuning)]
     if operation == "verify_simulation":
         from agentpic.verification import verify_simulation
 

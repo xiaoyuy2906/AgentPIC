@@ -49,6 +49,21 @@ npm run acceptance -- --specification examples/tunable_cascade_1550.json --outpu
 
 This produces actual core and heater-metal geometry and verifies switching, phase behavior, metal coverage and electrical terminal positions. Phase is specified directly: voltage, current, heating power and temperature-to-phase conversion are **not calibrated or simulated**. See [phase-control acceptance](docs/stage3-phase-control.md).
 
+## Target-driven optical control
+
+Submit a `tuning` request to the same design API/MCP tool to select optical phases from desired transmission powers:
+
+```sh
+npm run --silent agentpic -- design examples/target_mzi_1550.json
+npm run acceptance -- --specification examples/target_cascade_1550.json --output runs/target-acceptance
+```
+
+The single-MZI example asks for 80% transmission at 1550 nm. The cascade example uses two phase variables and three targets across two wavelengths and both input ports. Variables use original instance paths (for example `["first", "top_arm"]`), with explicit radian bounds. Targets identify optical input/output ports, wavelength in nm and normalized power. Targets must lie on the exported spectrum's sampling grid.
+
+The full workflow first generates layout and measures optical paths, then searches with SciPy bounded least squares and SAX. It preserves the original specification and geometry, saves every evaluated candidate and applies only selected phases. All SAX calls during search, including numerical Jacobian probes, count against the requested budget. Final acceptance checks the exported complex S-matrix, every candidate against an independent analytic reference, state preservation, bounds and budget. Search convergence alone is insufficient. This is deterministic local search, without a global-optimality or uniqueness claim.
+
+`target_met`, `target_not_met` and `budget_exhausted` describe search outcomes. An unmet target produces a failed engineering report while preserving the best candidate, simulation, GDS and trace. Execution errors fail the tuning task and retain preceding artifacts. The circuit-only path also supports tuning from unresolved compiled IR, using nominal lengths; use `verify_run` to recheck a persisted physical operating point. See [contracts](docs/interfaces.md#target-tuning) and [predeclared acceptance gates](docs/stage3-target-tuning.md).
+
 ## Additional capability: physics reasoning and verification
 
 ```sh
@@ -155,6 +170,7 @@ Read artifacts at `agentpic://runs/{run_id}/{name}`. Binary GDS is transported a
 | `engineering_ir.json`, `netlist.json` | Resolved circuit with physical arm and interconnect lengths |
 | `hierarchy.json`, `instance-paths.json`, `assembly.json` | Cascade module definitions, primitive source paths and physical assembly intent |
 | `controls.json` | Optional optical phase settings, active lengths, reference wavelength and uncalibrated electrical mapping |
+| `pre-tuning-ir.json`, `tuning.json` | Optional measured pre-tuning state, selected controls, candidate powers, budget and search outcome |
 | `layout.json` | Neutral extracted Circuit, physical ports, lengths and centerlines |
 | `design.gds`, `layout.svg` | Actual hierarchical geometry and static GDS-derived preview |
 | `simulation.json`, `spectrum.csv` | Full complex S-matrix and optical transmission |
@@ -175,7 +191,7 @@ Controlled designs additionally verify control intent/artifacts, metal geometry,
 
 `sin_demo_v1` assumes a 1 µm wide, 0.4 µm thick core, 50 µm bends, neff=1.8, ng=1.9 at 1550 nm, ideal 50:50 couplers and zero propagation loss. These are illustrative assumptions. The MMI polygons have not been optically calibrated to the compact model. GDS describes planar geometry; the thickness remains an IR assumption. No fabrication readiness is claimed.
 
-The design compiler currently supports parameterized SiN MZIs and 2–4 stage cascades, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
+The design compiler currently supports parameterized SiN MZIs and 2–4 stage cascades, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, geometry optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
 
 ## Development
 

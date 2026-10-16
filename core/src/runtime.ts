@@ -12,9 +12,11 @@ import {
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { compile, backannotate, canonical, sha256 } from './compiler.js';
+import { compile, backannotate, canonical, sha256, validateIR } from './compiler.js';
+import { applyOperatingPoint, resolveVariables } from './tuning.js';
 import {
   RunResultSchema,
+  TuningResultSchema,
   type EngineeringIR,
   type LayoutResult,
   type RunResult,
@@ -126,6 +128,16 @@ export class Runtime {
         ir = backannotate(ir, layout);
         await writeJSON(path.join(directory, 'engineering_ir.json'), ir);
         await writeJSON(path.join(directory, 'netlist.json'), ir.netlist);
+      },
+      tune: async () => {
+        await writeJSON(path.join(directory, 'pre-tuning-ir.json'), ir);
+        if (!this.backend.optimize) throw new Error('Backend does not support target tuning');
+        const result = await this.backend.optimize(ir, resolveVariables(ir));
+        await writeJSON(path.join(directory, 'tuning.json'), result);
+        ir = validateIR(applyOperatingPoint(ir, TuningResultSchema.parse(result).controls));
+        await writeJSON(path.join(directory, 'engineering_ir.json'), ir);
+        await writeJSON(path.join(directory, 'netlist.json'), ir.netlist);
+        await writeJSON(path.join(directory, 'controls.json'), controlSettings(ir));
       },
       simulate: async () => {
         const simulation = await this.backend.simulate(ir);

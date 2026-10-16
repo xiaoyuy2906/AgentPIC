@@ -1,3 +1,4 @@
+import { tuningSemantics } from './tuning.js';
 import { mziCircuit } from './cells/mzi.js';
 import { compileCascade, cascadeStructureCheck } from './cascade.js';
 import { createHash } from 'node:crypto';
@@ -86,6 +87,7 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
       if (t.depends_on.every((d) => completed.has(d))) completed.add(t.name);
   return [
     ...cascadeStructureCheck(ir),
+    ...tuningSemantics(ir),
     check(
       'specification_semantics',
       spec.sweep_points % 2 === 1 &&
@@ -179,7 +181,10 @@ export function compile(input: unknown): EngineeringIR {
       { name: 'compile', depends_on: [], backend: 'core' },
       { name: 'layout', depends_on: ['compile'], backend: 'layout' },
       { name: 'backannotate', depends_on: ['layout'], backend: 'core' },
-      { name: 'simulate', depends_on: ['backannotate'], backend: 'circuit' },
+      ...(s.tuning
+        ? [{ name: 'tune', depends_on: ['backannotate'], backend: 'optimization' }]
+        : []),
+      { name: 'simulate', depends_on: [s.tuning ? 'tune' : 'backannotate'], backend: 'circuit' },
       { name: 'verify', depends_on: ['simulate', 'layout'], backend: 'verification' },
       { name: 'manifest', depends_on: ['verify'], backend: 'core' },
     ],

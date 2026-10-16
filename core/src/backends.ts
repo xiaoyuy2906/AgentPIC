@@ -6,6 +6,9 @@ import {
   CheckResultSchema,
   LayoutResultSchema,
   SimulationResultSchema,
+  TuningResultSchema,
+  type TuningResult,
+  type ResolvedTuningVariable,
   type EngineeringIR,
   type LayoutResult,
   type SimulationResult,
@@ -15,7 +18,9 @@ export const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
 export interface ScientificBackend {
   layout(ir: EngineeringIR, directory: string): Promise<LayoutResult>;
   simulate(ir: EngineeringIR): Promise<SimulationResult>;
+  optimize?(ir: EngineeringIR, variables: ResolvedTuningVariable[]): Promise<TuningResult>;
   verifySimulation(ir: EngineeringIR, simulation: SimulationResult): Promise<CheckResult[]>;
+  verifyTuning?(ir: EngineeringIR, tuning: TuningResult): Promise<CheckResult[]>;
   verifyGeometry(
     ir: EngineeringIR,
     layout: LayoutResult,
@@ -71,11 +76,19 @@ export function pythonRequest(request: Record<string, unknown>): Promise<unknown
   });
 }
 export class PythonBackend implements ScientificBackend {
+  async optimize(ir: EngineeringIR, variables: ResolvedTuningVariable[]) {
+    return TuningResultSchema.parse(await pythonRequest({ operation: 'optimize', ir, variables }));
+  }
   async layout(ir: EngineeringIR, directory: string) {
     return LayoutResultSchema.parse(await pythonRequest({ operation: 'layout', ir, directory }));
   }
   async simulate(ir: EngineeringIR) {
     return SimulationResultSchema.parse(await pythonRequest({ operation: 'simulate', ir }));
+  }
+  async verifyTuning(ir: EngineeringIR, tuning: TuningResult) {
+    return z
+      .array(CheckResultSchema)
+      .parse(await pythonRequest({ operation: 'verify_tuning', ir, tuning }));
   }
   async verifySimulation(ir: EngineeringIR, simulation: SimulationResult) {
     return z
@@ -102,6 +115,14 @@ export const capabilities = () => ({
   layout: { backend: 'gdsfactory', status: 'implemented' },
   hierarchy: { compilation: 'implemented', cascade_layout: 'implemented' },
   phase_control: {
+    target_tuning: {
+      status: 'implemented',
+      backend: 'scipy_least_squares+sax',
+      max_variables: 4,
+      max_targets: 16,
+      max_evaluations: 512,
+      global_optimality: false,
+    },
     optical_phase: 'implemented',
     metal_geometry: 'implemented',
     electrical_to_phase_calibration: 'not_performed',

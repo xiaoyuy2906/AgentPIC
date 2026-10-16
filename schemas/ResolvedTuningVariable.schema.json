@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/ResolvedTuningVariable",
+  "$defs": {
+    "ResolvedTuningVariable": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "min_phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        },
+        "max_phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        }
+      },
+      "required": [
+        "instance",
+        "min_phase_rad",
+        "max_phase_rad"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

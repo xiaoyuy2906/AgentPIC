@@ -11,6 +11,81 @@ from typing_extensions import TypeAliasType
 from agentpic.model_base import ContractModel
 
 
+class Target(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    input_port: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    output_port: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    wavelength_nm: Annotated[float, Field(ge=1450.0, le=1650.0)]
+    power: Annotated[float, Field(ge=0.0, le=1.0)]
+
+
+type InstancePathItem = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+class Variable(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    instance_path: Annotated[list[InstancePathItem], Field(min_length=1)]
+    min_phase_rad: Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)]
+    max_phase_rad: Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)]
+
+
+class TuningSpec(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    targets: Annotated[list[Target], Field(max_length=16, min_length=1)]
+    variables: Annotated[list[Variable], Field(max_length=4, min_length=1)]
+    power_tolerance: Annotated[float, Field(ge=1e-09, le=0.001)] = 1e-06
+    max_evaluations: Annotated[int, Field(ge=1, le=512)] = 128
+
+
+ControlsAdditionalProperty = TypeAliasType(
+    "ControlsAdditionalProperty",
+    Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)],
+)
+
+
+type Power = Annotated[float, Field(ge=0.0)]
+
+
+class TuningCandidate(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    controls: dict[str, ControlsAdditionalProperty]
+    powers: list[Power]
+
+
+type PredictedPower = Annotated[float, Field(ge=0.0)]
+
+
+class TuningResult(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    backend: Annotated[str, Field(min_length=1)]
+    status: Literal["target_met", "target_not_met", "budget_exhausted"]
+    controls: dict[str, ControlsAdditionalProperty]
+    predicted_powers: list[PredictedPower]
+    maximum_error: Annotated[float, Field(ge=0.0)]
+    evaluations: Annotated[int, Field(ge=1, le=512)]
+    evaluation_trace: Annotated[list[TuningCandidate], Field(max_length=512, min_length=1)]
+    termination_reason: str
+
+
+class ResolvedTuningVariable(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    instance: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    min_phase_rad: Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)]
+    max_phase_rad: Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)]
+
+
 class Criterion(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -509,6 +584,12 @@ InstancePathsAdditionalProperty1 = TypeAliasType(
 )
 
 
+OperatingPointAdditionalProperty = TypeAliasType(
+    "OperatingPointAdditionalProperty",
+    Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)],
+)
+
+
 class PhysicalPort(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -664,6 +745,7 @@ class MZISpec(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
+    tuning: TuningSpec | None = None
     platform: Literal["sin"] = "sin"
     wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
     outputs: Annotated[
@@ -680,6 +762,7 @@ class CascadeSpec(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
+    tuning: TuningSpec | None = None
     platform: Literal["sin"] = "sin"
     wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
     outputs: Annotated[
@@ -723,6 +806,7 @@ class EngineeringIR(ContractModel):
     hierarchy: CircuitHierarchy | None = None
     instance_paths: dict[str, InstancePathsAdditionalProperty1] = {}
     assembly: AssemblyPlan | None = None
+    operating_point: dict[str, OperatingPointAdditionalProperty] | None = None
     workflow: list[Task]
     layout_resolved: bool = False
     length_source: Literal["specification", "layout"] = "specification"
@@ -733,6 +817,7 @@ class CircuitSimulation(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
+    tuning: TuningResult | None = None
     ir: EngineeringIR
     simulation: SimulationResult
     verification: VerificationReport
@@ -742,6 +827,12 @@ class Contracts(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
+    TuningSpec_1: Annotated[TuningSpec, Field(alias="TuningSpec")]
+    TuningCandidate_1: Annotated[TuningCandidate, Field(alias="TuningCandidate")]
+    TuningResult_1: Annotated[TuningResult, Field(alias="TuningResult")]
+    ResolvedTuningVariable_1: Annotated[
+        ResolvedTuningVariable, Field(alias="ResolvedTuningVariable")
+    ]
     CapabilityRegistry_1: Annotated[CapabilityRegistry, Field(alias="CapabilityRegistry")]
     Length_1: Annotated[Length, Field(alias="Length")]
     PhysicalModel_1: Annotated[PhysicalModel, Field(alias="PhysicalModel")]

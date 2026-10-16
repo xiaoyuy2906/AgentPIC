@@ -60,6 +60,25 @@
             }
           ]
         },
+        "operating_point": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "number",
+                "minimum": -12.566370614359172,
+                "maximum": 12.566370614359172
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "workflow": {
           "type": "array",
           "items": {
@@ -108,6 +127,17 @@
     "MZISpec": {
       "type": "object",
       "properties": {
+        "tuning": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TuningSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "platform": {
           "default": "sin",
           "type": "string",
@@ -175,6 +205,97 @@
       },
       "additionalProperties": false
     },
+    "TuningSpec": {
+      "type": "object",
+      "properties": {
+        "targets": {
+          "minItems": 1,
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "input_port": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "output_port": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "wavelength_nm": {
+                "type": "number",
+                "minimum": 1450,
+                "maximum": 1650
+              },
+              "power": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "input_port",
+              "output_port",
+              "wavelength_nm",
+              "power"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "variables": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instance_path": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+                }
+              },
+              "min_phase_rad": {
+                "type": "number",
+                "minimum": -12.566370614359172,
+                "maximum": 12.566370614359172
+              },
+              "max_phase_rad": {
+                "type": "number",
+                "minimum": -12.566370614359172,
+                "maximum": 12.566370614359172
+              }
+            },
+            "required": [
+              "instance_path",
+              "min_phase_rad",
+              "max_phase_rad"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "power_tolerance": {
+          "default": 0.000001,
+          "type": "number",
+          "minimum": 1e-9,
+          "maximum": 0.001
+        },
+        "max_evaluations": {
+          "default": 128,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512
+        }
+      },
+      "required": [
+        "targets",
+        "variables"
+      ],
+      "additionalProperties": false
+    },
     "PhaseControl": {
       "type": "object",
       "properties": {
@@ -198,6 +319,17 @@
     "CascadeSpec": {
       "type": "object",
       "properties": {
+        "tuning": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TuningSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "platform": {
           "default": "sin",
           "type": "string",

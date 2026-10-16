@@ -67,3 +67,11 @@ Physical assembly is a separate explicit plan, bound to the submitted intent by 
 Accepted. A phase-shifter primitive has two optical and two electrical ports, a complete routed optical length and an explicitly commanded phase at the reference wavelength. The circuit backend projects the graph onto optical ports; it never treats exposed electrical terminals as optical S-parameters. Compiler and physical verification retain both domains and reject incompatible connections.
 
 Optical control state and actuator geometry are distinct evidence: `controls.json` records the phase/active-length request and uncalibrated electrical mapping; layout data records actual metal footprints and terminals. GDSFactory supplies metal geometry, while independent KLayout readback checks it. Changing control state preserves polygons. A future calibrated electrothermal adapter must supply its own units, validity range and evidence before accepting voltage or heating-power requests. Direct phase specification does not stand in for that calibration.
+
+## ADR-005: Target intent, bounded search and independently verified operating points
+
+Accepted. Target powers and selected phase-variable paths belong to the typed specification; applied operating points are separate IR state. TypeScript resolves variables, validates units/ports/bounds, schedules optimization after physical length backannotation and verifies state preservation. Original specification/hierarchy and the measured pre-tuning IR remain immutable artifacts.
+
+Python reuses SciPy bounded least squares and a parameterized SAX evaluator. Every objective call, including finite-difference probes, consumes the explicit search budget. Deterministic starts avoid relying on a stationary initial phase. The numerical adapter reports the best evaluated candidate and honest search termination, not an engineering verdict.
+
+Acceptance independently reads final S-parameters, checks targets and trace/bounds/budget consistency, and replays every candidate through the existing analytic transfer composition without importing SAX. Search status cannot override these checks. Local search does not establish global optimality, feasibility, calibrated electrothermal control or fabrication readiness. An unmet target retains the best operating point and complete failed-report evidence.

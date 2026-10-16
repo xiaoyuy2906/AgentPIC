@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/TuningResult",
+  "$defs": {
+    "TuningResult": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "target_met",
+            "target_not_met",
+            "budget_exhausted"
+          ]
+        },
+        "controls": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": -12.566370614359172,
+            "maximum": 12.566370614359172
+          }
+        },
+        "predicted_powers": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "maximum_error": {
+          "type": "number",
+          "minimum": 0
+        },
+        "evaluations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512
+        },
+        "evaluation_trace": {
+          "minItems": 1,
+          "maxItems": 512,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TuningCandidate"
+          }
+        },
+        "termination_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend",
+        "status",
+        "controls",
+        "predicted_powers",
+        "maximum_error",
+        "evaluations",
+        "evaluation_trace",
+        "termination_reason"
+      ],
+      "additionalProperties": false
+    },
+    "TuningCandidate": {
+      "type": "object",
+      "properties": {
+        "controls": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": -12.566370614359172,
+            "maximum": 12.566370614359172
+          }
+        },
+        "powers": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "controls",
+        "powers"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

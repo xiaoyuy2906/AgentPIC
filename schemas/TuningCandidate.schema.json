@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/TuningCandidate",
+  "$defs": {
+    "TuningCandidate": {
+      "type": "object",
+      "properties": {
+        "controls": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": -12.566370614359172,
+            "maximum": 12.566370614359172
+          }
+        },
+        "powers": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "controls",
+        "powers"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

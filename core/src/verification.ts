@@ -1,10 +1,22 @@
 import { readFile, stat, realpath } from 'node:fs/promises';
 import path from 'node:path';
-import { check, semanticChecks, endpointKey, canonical, sha256, validateIR } from './compiler.js';
+import {
+  check,
+  semanticChecks,
+  endpointKey,
+  canonical,
+  sha256,
+  validateIR,
+  compile,
+  backannotate,
+} from './compiler.js';
+import { applyOperatingPoint, resolveVariables } from './tuning.js';
+import { verifyTuning } from './tuning-verification.js';
 import {
   EngineeringIRSchema,
   LayoutResultSchema,
   SimulationResultSchema,
+  TuningResultSchema,
   type EngineeringIR,
   type LayoutResult,
   type CheckResult,
@@ -229,6 +241,30 @@ export async function verifyArtifacts(
       ),
     );
     checks.push(...physicalChecks(ir, layout));
+    if (ir.specification.tuning) {
+      const before = EngineeringIRSchema.parse(
+        await readJSON(path.join(directory, 'pre-tuning-ir.json')),
+      );
+      const tuning = TuningResultSchema.parse(await readJSON(path.join(directory, 'tuning.json')));
+      const compiled = compile(ir.specification);
+      checks.push(
+        check(
+          'tuning_source_intent',
+          canonical(await readJSON(path.join(directory, 'specification.json'))) ===
+            canonical(ir.specification) &&
+            canonical(await readJSON(path.join(directory, 'compiled_ir.json'))) ===
+              canonical(compiled) &&
+            canonical(before) === canonical(backannotate(compiled, layout)),
+          'Original specification, compiled IR and measured pre-tuning state remain consistent.',
+        ),
+      );
+      checks.push(...verifyTuning(ir, before, tuning, simulation));
+      checks.push(
+        ...(backend.verifyTuning
+          ? await backend.verifyTuning(ir, tuning)
+          : [check('tuning_trace_reference', false, 'Independent tuning verifier unavailable.')]),
+      );
+    }
     const [optical, geometry] = await Promise.all([
       backend.verifySimulation(ir, simulation),
       backend.verifyGeometry(ir, layout, directory),
@@ -243,14 +279,32 @@ export async function simulateCircuit(
   input: unknown,
   backend: ScientificBackend = new PythonBackend(),
 ) {
-  const ir = validateIR(input);
+  let ir = validateIR(input);
+  const before = structuredClone(ir);
+  let tuning = null;
+  if (ir.specification.tuning) {
+    if (ir.operating_point)
+      throw new Error(
+        'Submit unresolved compiled IR to tune; use verify_run for persisted operating-point evidence.',
+      );
+    if (!backend.optimize) throw new Error('Backend does not support target tuning');
+    tuning = TuningResultSchema.parse(await backend.optimize(ir, resolveVariables(ir)));
+    ir = validateIR(applyOperatingPoint(ir, tuning.controls));
+  }
   const simulation = await backend.simulate(ir);
   return {
     ir,
+    tuning,
     simulation,
     verification: report(ir.design_id, [
       ...semanticChecks(ir),
       ...(await backend.verifySimulation(ir, simulation)),
+      ...(tuning ? verifyTuning(ir, before, tuning, simulation) : []),
+      ...(tuning
+        ? backend.verifyTuning
+          ? await backend.verifyTuning(ir, tuning)
+          : [check('tuning_trace_reference', false, 'Independent tuning verifier unavailable.')]
+        : []),
     ]),
   };
 }
