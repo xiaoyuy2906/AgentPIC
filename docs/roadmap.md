@@ -25,7 +25,7 @@ Stages 4–7 are long-term research directions, not current feature commitments.
 | Task | Depends on | State |
 |---|---|---|
 | ADR-001 and generated shared contracts | — | Implemented; CI checks generation drift |
-| Circuit compiler and semantic validation | contracts | Implemented; specification recipes support SiN MZIs and 2–4 stage cascades |
+| Circuit compiler and semantic validation | contracts | Implemented; specification recipes support SiN MZIs, 2–4 stage cascades and add/drop feedback rings |
 | Circuit/layout backend interfaces | compiler, JSON transport | Implemented with SAX and GDSFactory |
 | Workflow, backannotation, verification and artifact inventory | adapters, compiler | Implemented |
 | API/MCP and complete MZI acceptance | workflow, verification | Implemented; real transport and binary GDS checks |
@@ -36,6 +36,7 @@ Stages 4–7 are long-term research directions, not current feature commitments.
 | Complete cascaded-MZI benchmark | hierarchy, physical assembly, independent transfer reference | Implemented; real API/MCP GDS workflow and fault-injection checks pass |
 | Controlled optical phase and metal actuators | mixed-domain component contract, optical projection, metal verification | Implemented in single/cascaded MZI workflows; electrical-to-phase calibration remains absent |
 | Target-driven optical operating points | control contract, reusable SAX evaluation, SciPy search, independent trace/target checks | Implemented with bounded local optimization and explicit failed-target evidence |
+| Resonant feedback and resolved spectra | cyclic Circuit topology, physical return paths, independent feedback/peak checks | Implemented with actual GDS and shared target tuning; compact couplers remain uncalibrated |
 | Qualified PDKs, calibrated models, full-vector/3D EM | independent references and design demand | Future Stage 3 work |
 
 ## Design-driven capability development
@@ -48,4 +49,4 @@ Verification is layered: circuit references and port topology; model validity an
 
 ## Next development milestone
 
-The passive, controlled and target-driven cascade workflows now exercise hierarchy, physical composition, mixed optical/electrical terminals, bounded search and independent full-matrix/trace verification. Further design challenges should require wavelength-selective components and richer reusable models, exposing gaps in resonant topology, couplers, routing and model validity. Define each design's acceptance criteria before implementation and reuse established numerical tools. Voltage/power actuation still requires a separately calibrated model; optical tuning cannot imply electrical efficiency or fabrication readiness. Add vector mode or EM capabilities when the design needs them, with independent references. Broaden to rings, couplers and wavelength multiplexers incrementally; device count does not substitute for verified engineering coverage.
+The passive, controlled and target-driven cascade and feedback-ring workflows now exercise hierarchy, physical composition, feedback cycles, mixed optical/electrical terminals, bounded search and independent complex/spectral verification. The next major gap is physical model validity: resonant wavelengths currently depend on assumed waveguide dispersion and zero-delay ideal couplers. A channel-waveguide/EM-backed model should provide traceable effective/group indices, units, validity ranges, convergence and independent reference evidence before replacing those assumptions. Reuse existing mode/EM implementations and rerun complete design workflows after integration. Coupler geometry calibration, qualified PDK rules and general hierarchy placement/routing remain separate requirements. More named device examples alone do not establish a complete EDA platform.

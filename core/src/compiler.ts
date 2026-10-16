@@ -1,3 +1,6 @@
+import { canonical } from './json.js';
+export { canonical } from './json.js';
+import { ringCircuit, ringStructureChecks } from './cells/ring.js';
 import { tuningSemantics } from './tuning.js';
 import { mziCircuit } from './cells/mzi.js';
 import { compileCascade, cascadeStructureCheck } from './cascade.js';
@@ -11,15 +14,6 @@ import {
   type CheckResult,
   type LayoutResult,
 } from './contracts.js';
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (value !== null && typeof value === 'object')
-    return `{${Object.entries(value)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`)
-      .join(',')}}`;
-  return JSON.stringify(value);
-}
 export const sha256 = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 export const endpointKey = (e: Endpoint) => `${e.instance},${e.port}` as const;
 export class SemanticError extends Error {
@@ -87,6 +81,7 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
       if (t.depends_on.every((d) => completed.has(d))) completed.add(t.name);
   return [
     ...cascadeStructureCheck(ir),
+    ...ringStructureChecks(ir),
     ...tuningSemantics(ir),
     check(
       'specification_semantics',
@@ -171,7 +166,9 @@ export function compile(input: unknown): EngineeringIR {
   const circuit =
     s.device === 'mzi'
       ? { netlist: mziCircuit(s.delta_length_um, s.phase_control) }
-      : compileCascade(s);
+      : s.device === 'ring_add_drop'
+        ? { netlist: ringCircuit(s) }
+        : compileCascade(s);
   return validateIR({
     design_id: sha256(canonical(s)).slice(0, 16),
     specification: s,
@@ -190,10 +187,15 @@ export function compile(input: unknown): EngineeringIR {
     ],
     assumptions: [
       'Illustrative SiN PDK; no foundry signoff.',
-      'Ideal reciprocal 50:50 compact couplers; MMI polygons are not EM calibrated.',
+      'Ideal reciprocal compact couplers; prescribed ratios and MMI polygons are not EM calibrated.',
       'Assumed neff=1.8 and ng=1.9 at 1550 nm; zero loss.',
       'Bend loss, taper phase and coupler dispersion omitted.',
-      'Circuit-only compilation uses nominal 800 µm base arm; full layout flow backannotates measured lengths.',
+      'Circuit-only compilation uses nominal path lengths; full layout flow backannotates measured lengths.',
+      ...(s.device === 'ring_add_drop'
+        ? [
+            'Model round-trip length includes return waveguides only; MMI internal delay and phase are omitted.',
+          ]
+        : []),
     ],
   });
 }

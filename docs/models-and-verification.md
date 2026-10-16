@@ -63,3 +63,18 @@ The extracted port netlist is compared with compiler intent. KLayout independent
 `passed_with_limitations` means every implemented check passed for the stated model and demonstration geometry rules. Three required capabilities remain `not_run`: electromagnetic calibration, fabricated-device measurement validation, and foundry signoff. They are present in every verification report, including failed reports. Controlled optical calculations also report missing electrical-to-phase calibration. `foundry_signoff` is constrained to `false` in the public report schema.
 
 Tests deliberately corrupt the complex scattering matrix, extracted netlist, GDS geometry and stored artifacts to ensure verification detects failures. Boundary cases include balanced arms and positive/negative imbalances through ±200 µm. Backend exceptions are tested separately from failed engineering checks.
+
+## Add/drop feedback model
+
+Let k₁,k₂ be the two power coupling ratios, tⱼ=√(1−kⱼ), and pᵣ,pₗ the complex propagation factors of the right and left return paths. Ideal reciprocal couplers use through amplitude tⱼ and cross amplitude i√kⱼ. Summing repeated round trips gives D=1−t₁t₂pᵣpₗ and the forward two-bus matrix:
+
+```text
+T00 = (t1 − t2 pr pl) / D       T01 = −sqrt(k1 k2) pl / D
+T10 = −sqrt(k1 k2) pr / D       T11 = (t2 − t1 pr pl) / D
+```
+
+The reverse block is Tᵀ by reciprocity; reflection blocks vanish in this ideal model. Independent verification constructs this full 4×4 matrix without importing SAX. At a symmetric-coupling resonance the drop power reaches one and through power vanishes; asymmetric couplings generally cannot reach unit drop transmission. Tests require optimization to report that target as unmet rather than accepting solver convergence.
+
+For total modeled return length L, reference wavelength λ₀ and commanded phase φ, the assumed linear dispersion gives round-trip phase divided by 2π as A/λ+B, where A=n_g L+φλ₀/(2π) and B=(n_eff−n_g)L/λ₀. Resonance order m has λ_m=A/(m−B). With ρ=t₁t₂, the half-maximum phase offset from resonance is δ=2 asin((1−ρ)/(2√ρ)); exact half-maximum wavelengths use denominators m−B±δ/(2π). The supported coupling interval keeps these real. Spectral verification uses these predictions and independently extracts measured peaks/widths from SAX output. It rejects inadequate resolution and clipped coverage even when sampled complex values agree.
+
+The compact model has zero internal coupler phase/delay, zero propagation/bend loss and prescribed coupling ratios. Physical MMI geometry is illustrative. Predicted extinction, resonant wavelength and loaded Q are properties of these assumptions, not calibrated device or fabrication claims. Actual GDS verification proves geometric/port consistency within the demonstration rules only.

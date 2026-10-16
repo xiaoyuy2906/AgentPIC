@@ -64,3 +64,33 @@ def test_generated_phase_control_contract_preserves_units_and_values():
     parsed = design_spec.validate_json(source, strict=True)
     assert parsed.phase_control.phase_rad == pytest.approx(3.141592653589793)
     assert parsed.phase_control.active_length_um == 100
+
+
+def test_generated_ring_contract_round_trip_and_sampling_range():
+    source = (Path(__file__).resolve().parents[1] / "examples/target_ring_1550.json").read_text()
+    parsed = design_spec.validate_json(source, strict=True)
+    assert parsed.device == "ring_add_drop"
+    assert parsed.coupling_ratios == (0.5, 0.5)
+    assert parsed.tuning.variables[0].instance_path == ["right_return"]
+    assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
+    assert (
+        design_spec.validate_python({"device": "ring_add_drop", "sweep_points": 5001}).sweep_points
+        == 5001
+    )
+    with pytest.raises(ValidationError):
+        design_spec.validate_python({"device": "mzi", "sweep_points": 5001})
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"coupling_ratios": [0, 0.5]},
+        {"loop_height_um": 199},
+        {"side_extension_um": 501},
+        {"sweep_points": 10003},
+        {"gap_um": 0.2},
+    ],
+)
+def test_generated_ring_contract_rejects_unsupported_geometry_and_calibration(extra):
+    with pytest.raises(ValidationError):
+        design_spec.validate_python({"device": "ring_add_drop", **extra})

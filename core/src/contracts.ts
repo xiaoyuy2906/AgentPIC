@@ -104,8 +104,22 @@ export const CascadeSpecSchema = z
     link_length_um: z.number().min(10).max(1000).default(100),
   })
   .meta({ id: 'CascadeSpec' });
+export const RingSpecSchema = z
+  .strictObject({
+    ...DesignFields,
+    device: z.literal('ring_add_drop'),
+    loop_height_um: z.number().min(200).max(600).default(300),
+    side_extension_um: z.number().min(150).max(500).default(200),
+    coupling_ratios: z
+      .tuple([z.number().min(0.05).max(0.8), z.number().min(0.05).max(0.8)])
+      .default([0.5, 0.5]),
+    phase_control: PhaseControlSchema.nullable().default(null),
+    sweep_span_nm: z.number().positive().max(100).default(4),
+    sweep_points: z.number().int().min(3).max(10001).default(1001),
+  })
+  .meta({ id: 'RingSpec' });
 export const DesignSpecSchema = z
-  .union([MZISpecSchema, CascadeSpecSchema])
+  .union([MZISpecSchema, CascadeSpecSchema, RingSpecSchema])
   .meta({ id: 'DesignSpec' });
 export const PortSchema = z
   .strictObject({
@@ -345,6 +359,7 @@ export const Contracts = {
   ActuatorLayout: ActuatorLayoutSchema,
   MZISpec: MZISpecSchema,
   CascadeSpec: CascadeSpecSchema,
+  RingSpec: RingSpecSchema,
   CascadeStage: CascadeStageSchema,
   LayoutBlock: LayoutBlockSchema,
   AssemblyPlan: AssemblyPlanSchema,
@@ -375,6 +390,7 @@ export type DesignSpec = z.infer<typeof DesignSpecSchema>;
 export type PhaseControl = z.infer<typeof PhaseControlSchema>;
 export type TuningResult = z.infer<typeof TuningResultSchema>;
 export type ResolvedTuningVariable = z.infer<typeof ResolvedTuningVariableSchema>;
+export type RingSpec = z.infer<typeof RingSpecSchema>;
 export type CascadeSpec = z.infer<typeof CascadeSpecSchema>;
 export type AssemblyPlan = z.infer<typeof AssemblyPlanSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;

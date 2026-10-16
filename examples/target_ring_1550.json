@@ -1,0 +1,50 @@
+{
+  "device": "ring_add_drop",
+  "platform": "sin",
+  "wavelength_nm": 1550,
+  "loop_height_um": 300,
+  "side_extension_um": 200,
+  "coupling_ratios": [
+    0.5,
+    0.5
+  ],
+  "sweep_span_nm": 4,
+  "sweep_points": 1001,
+  "outputs": [
+    "netlist",
+    "simulation",
+    "gds",
+    "verification"
+  ],
+  "phase_control": {
+    "phase_rad": 0,
+    "active_length_um": 100
+  },
+  "tuning": {
+    "targets": [
+      {
+        "input_port": "in0",
+        "output_port": "out1",
+        "wavelength_nm": 1550,
+        "power": 1
+      },
+      {
+        "input_port": "in0",
+        "output_port": "out0",
+        "wavelength_nm": 1550,
+        "power": 0
+      }
+    ],
+    "variables": [
+      {
+        "instance_path": [
+          "right_return"
+        ],
+        "min_phase_rad": 0,
+        "max_phase_rad": 6.283185307179586
+      }
+    ],
+    "power_tolerance": 1e-06,
+    "max_evaluations": 128
+  }
+}

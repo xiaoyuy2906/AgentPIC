@@ -1,4 +1,4 @@
-"""GDSFactory adapter for reusable MZI blocks and series-connected assemblies."""
+"""GDSFactory adapter for composed feed-forward and resonant feedback circuits."""
 
 from pathlib import Path
 
@@ -112,7 +112,33 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         }
         imbalances[name] = lengths[primitive_ids["top_arm"]] - lengths[primitive_ids["bottom_arm"]]
 
-    if ir.assembly is None:
+    if ir.specification.device == "ring_add_drop":
+        spec = ir.specification
+        top = component.add_ref(coupler, name="top_coupler")
+        bottom = component.add_ref(coupler, name="bottom_coupler")
+        top.dmove((0, spec.loop_height_um))
+        bottom.drotate(180)
+        bottom.dmove((40, 0))
+        references.update(top_coupler=top, bottom_coupler=bottom)
+        for name, start_port, end_port, direction in [
+            ("right_return", top.ports["o4"], bottom.ports["o1"], 1),
+            ("left_return", bottom.ports["o4"], top.ports["o1"], -1),
+        ]:
+            x, y = start_port.center
+            ex, ey = end_port.center
+            points = np.array(
+                [
+                    (x, y),
+                    (x + direction * spec.side_extension_um, y),
+                    (ex + direction * spec.side_extension_um, ey),
+                    (ex, ey),
+                ]
+            )
+            add_path(
+                name,
+                gf.path.smooth(points, radius=tech.bend_radius_um, bend=gf.path.arc, npoints=128),
+            )
+    elif ir.assembly is None:
         if ir.specification.device != "mzi":
             raise ValueError("An assembled design requires a physical assembly plan")
         add_block(
@@ -197,7 +223,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         "ports": ports,
         "extracted_circuit": extracted_circuit,
         "bend_radius_um": tech.bend_radius_um,
-        "delta_length_um": imbalances["mzi"] if ir.assembly is None else None,
+        "delta_length_um": imbalances.get("mzi") if ir.assembly is None else None,
         "path_imbalances_um": imbalances,
         "actuators": actuators,
     }

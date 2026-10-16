@@ -11,6 +11,7 @@ import {
   backannotate,
 } from './compiler.js';
 import { applyOperatingPoint, resolveVariables } from './tuning.js';
+import { ringPhysicalChecks } from './cells/ring.js';
 import { verifyTuning } from './tuning-verification.js';
 import {
   EngineeringIRSchema,
@@ -147,12 +148,16 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
       'Independent centerline sums match simulation lengths.',
       { maximum_error_um: lengthError },
     ),
-    check(
-      'requested_path_imbalance',
-      deltaError <= 0.002,
-      'Physical arm imbalance matches the specification.',
-      { error_um: deltaError, stage_errors_um: deltaErrors },
-    ),
+    ...(ir.specification.device === 'ring_add_drop'
+      ? ringPhysicalChecks(ir, layout)
+      : [
+          check(
+            'requested_path_imbalance',
+            deltaError <= 0.002,
+            'Physical arm imbalance matches the specification.',
+            { error_um: deltaError, stage_errors_um: deltaErrors },
+          ),
+        ]),
   ];
 }
 export function report(designID: string, checks: CheckResult[]): VerificationReport {

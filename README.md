@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml/badge.svg)](https://github.com/xiaoyuy2906/AgentPIC/actions/workflows/ci.yml)
 
-An agent-native photonic circuit EDA platform with a **TypeScript engineering core** and **Python scientific backends**. Submit a single or cascaded MZI specification through API or MCP and receive circuit JSON, SAX simulation, GDSFactory layout, real GDS and a structured verification report. No GUI or paid solver is required.
+An agent-native photonic circuit EDA platform with a **TypeScript engineering core** and **Python scientific backends**. Submit a supported PIC specification through API or MCP and receive circuit JSON, SAX simulation, GDSFactory layout, real GDS and a structured verification report. No GUI or paid solver is required.
 
 **ADR-001 is accepted:** engineering logic lives in TypeScript; scientific libraries are replaceable adapters. Zod is the single source of truth and generates JSON Schema and Python Pydantic models. See [the architecture decision](docs/architecture.md).
 
@@ -63,6 +63,19 @@ The single-MZI example asks for 80% transmission at 1550 nm. The cascade example
 The full workflow first generates layout and measures optical paths, then searches with SciPy bounded least squares and SAX. It preserves the original specification and geometry, saves every evaluated candidate and applies only selected phases. All SAX calls during search, including numerical Jacobian probes, count against the requested budget. Final acceptance checks the exported complex S-matrix, every candidate against an independent analytic reference, state preservation, bounds and budget. Search convergence alone is insufficient. This is deterministic local search, without a global-optimality or uniqueness claim.
 
 `target_met`, `target_not_met` and `budget_exhausted` describe search outcomes. An unmet target produces a failed engineering report while preserving the best candidate, simulation, GDS and trace. Execution errors fail the tuning task and retain preceding artifacts. The circuit-only path also supports tuning from unresolved compiled IR, using nominal lengths; use `verify_run` to recheck a persisted physical operating point. See [contracts](docs/interfaces.md#target-tuning) and [predeclared acceptance gates](docs/stage3-target-tuning.md).
+
+## Resonant feedback networks
+
+The `ring_add_drop` recipe composes two ideal compact couplers and two return waveguides into a four-port feedback network. It uses the same Circuit IR, SAX solver, GDS generation, verification and target-tuning interfaces:
+
+```sh
+npm run --silent agentpic -- design examples/ring_1550.json
+npm run acceptance -- --specification examples/target_ring_1550.json --output runs/target-ring-acceptance
+```
+
+For excitation at `in0`, `out0` is the through port and `out1` the drop port. The controlled example automatically aligns a drop resonance to 1550 nm. Actual GDS uses two MMI polygons with routed return paths; this is an MMI-coupled feedback ring, with prescribed ideal coupling ratios and **no geometry-to-coupling calibration**.
+
+Verification compares the entire complex response with independent feedback summation, predicts resonances from measured paths and dispersion, and extracts peaks/linewidths from the exported spectrum. It requires at least two complete resonances and 20 samples per theoretical linewidth. A coarse grid or clipped window fails even when every sampled S-parameter is correct. Weak coupling may require more samples; this recipe permits up to 10,001 points. Resonance wavelengths, spacing, half-maximum widths and ideal-model loaded Q are machine-readable evidence in `verification.json`. See [fixed acceptance gates](docs/stage3-resonant-network.md).
 
 ## Additional capability: physics reasoning and verification
 
@@ -128,7 +141,7 @@ curl --fail-with-body http://127.0.0.1:8000/v1/designs \
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/v1/capabilities` | Discover supported/unsupported capabilities |
-| POST | `/v1/compile` | Single/cascaded MZI specification → semantically validated Engineering IR |
+| POST | `/v1/compile` | Supported PIC specification → semantically validated Engineering IR |
 | POST | `/v1/circuits/flatten` | Hierarchy → validated primitive circuit and source paths |
 | POST | `/v1/validate` | Validate an Engineering IR and its topology |
 | POST | `/v1/simulations` | Engineering IR → Python SAX result and verification |
@@ -191,7 +204,7 @@ Controlled designs additionally verify control intent/artifacts, metal geometry,
 
 `sin_demo_v1` assumes a 1 µm wide, 0.4 µm thick core, 50 µm bends, neff=1.8, ng=1.9 at 1550 nm, ideal 50:50 couplers and zero propagation loss. These are illustrative assumptions. The MMI polygons have not been optically calibrated to the compact model. GDS describes planar geometry; the thickness remains an IR assumption. No fabrication readiness is claimed.
 
-The design compiler currently supports parameterized SiN MZIs and 2–4 stage cascades, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, geometry optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
+The design compiler currently supports parameterized SiN MZIs, 2–4 stage cascades and MMI-coupled add/drop feedback rings, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, geometry optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
 
 ## Development
 

@@ -145,7 +145,7 @@
     },
     "/v1/compile": {
       "post": {
-        "description": "Compile supported single-MZI or cascade intent to validated Engineering IR",
+        "description": "Compile supported circuit intent to validated Engineering IR",
         "requestBody": {
           "required": true,
           "content": {
@@ -1547,6 +1547,9 @@
           },
           {
             "$ref": "#/components/schemas/CascadeSpec"
+          },
+          {
+            "$ref": "#/components/schemas/RingSpec"
           }
         ]
       },
@@ -1759,6 +1762,117 @@
         "required": [
           "name",
           "delta_length_um"
+        ],
+        "additionalProperties": false
+      },
+      "RingSpec": {
+        "type": "object",
+        "properties": {
+          "tuning": {
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TuningSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "default": "sin",
+            "type": "string",
+            "const": "sin"
+          },
+          "wavelength_nm": {
+            "default": 1550,
+            "type": "number",
+            "minimum": 1500,
+            "maximum": 1600
+          },
+          "outputs": {
+            "default": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ],
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "netlist",
+                "simulation",
+                "gds",
+                "verification"
+              ]
+            }
+          },
+          "sweep_span_nm": {
+            "default": 4,
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 100
+          },
+          "sweep_points": {
+            "default": 1001,
+            "type": "integer",
+            "minimum": 3,
+            "maximum": 10001
+          },
+          "device": {
+            "type": "string",
+            "const": "ring_add_drop"
+          },
+          "loop_height_um": {
+            "default": 300,
+            "type": "number",
+            "minimum": 200,
+            "maximum": 600
+          },
+          "side_extension_um": {
+            "default": 200,
+            "type": "number",
+            "minimum": 150,
+            "maximum": 500
+          },
+          "coupling_ratios": {
+            "default": [
+              0.5,
+              0.5
+            ],
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "number",
+                "minimum": 0.05,
+                "maximum": 0.8
+              },
+              {
+                "type": "number",
+                "minimum": 0.05,
+                "maximum": 0.8
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "phase_control": {
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhaseControl"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "device"
         ],
         "additionalProperties": false
       },

@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from agentpic.ir import CheckResult, EngineeringIR
+from agentpic.spectral import verify_ring_spectrum
 
 LIMITATIONS = [
     "Demonstration SiN process; no foundry PDK or signoff rule deck.",
@@ -31,7 +32,7 @@ def analytic_scattering(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarra
     controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
     lengths = {i.name: i.length_um for i in ir.netlist.instances if i.kind != "ideal_coupler"}
     wl = wavelengths / 1000
-    # Independent closed-form MZI, derived directly from its two-path interference.
+    # Independent propagation followed by family-specific closed-form composition.
     index = (
         tech.effective_index
         + (tech.effective_index - tech.group_index)
@@ -54,7 +55,21 @@ def analytic_scattering(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarra
         transfer[:, 0, 1] = transfer[:, 1, 0] = 1j * (bottom + top) / 2
         return transfer
 
-    if ir.assembly is None:
+    if ir.specification.device == "ring_add_drop":
+        ratios = {
+            i.name: i.coupling_ratio for i in ir.netlist.instances if i.kind == "ideal_coupler"
+        }
+        k1, k2 = ratios["top_coupler"], ratios["bottom_coupler"]
+        t1, t2 = np.sqrt(1 - k1), np.sqrt(1 - k2)
+        right, left = propagation("right_return"), propagation("left_return")
+        feedback = right * left
+        denominator = 1 - t1 * t2 * feedback
+        transfer = np.zeros((len(wl), 2, 2), dtype=complex)
+        transfer[:, 0, 0] = (t1 - t2 * feedback) / denominator
+        transfer[:, 1, 1] = (t2 - t1 * feedback) / denominator
+        transfer[:, 1, 0] = -np.sqrt(k1 * k2) * right / denominator
+        transfer[:, 0, 1] = -np.sqrt(k1 * k2) * left / denominator
+    elif ir.assembly is None:
         transfer = mzi_transfer("top_arm", "bottom_arm")
     else:
         blocks = ir.assembly.blocks
@@ -128,40 +143,52 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         and np.allclose(out0, np.abs(matrix[:, 2, 0]) ** 2, atol=1e-12, rtol=0)
         and np.allclose(out1, np.abs(matrix[:, 3, 0]) ** 2, atol=1e-12, rtol=0)
     )
-    return calibration + [
-        _check(
-            "simulation_grid",
-            np.allclose(wavelengths, expected_grid, rtol=0, atol=1e-9),
-            "Spectrum covers the requested wavelength range and center.",
-        ),
-        _check(
-            "analytic_cascade_agreement" if ir.assembly is not None else "analytic_mzi_agreement",
-            error < 1e-9,
-            "Full complex SAX S-matrix agrees with independent analytic MZI transfer matrices and physical interconnect propagation.",
-            max_complex_error=error,
-            tolerance=1e-9,
-        ),
-        _check(
-            "reciprocity", reciprocity < 1e-10, "S equals its transpose.", max_error=reciprocity
-        ),
-        _check(
-            "passivity",
-            largest_gain <= 1 + 1e-10,
-            "Largest singular value does not exceed unity.",
-            max_singular_value=largest_gain,
-        ),
-        _check(
-            "lossless_power_balance",
-            unitary_error < 1e-10,
-            "All four inputs satisfy S†S=I for the stated lossless model.",
-            max_error=unitary_error,
-        ),
-        _check(
-            "reported_transmission",
-            bool(powers_consistent),
-            "Reported transmission powers agree with the exported S-matrix.",
-        ),
-    ]
+    return (
+        calibration
+        + [
+            _check(
+                "simulation_grid",
+                np.allclose(wavelengths, expected_grid, rtol=0, atol=1e-9),
+                "Spectrum covers the requested wavelength range and center.",
+            ),
+            _check(
+                "analytic_ring_agreement"
+                if ir.specification.device == "ring_add_drop"
+                else "analytic_cascade_agreement"
+                if ir.assembly is not None
+                else "analytic_mzi_agreement",
+                error < 1e-9,
+                "Full complex SAX S-matrix agrees with independent closed-form network response and physical path propagation.",
+                max_complex_error=error,
+                tolerance=1e-9,
+            ),
+            _check(
+                "reciprocity", reciprocity < 1e-10, "S equals its transpose.", max_error=reciprocity
+            ),
+            _check(
+                "passivity",
+                largest_gain <= 1 + 1e-10,
+                "Largest singular value does not exceed unity.",
+                max_singular_value=largest_gain,
+            ),
+            _check(
+                "lossless_power_balance",
+                unitary_error < 1e-10,
+                "All four inputs satisfy S†S=I for the stated lossless model.",
+                max_error=unitary_error,
+            ),
+            _check(
+                "reported_transmission",
+                bool(powers_consistent),
+                "Reported transmission powers agree with the exported S-matrix.",
+            ),
+        ]
+        + (
+            verify_ring_spectrum(ir, wavelengths, np.abs(matrix[:, 3, 0]) ** 2)
+            if ir.specification.device == "ring_add_drop"
+            else []
+        )
+    )
 
 
 def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[CheckResult]:

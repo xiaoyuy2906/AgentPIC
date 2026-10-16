@@ -6,17 +6,17 @@
 
 | Field | Default | Supported constraint |
 |---|---|---|
-| `device` | `mzi` | `mzi` or `mzi_cascade` |
+| `device` | `mzi` | `mzi`, `mzi_cascade` or `ring_add_drop` |
 | `platform` | `sin` | Illustrative `sin_demo_v1` PDK |
 | `wavelength_nm` | 1550 | 1500–1600 nm |
 | `outputs` | All four | Nonempty unique subset of netlist/simulation/gds/verification |
 | `delta_length_um` | 10 | Single MZI only: −200 to +200 µm, top minus bottom arm |
 | `stages` | Required for cascade | 2–4 records with unique `name` and `delta_length_um` in −200 to +200 µm |
 | `link_length_um` | 100 | Cascade only: 10–1000 µm between adjacent blocks |
-| `phase_control` | null | Single MZI or each cascade stage: optional `{phase_rad, active_length_um}` |
+| `phase_control` | null | Single MZI, ring or each cascade stage: optional `{phase_rad, active_length_um}` |
 | `tuning` | null | Optional optical targets, phase variables, tolerance and evaluation budget |
-| `sweep_span_nm` | 40 | Greater than zero, at most 100 nm |
-| `sweep_points` | 201 | Odd integer, 3–2001 |
+| `sweep_span_nm` | 40; ring: 4 | Greater than zero, at most 100 nm |
+| `sweep_points` | 201; ring: 1001 | Odd integer, 3–2001; ring permits up to 10001 |
 
 The full sweep must lie in 1450–1650 nm. Unique outputs, odd samples and engineering bounds are checked by the TS compiler. These are software support ranges, not calibrated physical validity ranges.
 
@@ -81,3 +81,13 @@ Select 1–4 distinct existing phase shifters and 1–16 distinct `(input_port, 
 Optimization uses SciPy `least_squares` with bounded local searches and deterministic starting points; it does not prove infeasibility or global optimality. `target_met` requires an evaluated candidate within every target tolerance. `budget_exhausted` means the hard budget was used without meeting the targets. `target_not_met` means the local searches terminated earlier without meeting them. Both unsuccessful outcomes still produce final simulation/verification artifacts and overall `status: failed`. A solver exception or invalid returned controls fails the tuning task and blocks downstream tasks.
 
 `POST /v1/simulations` and MCP `simulate_circuit` accept unresolved compiled tuning IR, and return `CircuitSimulation` with `tuning`, applied `ir`, simulation and verification. Their `length_source` normally remains `specification`; physical design uses `layout`. For already persisted operating points use `verify_run`, which has the original state and complete search evidence. Backend implementations without optimization or independent trace verification cannot pass a tuning workflow.
+
+## Resonant feedback recipe
+
+`RingSpec` selects `device: ring_add_drop` and contains `loop_height_um` (200–600, default 300), `side_extension_um` (150–500, default 200) and `coupling_ratios` (two power ratios in [0.05,0.8], default [0.5,0.5]). It supports the same optional `phase_control` and `tuning` contracts; select `["right_return"]` as the phase-variable path. The active footprint must fit the positive horizontal return segment after bend allowance. Unknown `gap_um`, voltage or geometry-calibrated coupling fields are rejected.
+
+The neutral circuit contains `top_coupler`, `bottom_coupler`, `right_return` and `left_return`. External port order is `[in0,in1,out0,out1]`; `in0 → out0` is through and `in0 → out1` is drop. The opposite bus travels in the opposite geometric direction. `phase_e1`/`phase_e2` expose the optional right-return metal terminals. Source hierarchy and series-assembly fields remain null because this is a separate primitive composition recipe, not an arbitrary hierarchy placement algorithm.
+
+The nominal circuit uses analytic circular-bend path lengths; full designs backannotate sampled/extruded GDSFactory centerlines. `loop_height_um` is coupler-center separation, and each side extension is measured from its coupler port to the furthest return centerline. Coupler internal delay is omitted from the compact model. The independent `requested_ring_dimensions` check uses physical port and centerline metadata; all existing GDS containment/width/spacing/bend checks still run.
+
+Ring spectra default to a 4 nm window with 1001 points and permit 10001 points. `resonance_sampling` requires 20 samples across the theoretical FWHM at every frequency in the window. `resonance_features` requires at least two completely observed drop peaks and compares their positions (one grid step), adjacent spacings and interpolated half-maximum linewidths (two grid steps) with independent phase predictions. Its evidence includes all observed/expected values, modeled return-path length and explicitly ideal-model loaded Q. Insufficient resolution or coverage produces a failed engineering report and preserves artifacts; it does not silently resample. For example, coupling ratios [0.05,0.05] need an explicitly refined grid, such as a 2.4 nm window with 5001 points for the default loop.

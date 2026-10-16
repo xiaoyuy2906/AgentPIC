@@ -1,0 +1,11 @@
+{
+  "device": "ring_add_drop",
+  "platform": "sin",
+  "wavelength_nm": 1550,
+  "loop_height_um": 300,
+  "side_extension_um": 200,
+  "coupling_ratios": [0.5, 0.5],
+  "sweep_span_nm": 4,
+  "sweep_points": 1001,
+  "outputs": ["netlist", "simulation", "gds", "verification"]
+}

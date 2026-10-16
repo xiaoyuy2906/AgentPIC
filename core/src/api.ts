@@ -65,7 +65,7 @@ export function openAPI() {
       '/v1/compile': post(
         'DesignSpec',
         'EngineeringIR',
-        'Compile supported single-MZI or cascade intent to validated Engineering IR',
+        'Compile supported circuit intent to validated Engineering IR',
       ),
       '/v1/validate': post(
         'EngineeringIR',

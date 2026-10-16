@@ -120,6 +120,7 @@ const topology = (circuit: Circuit, ignoreLengths: boolean) => ({
 });
 
 export function cascadeStructureCheck(ir: EngineeringIR): CheckResult[] {
+  if (ir.specification.device === 'ring_add_drop') return [];
   if (ir.specification.device !== 'mzi_cascade') {
     const emptyHierarchy =
       ir.hierarchy === null && ir.assembly === null && Object.keys(ir.instance_paths).length === 0;

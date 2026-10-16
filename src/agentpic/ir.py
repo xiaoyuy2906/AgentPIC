@@ -401,6 +401,28 @@ class CascadeStage(ContractModel):
     phase_control: PhaseControl | None = None
 
 
+type CouplingRatio = Annotated[float, Field(ge=0.05, le=0.8)]
+
+
+class RingSpec(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tuning: TuningSpec | None = None
+    platform: Literal["sin"] = "sin"
+    wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
+    outputs: Annotated[
+        list[Literal["netlist", "simulation", "gds", "verification"]], Field(min_length=1)
+    ] = ["netlist", "simulation", "gds", "verification"]
+    sweep_span_nm: Annotated[float, Field(gt=0.0, le=100.0)] = 4
+    sweep_points: Annotated[int, Field(ge=3, le=10001)] = 1001
+    device: Literal["ring_add_drop"]
+    loop_height_um: Annotated[float, Field(ge=200.0, le=600.0)] = 300
+    side_extension_um: Annotated[float, Field(ge=150.0, le=500.0)] = 200
+    coupling_ratios: tuple[CouplingRatio, CouplingRatio] = [0.5, 0.5]
+    phase_control: PhaseControl | None = None
+
+
 type CenterlineUmItem = Annotated[tuple[float, float], Field(max_length=2, min_length=2)]
 
 
@@ -451,7 +473,7 @@ class Port(ContractModel):
 type LengthUm = Annotated[float, Field(gt=0.0)]
 
 
-type CouplingRatio = Annotated[float, Field(ge=0.0, le=1.0)]
+type CouplingRatio2 = Annotated[float, Field(ge=0.0, le=1.0)]
 
 
 class Component(ContractModel):
@@ -462,7 +484,7 @@ class Component(ContractModel):
     kind: Literal["ideal_coupler", "waveguide", "phase_shifter"]
     ports: Annotated[list[Port], Field(min_length=1)]
     length_um: LengthUm | None = None
-    coupling_ratio: CouplingRatio | None = None
+    coupling_ratio: CouplingRatio2 | None = None
     phase_control: PhaseControl | None = None
 
 
@@ -800,7 +822,7 @@ class EngineeringIR(ContractModel):
     )
     schema_version: Literal["2.0"] = "2.0"
     design_id: Annotated[str, Field(pattern="^[0-9a-f]{16}$")]
-    specification: MZISpec | CascadeSpec
+    specification: MZISpec | CascadeSpec | RingSpec
     technology: PDK
     netlist: Circuit
     hierarchy: CircuitHierarchy | None = None
@@ -848,11 +870,12 @@ class Contracts(ContractModel):
     PhysicsDiagnostic_1: Annotated[PhysicsDiagnostic, Field(alias="PhysicsDiagnostic")]
     DevelopmentRequest_1: Annotated[DevelopmentRequest, Field(alias="DevelopmentRequest")]
     PhysicsReport_1: Annotated[PhysicsReport, Field(alias="PhysicsReport")]
-    DesignSpec: MZISpec | CascadeSpec
+    DesignSpec: MZISpec | CascadeSpec | RingSpec
     PhaseControl_1: Annotated[PhaseControl, Field(alias="PhaseControl")]
     ActuatorLayout_1: Annotated[ActuatorLayout, Field(alias="ActuatorLayout")]
     MZISpec_1: Annotated[MZISpec, Field(alias="MZISpec")]
     CascadeSpec_1: Annotated[CascadeSpec, Field(alias="CascadeSpec")]
+    RingSpec_1: Annotated[RingSpec, Field(alias="RingSpec")]
     CascadeStage_1: Annotated[CascadeStage, Field(alias="CascadeStage")]
     LayoutBlock_1: Annotated[LayoutBlock, Field(alias="LayoutBlock")]
     AssemblyPlan_1: Annotated[AssemblyPlan, Field(alias="AssemblyPlan")]

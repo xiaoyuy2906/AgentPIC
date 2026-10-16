@@ -108,7 +108,12 @@ export const capabilities = () => ({
   schema_version: '2.0',
   core: 'typescript',
   contracts: 'zod-generated-json-schema',
-  devices: ['mzi', 'mzi_cascade'],
+  devices: ['mzi', 'mzi_cascade', 'ring_add_drop'],
+  feedback_networks: {
+    add_drop_ring: 'implemented',
+    spectral_sampling_verification: 'implemented',
+    geometry_to_coupling_calibration: 'not_performed',
+  },
   platforms: ['sin'],
   technology: 'sin_demo_v1',
   circuit: { backend: 'sax', status: 'implemented' },
