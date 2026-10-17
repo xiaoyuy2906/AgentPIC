@@ -26,7 +26,7 @@ test('MZI specification → TS IR → semantic validation → JSON → Python SA
   const result = await simulateCircuit(ir);
   assert.equal(result.verification.status, 'passed_with_limitations');
   assert.equal(result.ir.length_source, 'specification');
-  const t = result.simulation.transmission_out0[100];
+  const t = result.simulation.transmission_out0![100];
   assert.ok(Math.abs(t - Math.sin((Math.PI * 1.8 * 10) / 1.55) ** 2) < 1e-9);
   assert.ok(!('sax_netlist' in result.simulation));
 });

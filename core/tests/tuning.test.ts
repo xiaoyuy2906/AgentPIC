@@ -96,7 +96,7 @@ for (const power of [0, 0.2, 0.5, 0.8, 1])
     assert.equal(result.tuning!.evaluation_trace.length, result.tuning!.evaluations);
     const phase = result.ir.operating_point!.top_arm;
     assert.ok(Math.abs(Math.sin(phase / 2) ** 2 - power) <= 1e-9);
-    assert.ok(Math.abs(result.simulation.transmission_out0[100] - power) <= 1e-9);
+    assert.ok(Math.abs(result.simulation.transmission_out0![100] - power) <= 1e-9);
     assert.equal(result.ir.length_source, 'specification');
     assert.equal(input.operating_point, null);
     assert.deepEqual(result.ir.specification, input.specification);

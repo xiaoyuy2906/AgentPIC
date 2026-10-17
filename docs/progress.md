@@ -1,5 +1,33 @@
 # Persistent development progress
 
+## Bounded milestone: generic circuit compilation and simulation (2026-10-17)
+
+The Stage 3 generic-circuit milestone adds `device: circuit` to the existing design
+contract. External flat circuits, versioned model references and explicit optical
+port order now use the same compiler, runtime, real SAX, independent verification,
+HTTP/MCP and artifact interfaces. The existing hierarchy flattener can supply the
+flat circuit. No waveguide-chain or standalone-coupler recipe was added.
+
+Local verification passes 148 TypeScript tests and 32 Python tests, type/lint/format
+checks, both new real HTTP/MCP acceptances, all six existing design acceptances
+and all eight physics benchmark expectations. Each generic acceptance reports
+24 passes and six explicit `not_run` checks; seven core artifact hashes agree
+across transports. The 201-point waveguide-chain complex error is 1.7057e-13
+against the summed-length closed form and 1.9906e-13 against independent dense
+network elimination (threshold 1e-9). The standalone coupler matches both references
+to floating-point zero. Existing MZI, cascade, phase-control, target-tuning and
+ring regression tests all pass. CI runs the complete eight design acceptances and
+eight physics benchmarks on Python 3.12 and 3.13; inspect the exact revision's
+hosted result before claiming published CI success.
+
+Generic GDS, layout checks, path backannotation, target tuning, general spectral
+resolution guarantees and calibrated physical models remain unsupported. Layout
+requests produce no GDS; checks record `not_run`. See
+`docs/stage3-generic-circuits.md` for fixed gates and reproduction. This milestone
+does not authorize the next model-calibration, solver or generic-layout project.
+
+## Earlier milestones
+
 Current goal (updated 2026-10-16): Stage 1 builds the minimum complete agent-native PIC EDA; Stage 2 validates it with an MZI. Stage 3 uses progressively more complex designs to expose and close capability gaps. ADR-001 remains mandatory. The MZI is a benchmark, not the product. The existing planar-mode physics module is an additional reusable capability, not the first-stage objective. See `docs/roadmap.md` and `docs/acceptance.md` for the current scope and acceptance gates.
 
 ## Implemented and locally executed

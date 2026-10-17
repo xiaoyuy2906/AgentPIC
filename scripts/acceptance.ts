@@ -7,6 +7,7 @@ import { createAPI } from '../core/src/api.js';
 import { Runtime, writeJSON } from '../core/src/runtime.js';
 import { projectRoot } from '../core/src/backends.js';
 import type { RunResult, VerificationReport } from '../core/src/contracts.js';
+import { genericBenchmark } from './generic-benchmark.js';
 const index = process.argv.indexOf('--output');
 const output = path.resolve(index < 0 ? 'runs/acceptance' : process.argv[index + 1]);
 const specIndex = process.argv.indexOf('--specification');
@@ -20,6 +21,7 @@ const specification = JSON.parse(
   ),
 );
 await writeJSON(path.join(output, 'request.json'), specification);
+const generic = specification.device === 'circuit';
 const runtime = new Runtime(path.join(output, 'runs'));
 const server = createAPI(runtime);
 await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -41,13 +43,23 @@ try {
     await fetch(`${url}/v1/runs/${httpRun.run_id}/verify`, { method: 'POST' })
   ).json()) as VerificationReport;
   expect(httpReport.status === 'passed_with_limitations', 'HTTP reverification failed');
-  const gds = Buffer.from(
-    await (await fetch(`${url}/v1/runs/${httpRun.run_id}/artifacts/design.gds`)).arrayBuffer(),
-  );
-  expect(
-    gds.equals(await readFile(path.join(httpRun.artifact_directory, 'design.gds'))),
-    'HTTP binary GDS mismatch',
-  );
+  const gdsResponse = await fetch(`${url}/v1/runs/${httpRun.run_id}/artifacts/design.gds`);
+  if (generic) {
+    expect(gdsResponse.status === 404, 'Generic flow must not expose a GDS');
+    const invalid = structuredClone(specification);
+    invalid.circuit.ports[invalid.port_order[0]].port = 'missing';
+    expect(
+      (await fetch(`${url}/v1/compile`, { method: 'POST', body: JSON.stringify(invalid) }))
+        .status === 422,
+      'HTTP must reject invalid generic endpoint',
+    );
+  } else {
+    const gds = Buffer.from(await gdsResponse.arrayBuffer());
+    expect(
+      gds.equals(await readFile(path.join(httpRun.artifact_directory, 'design.gds'))),
+      'HTTP binary GDS mismatch',
+    );
+  }
   await writeJSON(path.join(output, 'http-response.json'), httpRun);
   await writeJSON(path.join(output, 'http-verification.json'), httpReport);
   const ir = await (
@@ -80,6 +92,28 @@ let mcpRun: RunResult, toolNames: string[];
 try {
   await client.connect(transport);
   toolNames = (await client.listTools()).tools.map((t) => t.name);
+  if (generic) {
+    const compiled = await client.callTool({ name: 'compile_pic', arguments: { specification } });
+    expect(!compiled.isError, 'MCP generic compilation failed');
+    const simulated = await client.callTool({
+      name: 'simulate_circuit',
+      arguments: { ir: compiled.structuredContent },
+    });
+    expect(
+      !simulated.isError &&
+        (simulated.structuredContent as { verification: VerificationReport }).verification
+          .status === 'passed_with_limitations',
+      'MCP generic simulation failed',
+    );
+    await writeJSON(path.join(output, 'mcp-circuit-only.json'), simulated.structuredContent);
+    const invalid = structuredClone(specification);
+    invalid.port_order.push(invalid.port_order[0]);
+    expect(
+      (await client.callTool({ name: 'compile_pic', arguments: { specification: invalid } }))
+        .isError,
+      'MCP must reject duplicate generic port order',
+    );
+  }
   const response = await client.callTool({ name: 'design_pic', arguments: { specification } });
   expect(!response.isError, 'MCP design failed');
   mcpRun = response.structuredContent as RunResult;
@@ -92,17 +126,40 @@ try {
     (report.structuredContent as VerificationReport)?.status === 'passed_with_limitations',
     'MCP reverification failed',
   );
-  const resource = await client.readResource({
-    uri: `agentpic://runs/${mcpRun.run_id}/design.gds`,
-  });
-  expect('blob' in resource.contents[0], 'MCP did not return binary artifact');
-  if ('blob' in resource.contents[0])
+  if (generic) {
     expect(
-      Buffer.from(resource.contents[0].blob, 'base64').equals(
-        await readFile(path.join(mcpRun.artifact_directory, 'design.gds')),
-      ),
-      'MCP binary GDS mismatch',
+      !mcpRun.artifacts.some((a) => a.name.endsWith('.gds') || a.name === 'layout.json'),
+      'Generic MCP flow must not publish physical artifacts',
     );
+    expect(
+      (report.structuredContent as VerificationReport).checks.some(
+        (c) => c.id === 'layout_generation' && c.status === 'not_run',
+      ),
+      'Generic layout must explicitly be not_run',
+    );
+    const resource = await client.readResource({
+      uri: `agentpic://runs/${mcpRun.run_id}/simulation.json`,
+    });
+    expect(
+      'blob' in resource.contents[0] &&
+        Buffer.from(resource.contents[0].blob, 'base64').equals(
+          await readFile(path.join(mcpRun.artifact_directory, 'simulation.json')),
+        ),
+      'MCP simulation artifact mismatch',
+    );
+  } else {
+    const resource = await client.readResource({
+      uri: `agentpic://runs/${mcpRun.run_id}/design.gds`,
+    });
+    expect('blob' in resource.contents[0], 'MCP did not return binary artifact');
+    if ('blob' in resource.contents[0])
+      expect(
+        Buffer.from(resource.contents[0].blob, 'base64').equals(
+          await readFile(path.join(mcpRun.artifact_directory, 'design.gds')),
+        ),
+        'MCP binary GDS mismatch',
+      );
+  }
   await writeJSON(path.join(output, 'mcp-response.json'), mcpRun);
   await writeJSON(path.join(output, 'mcp-verification.json'), report.structuredContent);
 } finally {
@@ -110,8 +167,9 @@ try {
 }
 const core = [
   'engineering_ir.json',
-  'design.gds',
-  'layout.json',
+  ...(generic
+    ? ['specification.json', 'compiled_ir.json', 'spectrum.csv', 'verification.json']
+    : ['design.gds', 'layout.json']),
   'netlist.json',
   'simulation.json',
 ];
@@ -122,16 +180,19 @@ if (httpRun!.artifacts.some((a) => a.name === 'tuning.json'))
   core.push('tuning.json', 'pre-tuning-ir.json');
 for (const name of core)
   expect(
-    httpRun!.artifacts.find((a) => a.name === name)?.sha256 ===
-      mcpRun!.artifacts.find((a) => a.name === name)?.sha256,
+    httpRun!.artifacts.some((a) => a.name === name) &&
+      httpRun!.artifacts.find((a) => a.name === name)?.sha256 ===
+        mcpRun!.artifacts.find((a) => a.name === name)?.sha256,
     `Transport artifact differs: ${name}`,
   );
 const simulation = JSON.parse(
   await readFile(path.join(httpRun!.artifact_directory, 'simulation.json'), 'utf8'),
 );
-const layout = JSON.parse(
-  await readFile(path.join(httpRun!.artifact_directory, 'layout.json'), 'utf8'),
-);
+const layout = generic
+  ? null
+  : JSON.parse(await readFile(path.join(httpRun!.artifact_directory, 'layout.json'), 'utf8'));
+const benchmark = generic ? genericBenchmark(specification, simulation) : null;
+if (benchmark) await writeJSON(path.join(output, 'independent-reference.json'), benchmark);
 const counts: Record<string, number> = {};
 for (const check of httpReport!.checks) counts[check.status] = (counts[check.status] ?? 0) + 1;
 const summary = {
@@ -147,11 +208,16 @@ const summary = {
   verification_counts: counts,
   transport_artifacts_identical: core,
   center_wavelength_nm: simulation.wavelength_nm[Math.floor(simulation.wavelength_nm.length / 2)],
-  center_transmission: {
-    out0: simulation.transmission_out0[Math.floor(simulation.wavelength_nm.length / 2)],
-    out1: simulation.transmission_out1[Math.floor(simulation.wavelength_nm.length / 2)],
-  },
-  lengths_um: layout.lengths_um,
+  ports: simulation.ports,
+  independent_reference: benchmark,
+  generic_layout: generic ? 'not_run' : undefined,
+  center_transmission: generic
+    ? null
+    : {
+        out0: simulation.transmission_out0[Math.floor(simulation.wavelength_nm.length / 2)],
+        out1: simulation.transmission_out1[Math.floor(simulation.wavelength_nm.length / 2)],
+      },
+  lengths_um: layout?.lengths_um ?? null,
   foundry_signoff: false,
 };
 await writeJSON(path.join(output, 'acceptance.json'), summary);

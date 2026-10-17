@@ -55,7 +55,7 @@ test('nominal cascade SAX result satisfies an independent two-stage power identi
   const result = await simulateCircuit(compile(specification));
   assert.equal(result.verification.status, 'passed_with_limitations');
   const expected = Math.cos((Math.PI * 1.8 * (20 - 10)) / 1.55) ** 2;
-  assert.ok(Math.abs(result.simulation.transmission_out0[100] - expected) < 1e-9);
+  assert.ok(Math.abs(result.simulation.transmission_out0![100] - expected) < 1e-9);
   assert.equal(
     result.verification.checks.find((c) => c.id === 'analytic_cascade_agreement')?.status,
     'pass',

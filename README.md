@@ -77,6 +77,25 @@ For excitation at `in0`, `out0` is the through port and `out1` the drop port. Th
 
 Verification compares the entire complex response with independent feedback summation, predicts resonances from measured paths and dispersion, and extracts peaks/linewidths from the exported spectrum. It requires at least two complete resonances and 20 samples per theoretical linewidth. A coarse grid or clipped window fails even when every sampled S-parameter is correct. Weak coupling may require more samples; this recipe permits up to 10,001 points. Resonance wavelengths, spacing, half-maximum widths and ideal-model loaded Q are machine-readable evidence in `verification.json`. See [fixed acceptance gates](docs/stage3-resonant-network.md).
 
+## Generic circuit simulation
+
+Submit `device: circuit` with existing primitive instances, explicit connections,
+external ports, versioned model references and an explicit optical `port_order`.
+The same HTTP/MCP/CLI workflow returns the full complex S-matrix and independent
+verification without adding a device recipe. Two new acceptance benchmarks are:
+
+```sh
+npm run acceptance -- --specification examples/generic_chain_1550.json --output runs/generic-chain-acceptance
+npm run acceptance -- --specification examples/generic_coupler_1550.json --output runs/generic-coupler-acceptance
+```
+
+Both compare real SAX with closed-form amplitudes and an independent NumPy network
+reference. Generic results use supplied lengths; layout/GDS, physical layout
+verification and general spectral convergence are explicitly `not_run`.
+Legacy fixed-port power summaries are null; the full matrix uses the requested
+port names and order. Existing recipe/GDS workflows retain their behavior.
+See [input limits, evidence and acceptance gates](docs/stage3-generic-circuits.md).
+
 ## Additional capability: physics reasoning and verification
 
 ```sh
@@ -204,7 +223,7 @@ Controlled designs additionally verify control intent/artifacts, metal geometry,
 
 `sin_demo_v1` assumes a 1 µm wide, 0.4 µm thick core, 50 µm bends, neff=1.8, ng=1.9 at 1550 nm, ideal 50:50 couplers and zero propagation loss. These are illustrative assumptions. The MMI polygons have not been optically calibrated to the compact model. GDS describes planar geometry; the thickness remains an IR assumption. No fabrication readiness is claimed.
 
-The design compiler currently supports parameterized SiN MZIs, 2–4 stage cascades and MMI-coupled add/drop feedback rings, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, geometry optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
+The design compiler currently supports parameterized SiN MZIs, 2–4 stage cascades and MMI-coupled add/drop feedback rings, with optional controlled optical phase; the generic hierarchy compiler also supports nested topology. Externally supplied flat circuits now compile and simulate with explicit model references, arbitrary valid optical port names and independent verification; generic placement/routing and GDS remain unsupported. The physics workflow supports the planar TE benchmark described above. FDTDX, FEM, EME, full-vector channel modes, electrothermal actuation, geometry optimization, additional device models, foundry PDKs and foundry DRC/LVS are future work. The reserved EM contract does not advertise execution. See [equations and validity](docs/models-and-verification.md) and [interface boundaries](docs/interfaces.md).
 
 ## Development
 

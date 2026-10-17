@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
+from agentpic.circuit_reference import circuit_reference
 from agentpic.ir import CheckResult, EngineeringIR
 from agentpic.spectral import verify_ring_spectrum
 
@@ -28,6 +29,8 @@ def _check(identifier: str, passed: bool, detail: str, **evidence) -> CheckResul
 
 
 def analytic_scattering(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarray:
+    if ir.specification.device == "circuit":
+        return circuit_reference(ir, wavelengths)
     tech = ir.technology
     controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
     lengths = {i.name: i.length_um for i in ir.netlist.instances if i.kind != "ideal_coupler"}
@@ -96,8 +99,16 @@ def analytic_scattering(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarra
 
 def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
-    matrix = np.asarray(simulation["s_real"]) + 1j * np.asarray(simulation["s_imag"])
     spec = ir.specification
+    expected_ports = spec.port_order if spec.device == "circuit" else ["in0", "in1", "out0", "out1"]
+    size = len(expected_ports)
+    try:
+        real, imag = np.asarray(simulation["s_real"]), np.asarray(simulation["s_imag"])
+        if real.shape != imag.shape:
+            raise ValueError("Real and imaginary shapes differ")
+        matrix = real + 1j * imag
+    except ValueError:
+        return [_check("simulation_shape_and_finiteness", False, "Malformed complex matrix.")]
     controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
     calibration = (
         [
@@ -111,17 +122,26 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         if controls
         else []
     )
+    if spec.device == "circuit":
+        calibration.append(
+            CheckResult(
+                id="generic_spectral_resolution",
+                status="not_run",
+                detail="Only requested samples are checked; generic resonance coverage and spectral convergence are not certified.",
+                evidence={},
+            )
+        )
     expected_grid = np.linspace(
         spec.wavelength_nm - spec.sweep_span_nm / 2,
         spec.wavelength_nm + spec.sweep_span_nm / 2,
         spec.sweep_points,
     )
     if (
-        matrix.shape != (spec.sweep_points, 4, 4)
+        matrix.shape != (spec.sweep_points, size, size)
         or wavelengths.shape != expected_grid.shape
         or not np.all(np.isfinite(matrix))
         or not np.all(np.isfinite(wavelengths))
-        or simulation["ports"] != ["in0", "in1", "out0", "out1"]
+        or simulation["ports"] != expected_ports
     ):
         return calibration + [
             _check(
@@ -130,35 +150,68 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
                 "Invalid scattering data shape, values or ports.",
             )
         ]
-    expected = analytic_scattering(ir, wavelengths)
+    try:
+        expected = analytic_scattering(ir, wavelengths)
+    except (ValueError, np.linalg.LinAlgError) as exc:
+        return calibration + [
+            _check(
+                "independent_circuit_agreement",
+                False,
+                "Independent reference could not resolve the network.",
+                error=str(exc),
+            )
+        ]
+    if not np.all(np.isfinite(expected)):
+        return calibration + [
+            _check("independent_circuit_agreement", False, "Independent reference is not finite.")
+        ]
     error = float(np.max(np.abs(matrix - expected)))
     reciprocity = float(np.max(np.abs(matrix - matrix.transpose(0, 2, 1))))
-    unitary_error = float(np.max(np.abs(matrix.conj().transpose(0, 2, 1) @ matrix - np.eye(4))))
+    unitary_error = float(np.max(np.abs(matrix.conj().transpose(0, 2, 1) @ matrix - np.eye(size))))
     largest_gain = float(np.max(np.linalg.svd(matrix, compute_uv=False)))
     out0 = np.asarray(simulation["transmission_out0"])
     out1 = np.asarray(simulation["transmission_out1"])
     powers_consistent = (
-        out0.shape == wavelengths.shape
-        and out1.shape == wavelengths.shape
-        and np.allclose(out0, np.abs(matrix[:, 2, 0]) ** 2, atol=1e-12, rtol=0)
-        and np.allclose(out1, np.abs(matrix[:, 3, 0]) ** 2, atol=1e-12, rtol=0)
+        all(
+            simulation[key] is None
+            for key in ("input_port", "transmission_out0", "transmission_out1")
+        )
+        if spec.device == "circuit"
+        else (
+            simulation["input_port"] == "in0"
+            and out0.shape == wavelengths.shape
+            and out1.shape == wavelengths.shape
+            and np.allclose(out0, np.abs(matrix[:, 2, 0]) ** 2, atol=1e-12, rtol=0)
+            and np.allclose(out1, np.abs(matrix[:, 3, 0]) ** 2, atol=1e-12, rtol=0)
+        )
     )
     return (
         calibration
         + [
+            _check(
+                "simulation_shape_and_finiteness",
+                True,
+                "Complex matrix dimensions, finiteness and explicit optical port order agree.",
+                ports=expected_ports,
+                shape=list(matrix.shape),
+            ),
             _check(
                 "simulation_grid",
                 np.allclose(wavelengths, expected_grid, rtol=0, atol=1e-9),
                 "Spectrum covers the requested wavelength range and center.",
             ),
             _check(
-                "analytic_ring_agreement"
+                "independent_circuit_agreement"
+                if spec.device == "circuit"
+                else "analytic_ring_agreement"
                 if ir.specification.device == "ring_add_drop"
                 else "analytic_cascade_agreement"
                 if ir.assembly is not None
                 else "analytic_mzi_agreement",
                 error < 1e-9,
-                "Full complex SAX S-matrix agrees with independent closed-form network response and physical path propagation.",
+                "Full complex SAX S-matrix agrees with independent NumPy network elimination."
+                if spec.device == "circuit"
+                else "Full complex SAX S-matrix agrees with independent closed-form network response and physical path propagation.",
                 max_complex_error=error,
                 tolerance=1e-9,
             ),
@@ -174,13 +227,17 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
             _check(
                 "lossless_power_balance",
                 unitary_error < 1e-10,
-                "All four inputs satisfy S†S=I for the stated lossless model.",
+                "All optical inputs satisfy S†S=I for the stated lossless model.",
                 max_error=unitary_error,
             ),
             _check(
-                "reported_transmission",
+                "generic_result_representation"
+                if spec.device == "circuit"
+                else "reported_transmission",
                 bool(powers_consistent),
-                "Reported transmission powers agree with the exported S-matrix.",
+                "Generic results use the complete complex matrix; fixed-name summaries are null."
+                if spec.device == "circuit"
+                else "Reported transmission powers agree with the exported S-matrix.",
             ),
         ]
         + (

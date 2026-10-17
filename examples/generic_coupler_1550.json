@@ -1,0 +1,64 @@
+{
+  "device": "circuit",
+  "platform": "sin",
+  "wavelength_nm": 1550,
+  "sweep_span_nm": 40,
+  "sweep_points": 201,
+  "outputs": [
+    "netlist",
+    "simulation",
+    "gds",
+    "verification"
+  ],
+  "models": {
+    "ideal_coupler": "ideal_coupler_v1"
+  },
+  "port_order": [
+    "drop",
+    "west",
+    "through",
+    "north"
+  ],
+  "circuit": {
+    "instances": [
+      {
+        "name": "splitter",
+        "kind": "ideal_coupler",
+        "coupling_ratio": 0.27,
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          },
+          {
+            "name": "o3"
+          },
+          {
+            "name": "o4"
+          }
+        ]
+      }
+    ],
+    "connections": [],
+    "ports": {
+      "west": {
+        "instance": "splitter",
+        "port": "o1"
+      },
+      "north": {
+        "instance": "splitter",
+        "port": "o2"
+      },
+      "drop": {
+        "instance": "splitter",
+        "port": "o3"
+      },
+      "through": {
+        "instance": "splitter",
+        "port": "o4"
+      }
+    }
+  }
+}

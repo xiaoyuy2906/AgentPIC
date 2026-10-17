@@ -59,6 +59,20 @@ def test_generated_cascade_contract_round_trips_serialized_data():
     assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
 
 
+@pytest.mark.parametrize("name", ["chain", "coupler"])
+def test_generated_generic_contract_round_trips(name):
+    source = (
+        Path(__file__).resolve().parents[1] / f"examples/generic_{name}_1550.json"
+    ).read_text()
+    parsed = design_spec.validate_json(source, strict=True)
+    assert parsed.device == "circuit"
+    assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
+    invalid = json.loads(source)
+    invalid["circuit"]["ports"]["invalid,name"] = next(iter(invalid["circuit"]["ports"].values()))
+    with pytest.raises(ValidationError):
+        design_spec.validate_python(invalid)
+
+
 def test_generated_phase_control_contract_preserves_units_and_values():
     source = (Path(__file__).resolve().parents[1] / "examples/tunable_mzi_1550.json").read_text()
     parsed = design_spec.validate_json(source, strict=True)

@@ -423,6 +423,37 @@ class RingSpec(ContractModel):
     phase_control: PhaseControl | None = None
 
 
+ModelsAdditionalProperty = TypeAliasType(
+    "ModelsAdditionalProperty", Annotated[str, Field(min_length=1)]
+)
+
+
+type PortOrderItem = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+type LengthUm = Annotated[float, Field(gt=0.0)]
+
+
+type CouplingRatio2 = Annotated[float, Field(ge=0.0, le=1.0)]
+
+
+class Port(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    domain: Literal["optical", "electrical"] = "optical"
+    direction: Literal["input", "output", "bidirectional"] = "bidirectional"
+
+
+class Endpoint(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    instance: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    port: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
 type CenterlineUmItem = Annotated[tuple[float, float], Field(max_length=2, min_length=2)]
 
 
@@ -453,56 +484,23 @@ class LayoutBlock(ContractModel):
     delta_length_um: Annotated[float, Field(ge=-200.0, le=200.0)]
 
 
-class Endpoint(ContractModel):
+class Link(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     instance: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    port: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-
-
-class Port(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    domain: Literal["optical", "electrical"] = "optical"
-    direction: Literal["input", "output", "bidirectional"] = "bidirectional"
-
-
-type LengthUm = Annotated[float, Field(gt=0.0)]
-
-
-type CouplingRatio2 = Annotated[float, Field(ge=0.0, le=1.0)]
-
-
-class Component(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    kind: Literal["ideal_coupler", "waveguide", "phase_shifter"]
-    ports: Annotated[list[Port], Field(min_length=1)]
-    length_um: LengthUm | None = None
-    coupling_ratio: CouplingRatio2 | None = None
-    phase_control: PhaseControl | None = None
-
-
-class Connection(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     a: Endpoint
     b: Endpoint
 
 
-class Circuit(ContractModel):
+class AssemblyPlan(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    instances: Annotated[list[Component], Field(min_length=1)]
-    connections: list[Connection]
-    ports: dict[str, Endpoint]
+    arrangement: Literal["series"]
+    blocks: Annotated[list[LayoutBlock], Field(max_length=4, min_length=2)]
+    link_length_um: Annotated[float, Field(gt=0.0)]
+    links: list[Link]
 
 
 class ModuleInstance(ContractModel):
@@ -513,26 +511,6 @@ class ModuleInstance(ContractModel):
     definition: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
 
 
-class CircuitDefinition(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    primitives: Annotated[list[Component], Field(max_length=256)]
-    modules: Annotated[list[ModuleInstance], Field(max_length=256)]
-    connections: list[Connection]
-    ports: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), Endpoint]
-
-
-class CircuitHierarchy(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    schema_version: Literal["1.0"] = "1.0"
-    top: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    definitions: Annotated[list[CircuitDefinition], Field(max_length=256, min_length=1)]
-
-
 type InstancePathsAdditionalPropertyItem = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
 
 
@@ -540,16 +518,6 @@ InstancePathsAdditionalProperty = TypeAliasType(
     "InstancePathsAdditionalProperty",
     Annotated[list[InstancePathsAdditionalPropertyItem], Field(min_length=1)],
 )
-
-
-class FlattenedCircuit(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    schema_version: Literal["1.0"]
-    top: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    circuit: Circuit
-    instance_paths: dict[str, InstancePathsAdditionalProperty]
 
 
 type CoreLayerItem = Annotated[int, Field(ge=0, le=9007199254740991)]
@@ -641,24 +609,6 @@ CenterlinesUmAdditionalProperty = TypeAliasType(
 )
 
 
-class LayoutResult(ContractModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    schema_version: Literal["2.0"]
-    top_cell: str
-    technology: str
-    core_layer: tuple[CoreLayerItem2, CoreLayerItem2]
-    lengths_um: dict[str, LengthsUmAdditionalProperty]
-    centerlines_um: dict[str, CenterlinesUmAdditionalProperty]
-    ports: dict[str, dict[str, PhysicalPort]]
-    extracted_circuit: Circuit
-    bend_radius_um: Annotated[float, Field(gt=0.0)]
-    delta_length_um: float | None
-    path_imbalances_um: dict[str, float] = {}
-    actuators: Annotated[dict[str, ActuatorLayout], Field(validate_default=True)] = {}
-
-
 type WavelengthNmItem = Annotated[float, Field(gt=0.0)]
 
 
@@ -673,9 +623,9 @@ class SimulationResult(ContractModel):
     ports: list[str]
     s_real: list[list[list[float]]]
     s_imag: list[list[list[float]]]
-    input_port: str
-    transmission_out0: list[float]
-    transmission_out1: list[float]
+    input_port: str | None
+    transmission_out0: list[float] | None
+    transmission_out1: list[float] | None
     physical_calibration: Literal["not_performed"]
 
 
@@ -797,23 +747,108 @@ class CascadeSpec(ContractModel):
     link_length_um: Annotated[float, Field(ge=10.0, le=1000.0)] = 100
 
 
-class Link(ContractModel):
+class Component(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    instance: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    kind: Literal["ideal_coupler", "waveguide", "phase_shifter"]
+    ports: Annotated[list[Port], Field(min_length=1)]
+    length_um: LengthUm | None = None
+    coupling_ratio: CouplingRatio2 | None = None
+    phase_control: PhaseControl | None = None
+
+
+class Connection(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     a: Endpoint
     b: Endpoint
 
 
-class AssemblyPlan(ContractModel):
+class Circuit(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    arrangement: Literal["series"]
-    blocks: Annotated[list[LayoutBlock], Field(max_length=4, min_length=2)]
-    link_length_um: Annotated[float, Field(gt=0.0)]
-    links: list[Link]
+    instances: Annotated[list[Component], Field(min_length=1)]
+    connections: list[Connection]
+    ports: dict[str, Endpoint]
+
+
+class CircuitDefinition(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    primitives: Annotated[list[Component], Field(max_length=256)]
+    modules: Annotated[list[ModuleInstance], Field(max_length=256)]
+    connections: list[Connection]
+    ports: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), Endpoint]
+
+
+class CircuitHierarchy(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal["1.0"] = "1.0"
+    top: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    definitions: Annotated[list[CircuitDefinition], Field(max_length=256, min_length=1)]
+
+
+class FlattenedCircuit(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal["1.0"]
+    top: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    circuit: Circuit
+    instance_paths: dict[str, InstancePathsAdditionalProperty]
+
+
+class LayoutResult(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    schema_version: Literal["2.0"]
+    top_cell: str
+    technology: str
+    core_layer: tuple[CoreLayerItem2, CoreLayerItem2]
+    lengths_um: dict[str, LengthsUmAdditionalProperty]
+    centerlines_um: dict[str, CenterlinesUmAdditionalProperty]
+    ports: dict[str, dict[str, PhysicalPort]]
+    extracted_circuit: Circuit
+    bend_radius_um: Annotated[float, Field(gt=0.0)]
+    delta_length_um: float | None
+    path_imbalances_um: dict[str, float] = {}
+    actuators: Annotated[dict[str, ActuatorLayout], Field(validate_default=True)] = {}
+
+
+class Circuit1(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    instances: Annotated[list[Component], Field(max_length=32, min_length=1)]
+    connections: list[Connection]
+    ports: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), Endpoint]
+
+
+class GenericCircuitSpec(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tuning: Annotated[None, Field(None)] = None
+    platform: Literal["sin"] = "sin"
+    wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
+    outputs: Annotated[
+        list[Literal["netlist", "simulation", "gds", "verification"]], Field(min_length=1)
+    ] = ["netlist", "simulation", "verification"]
+    sweep_span_nm: Annotated[float, Field(gt=0.0, le=100.0)] = 40
+    sweep_points: Annotated[int, Field(ge=3, le=1001)] = 201
+    device: Literal["circuit"]
+    circuit: Circuit1
+    models: dict[str, ModelsAdditionalProperty]
+    port_order: Annotated[list[PortOrderItem], Field(max_length=16, min_length=1)]
 
 
 class EngineeringIR(ContractModel):
@@ -822,7 +857,7 @@ class EngineeringIR(ContractModel):
     )
     schema_version: Literal["2.0"] = "2.0"
     design_id: Annotated[str, Field(pattern="^[0-9a-f]{16}$")]
-    specification: MZISpec | CascadeSpec | RingSpec
+    specification: MZISpec | CascadeSpec | RingSpec | GenericCircuitSpec
     technology: PDK
     netlist: Circuit
     hierarchy: CircuitHierarchy | None = None
@@ -870,12 +905,13 @@ class Contracts(ContractModel):
     PhysicsDiagnostic_1: Annotated[PhysicsDiagnostic, Field(alias="PhysicsDiagnostic")]
     DevelopmentRequest_1: Annotated[DevelopmentRequest, Field(alias="DevelopmentRequest")]
     PhysicsReport_1: Annotated[PhysicsReport, Field(alias="PhysicsReport")]
-    DesignSpec: MZISpec | CascadeSpec | RingSpec
+    DesignSpec: MZISpec | CascadeSpec | RingSpec | GenericCircuitSpec
     PhaseControl_1: Annotated[PhaseControl, Field(alias="PhaseControl")]
     ActuatorLayout_1: Annotated[ActuatorLayout, Field(alias="ActuatorLayout")]
     MZISpec_1: Annotated[MZISpec, Field(alias="MZISpec")]
     CascadeSpec_1: Annotated[CascadeSpec, Field(alias="CascadeSpec")]
     RingSpec_1: Annotated[RingSpec, Field(alias="RingSpec")]
+    GenericCircuitSpec_1: Annotated[GenericCircuitSpec, Field(alias="GenericCircuitSpec")]
     CascadeStage_1: Annotated[CascadeStage, Field(alias="CascadeStage")]
     LayoutBlock_1: Annotated[LayoutBlock, Field(alias="LayoutBlock")]
     AssemblyPlan_1: Annotated[AssemblyPlan, Field(alias="AssemblyPlan")]

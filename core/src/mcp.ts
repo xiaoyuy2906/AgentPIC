@@ -84,7 +84,8 @@ export function createMCP(runtime = new Runtime()) {
   server.registerTool(
     'design_pic',
     {
-      description: 'Run complete layout, SAX and verification workflow.',
+      description:
+        'Run a persisted design workflow. Recipes include layout; generic circuits run SAX and verification with layout explicitly not_run.',
       inputSchema: { specification: DesignSpecSchema },
       outputSchema: RunResultSchema.shape,
     },

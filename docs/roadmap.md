@@ -25,7 +25,7 @@ Stages 4–7 are long-term research directions, not current feature commitments.
 | Task | Depends on | State |
 |---|---|---|
 | ADR-001 and generated shared contracts | — | Implemented; CI checks generation drift |
-| Circuit compiler and semantic validation | contracts | Implemented; specification recipes support SiN MZIs, 2–4 stage cascades and add/drop feedback rings |
+| Circuit compiler and semantic validation | contracts | Implemented; generic primitive circuits plus SiN MZI, cascade and add/drop-ring recipes |
 | Circuit/layout backend interfaces | compiler, JSON transport | Implemented with SAX and GDSFactory |
 | Workflow, backannotation, verification and artifact inventory | adapters, compiler | Implemented |
 | API/MCP and complete MZI acceptance | workflow, verification | Implemented; real transport and binary GDS checks |
@@ -49,4 +49,6 @@ Verification is layered: circuit references and port topology; model validity an
 
 ## Next development milestone
 
-The passive, controlled and target-driven cascade and feedback-ring workflows now exercise hierarchy, physical composition, feedback cycles, mixed optical/electrical terminals, bounded search and independent complex/spectral verification. The next major gap is physical model validity: resonant wavelengths currently depend on assumed waveguide dispersion and zero-delay ideal couplers. A channel-waveguide/EM-backed model should provide traceable effective/group indices, units, validity ranges, convergence and independent reference evidence before replacing those assumptions. Reuse existing mode/EM implementations and rerun complete design workflows after integration. Coupler geometry calibration, qualified PDK rules and general hierarchy placement/routing remain separate requirements. More named device examples alone do not establish a complete EDA platform.
+The bounded generic circuit compilation/simulation milestone lets external primitive circuits flow through existing IR, SAX, independent verification and API/MCP without device-specific recipes. Two-port waveguide chains and standalone four-port couplers are the new benchmarks. Generic GDS, new solvers and unrelated registry/runtime refactoring are outside this milestone. See [fixed acceptance gates](stage3-generic-circuits.md) and [execution evidence](progress.md).
+
+After that milestone is accepted, the next smallest scientific gap is a traceable waveguide compact model with documented physical source, units, wavelength/geometry validity range and independent reference evidence. Current effective/group indices remain assumptions. General placement/routing, coupler geometry calibration, qualified PDK rules and new EM integrations remain separate milestones; no work on them is authorized by the generic-circuit milestone.

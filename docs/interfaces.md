@@ -6,7 +6,7 @@
 
 | Field | Default | Supported constraint |
 |---|---|---|
-| `device` | `mzi` | `mzi`, `mzi_cascade` or `ring_add_drop` |
+| `device` | `mzi` | `mzi`, `mzi_cascade`, `ring_add_drop` or `circuit` |
 | `platform` | `sin` | Illustrative `sin_demo_v1` PDK |
 | `wavelength_nm` | 1550 | 1500–1600 nm |
 | `outputs` | All four | Nonempty unique subset of netlist/simulation/gds/verification |
@@ -16,7 +16,7 @@
 | `phase_control` | null | Single MZI, ring or each cascade stage: optional `{phase_rad, active_length_um}` |
 | `tuning` | null | Optional optical targets, phase variables, tolerance and evaluation budget |
 | `sweep_span_nm` | 40; ring: 4 | Greater than zero, at most 100 nm |
-| `sweep_points` | 201; ring: 1001 | Odd integer, 3–2001; ring permits up to 10001 |
+| `sweep_points` | 201; ring: 1001 | Odd integer, 3–2001; ring permits up to 10001, generic up to 1001 |
 
 The full sweep must lie in 1450–1650 nm. Unique outputs, odd samples and engineering bounds are checked by the TS compiler. These are software support ranges, not calibrated physical validity ranges.
 
@@ -41,7 +41,9 @@ The TS Runtime invokes the typed ScientificBackend interface. Run `uv sync --loc
 
 Compilation assigns nominal lengths so circuit simulation is executable without layout. The full workflow runs compile → layout → backannotate → optional tune → simulate → verify → manifest. State and events persist after transitions. Backend errors fail the task, block dependents and retain partial artifacts. A completed verification task may still report failed checks and cause overall failure. There is no automatic process-crash recovery or resume.
 
-SAX can evaluate the supported model graph, while independent optical validation targets the emitted ideal single/cascaded MZI families. Adding circuit families requires extending the compiler/model catalog and their independent verification policies. The placeholder EM request/result is not yet a complete material, mesh or solver configuration contract.
+Generic `device: circuit` inputs use compile → simulate → verify → manifest with no layout or tuning task. They reuse the existing `Circuit` with explicit `models` and `port_order`; default outputs omit GDS. Requesting GDS records layout as `not_run` and produces no GDS file. See [generic input contract, limits and acceptance](stage3-generic-circuits.md).
+
+SAX evaluates the supported model graph. Generic validation independently eliminates internal waves using NumPy; recipe validation retains family-specific analytical and spectral checks. New topologies made from supported primitives require no new recipe. New physical models still require independent validation and model-catalog support. The placeholder EM request/result is not yet a complete material, mesh or solver configuration contract.
 
 ## Reusable circuit hierarchy
 
@@ -59,11 +61,13 @@ Every arm and interconnect is measured from actual layout and backannotated into
 
 `RunResult` contains run/design IDs, status, verification status, server-local artifact directory, hashes and optional error. HTTP clients download through the artifact route; MCP uses resource URIs. `VerificationReport` includes per-check pass/fail/not_run, evidence, limitations and literal `foundry_signoff: false`.
 
+`SimulationResult.s_real` and `s_imag` are indexed `[wavelength][output][input]` in `ports` order. Generic responses use the requested `port_order` and set the legacy `input_port`, `transmission_out0`, `transmission_out1` fields to null. Recipe response fields retain their previous values. Optical phase shifters may carry electrical terminals in IR, but those terminals are excluded from the optical matrix.
+
 `manifest.json` and `run.json` are not included in their own hash inventories. Local hashes are an integrity reference, not a signed attestation. Reverification returns a fresh report without altering the original evidence. Format 1.0 prototype artifacts are not accepted as version 2.0 runs.
 
 ## Target tuning
 
-`TuningSpec` is part of both supported design specifications:
+`TuningSpec` is available for MZI, cascade and ring recipes, not generic circuit specifications:
 
 ```json
 {

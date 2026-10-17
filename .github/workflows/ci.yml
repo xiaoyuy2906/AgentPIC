@@ -43,6 +43,8 @@ jobs:
       - run: npm run acceptance -- --specification examples/target_cascade_1550.json --output runs/target-acceptance
       - run: npm run acceptance -- --specification examples/ring_1550.json --output runs/ring-acceptance
       - run: npm run acceptance -- --specification examples/target_ring_1550.json --output runs/target-ring-acceptance
+      - run: npm run acceptance -- --specification examples/generic_chain_1550.json --output runs/generic-chain-acceptance
+      - run: npm run acceptance -- --specification examples/generic_coupler_1550.json --output runs/generic-coupler-acceptance
       - run: npm run benchmark:physics -- --output runs/physics-benchmarks
       - uses: actions/upload-artifact@v4
         if: always()
@@ -55,6 +57,8 @@ jobs:
             runs/target-acceptance/
             runs/ring-acceptance/
             runs/target-ring-acceptance/
+            runs/generic-chain-acceptance/
+            runs/generic-coupler-acceptance/
             runs/physics-benchmarks/
             /tmp/agentpic-*/
           if-no-files-found: ignore

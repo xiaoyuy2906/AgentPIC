@@ -15,6 +15,8 @@ class GDSFactoryBackend:
 
 
 def build_layout(ir: EngineeringIR, directory: Path) -> dict:
+    if ir.specification.device == "circuit":
+        raise NotImplementedError("Generic circuit layout and GDS export are not implemented")
     import gdsfactory as gf
     import klayout.db as kdb
 

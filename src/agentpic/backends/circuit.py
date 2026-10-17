@@ -80,7 +80,12 @@ def build_circuit(ir: EngineeringIR):
             "phase_shifter": phase_shifter,
         },
     )
-    return model, list(netlist["ports"])
+    ports = (
+        ir.specification.port_order
+        if ir.specification.device == "circuit"
+        else list(netlist["ports"])
+    )
+    return model, ports
 
 
 def simulate(ir: EngineeringIR) -> dict:
@@ -103,12 +108,12 @@ def simulate(ir: EngineeringIR) -> dict:
         "ports": ports,
         "s_real": matrix.real.tolist(),
         "s_imag": matrix.imag.tolist(),
-        "input_port": "in0",
-        "transmission_out0": (
-            np.abs(matrix[:, ports.index("out0"), ports.index("in0")]) ** 2
-        ).tolist(),
-        "transmission_out1": (
-            np.abs(matrix[:, ports.index("out1"), ports.index("in0")]) ** 2
-        ).tolist(),
+        "input_port": None if spec.device == "circuit" else "in0",
+        "transmission_out0": None
+        if spec.device == "circuit"
+        else (np.abs(matrix[:, ports.index("out0"), ports.index("in0")]) ** 2).tolist(),
+        "transmission_out1": None
+        if spec.device == "circuit"
+        else (np.abs(matrix[:, ports.index("out1"), ports.index("in0")]) ** 2).tolist(),
         "physical_calibration": "not_performed",
     }

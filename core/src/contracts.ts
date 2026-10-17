@@ -118,9 +118,6 @@ export const RingSpecSchema = z
     sweep_points: z.number().int().min(3).max(10001).default(1001),
   })
   .meta({ id: 'RingSpec' });
-export const DesignSpecSchema = z
-  .union([MZISpecSchema, CascadeSpecSchema, RingSpecSchema])
-  .meta({ id: 'DesignSpec' });
 export const PortSchema = z
   .strictObject({
     name,
@@ -151,6 +148,25 @@ export const CircuitSchema = z
     ports: record(EndpointSchema),
   })
   .meta({ id: 'Circuit' });
+export const GenericCircuitSpecSchema = z
+  .strictObject({
+    ...DesignFields,
+    device: z.literal('circuit'),
+    circuit: CircuitSchema.extend({
+      instances: z.array(ComponentSchema).min(1).max(32),
+      ports: z.record(name, EndpointSchema),
+    }),
+    // Neutral model identifiers, keyed by primitive kind; never backend callables.
+    models: record(z.string().min(1)),
+    port_order: z.array(name).min(1).max(16),
+    tuning: z.null().default(null),
+    outputs: DesignFields.outputs.default(['netlist', 'simulation', 'verification']),
+    sweep_points: z.number().int().min(3).max(1001).default(201),
+  })
+  .meta({ id: 'GenericCircuitSpec' });
+export const DesignSpecSchema = z
+  .union([MZISpecSchema, CascadeSpecSchema, RingSpecSchema, GenericCircuitSpecSchema])
+  .meta({ id: 'DesignSpec' });
 export const ModuleInstanceSchema = z
   .strictObject({ name, definition: name })
   .meta({ id: 'ModuleInstance' });
@@ -281,9 +297,9 @@ export const SimulationResultSchema = z
     ports: z.array(z.string()),
     s_real: z.array(z.array(z.array(z.number()))),
     s_imag: z.array(z.array(z.array(z.number()))),
-    input_port: z.string(),
-    transmission_out0: z.array(z.number()),
-    transmission_out1: z.array(z.number()),
+    input_port: z.string().nullable(),
+    transmission_out0: z.array(z.number()).nullable(),
+    transmission_out1: z.array(z.number()).nullable(),
     physical_calibration: z.literal('not_performed'),
   })
   .meta({ id: 'SimulationResult' });
@@ -360,6 +376,7 @@ export const Contracts = {
   MZISpec: MZISpecSchema,
   CascadeSpec: CascadeSpecSchema,
   RingSpec: RingSpecSchema,
+  GenericCircuitSpec: GenericCircuitSpecSchema,
   CascadeStage: CascadeStageSchema,
   LayoutBlock: LayoutBlockSchema,
   AssemblyPlan: AssemblyPlanSchema,
@@ -391,6 +408,7 @@ export type PhaseControl = z.infer<typeof PhaseControlSchema>;
 export type TuningResult = z.infer<typeof TuningResultSchema>;
 export type ResolvedTuningVariable = z.infer<typeof ResolvedTuningVariableSchema>;
 export type RingSpec = z.infer<typeof RingSpecSchema>;
+export type GenericCircuitSpec = z.infer<typeof GenericCircuitSpecSchema>;
 export type CascadeSpec = z.infer<typeof CascadeSpecSchema>;
 export type AssemblyPlan = z.infer<typeof AssemblyPlanSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;

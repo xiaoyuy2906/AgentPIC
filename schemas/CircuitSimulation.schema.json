@@ -249,6 +249,9 @@
         },
         {
           "$ref": "#/$defs/RingSpec"
+        },
+        {
+          "$ref": "#/$defs/GenericCircuitSpec"
         }
       ]
     },
@@ -666,6 +669,251 @@
       ],
       "additionalProperties": false
     },
+    "GenericCircuitSpec": {
+      "type": "object",
+      "properties": {
+        "tuning": {
+          "default": null,
+          "type": "null"
+        },
+        "platform": {
+          "default": "sin",
+          "type": "string",
+          "const": "sin"
+        },
+        "wavelength_nm": {
+          "default": 1550,
+          "type": "number",
+          "minimum": 1500,
+          "maximum": 1600
+        },
+        "outputs": {
+          "default": [
+            "netlist",
+            "simulation",
+            "verification"
+          ],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ]
+          }
+        },
+        "sweep_span_nm": {
+          "default": 40,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "sweep_points": {
+          "default": 201,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 1001
+        },
+        "device": {
+          "type": "string",
+          "const": "circuit"
+        },
+        "circuit": {
+          "type": "object",
+          "properties": {
+            "instances": {
+              "minItems": 1,
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Component"
+              }
+            },
+            "connections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Connection"
+              }
+            },
+            "ports": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/Endpoint"
+              }
+            }
+          },
+          "required": [
+            "instances",
+            "connections",
+            "ports"
+          ],
+          "additionalProperties": false
+        },
+        "models": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "port_order": {
+          "minItems": 1,
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          }
+        }
+      },
+      "required": [
+        "device",
+        "circuit",
+        "models",
+        "port_order"
+      ],
+      "additionalProperties": false
+    },
+    "Component": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ideal_coupler",
+            "waveguide",
+            "phase_shifter"
+          ]
+        },
+        "ports": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Port"
+          }
+        },
+        "length_um": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coupling_ratio": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase_control": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhaseControl"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "domain": {
+          "default": "optical",
+          "type": "string",
+          "enum": [
+            "optical",
+            "electrical"
+          ]
+        },
+        "direction": {
+          "default": "bidirectional",
+          "type": "string",
+          "enum": [
+            "input",
+            "output",
+            "bidirectional"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Connection": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/Endpoint"
+        },
+        "b": {
+          "$ref": "#/$defs/Endpoint"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "additionalProperties": false
+    },
+    "Endpoint": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "instance",
+        "port"
+      ],
+      "additionalProperties": false
+    },
     "PDK": {
       "type": "object",
       "properties": {
@@ -831,136 +1079,6 @@
         "instances",
         "connections",
         "ports"
-      ],
-      "additionalProperties": false
-    },
-    "Component": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "kind": {
-          "type": "string",
-          "enum": [
-            "ideal_coupler",
-            "waveguide",
-            "phase_shifter"
-          ]
-        },
-        "ports": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Port"
-          }
-        },
-        "length_um": {
-          "default": null,
-          "anyOf": [
-            {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "coupling_ratio": {
-          "default": null,
-          "anyOf": [
-            {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "phase_control": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PhaseControl"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "name",
-        "kind",
-        "ports"
-      ],
-      "additionalProperties": false
-    },
-    "Port": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "domain": {
-          "default": "optical",
-          "type": "string",
-          "enum": [
-            "optical",
-            "electrical"
-          ]
-        },
-        "direction": {
-          "default": "bidirectional",
-          "type": "string",
-          "enum": [
-            "input",
-            "output",
-            "bidirectional"
-          ]
-        }
-      },
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "Connection": {
-      "type": "object",
-      "properties": {
-        "a": {
-          "$ref": "#/$defs/Endpoint"
-        },
-        "b": {
-          "$ref": "#/$defs/Endpoint"
-        }
-      },
-      "required": [
-        "a",
-        "b"
-      ],
-      "additionalProperties": false
-    },
-    "Endpoint": {
-      "type": "object",
-      "properties": {
-        "instance": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "port": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        }
-      },
-      "required": [
-        "instance",
-        "port"
       ],
       "additionalProperties": false
     },
@@ -1220,19 +1338,36 @@
           }
         },
         "input_port": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "transmission_out0": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          }
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "transmission_out1": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          }
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "physical_calibration": {
           "type": "string",

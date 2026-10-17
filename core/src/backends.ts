@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { z } from 'zod';
+import { primitiveModels } from './generic.js';
 import {
   CheckResultSchema,
   LayoutResultSchema,
@@ -108,7 +109,19 @@ export const capabilities = () => ({
   schema_version: '2.0',
   core: 'typescript',
   contracts: 'zod-generated-json-schema',
-  devices: ['mzi', 'mzi_cascade', 'ring_add_drop'],
+  devices: ['mzi', 'mzi_cascade', 'ring_add_drop', 'circuit'],
+  generic_circuit: {
+    compilation: 'implemented',
+    simulation: 'implemented',
+    verification: 'implemented',
+    models: primitiveModels,
+    max_instances: 32,
+    max_optical_ports: 16,
+    max_sweep_points: 1001,
+    layout: 'not_implemented',
+    target_tuning: 'not_implemented',
+    model_calibration: 'not_performed',
+  },
   feedback_networks: {
     add_drop_ring: 'implemented',
     spectral_sampling_verification: 'implemented',

@@ -69,7 +69,7 @@ for (const phase of [0, Math.PI / 2, Math.PI, 2 * Math.PI, -Math.PI / 2])
     assert.deepEqual(result.simulation.ports, ['in0', 'in1', 'out0', 'out1']);
     for (let n = 0; n < result.simulation.wavelength_nm.length; n++) {
       const expected = Math.sin((phase * 1550) / result.simulation.wavelength_nm[n] / 2) ** 2;
-      assert.ok(Math.abs(result.simulation.transmission_out0[n] - expected) < 1e-9);
+      assert.ok(Math.abs(result.simulation.transmission_out0![n] - expected) < 1e-9);
     }
     assert.equal(
       result.verification.checks.find((c) => c.id === 'phase_actuation_calibration')?.status,
@@ -97,7 +97,7 @@ test('full tuning changes transmission but preserves core and metal geometry', a
       assert.equal(report.checks.find((c) => c.id === name)?.status, 'pass', name);
     assert.equal(report.checks.filter((c) => c.status === 'not_run').length, 4);
     const sim: SimulationResult = await json(path.join(run.artifact_directory, 'simulation.json'));
-    assert.ok(Math.abs(sim.transmission_out0[100] - power) < 1e-9);
+    assert.ok(Math.abs(sim.transmission_out0![100] - power) < 1e-9);
   }
   execFileSync(python, [
     '-c',

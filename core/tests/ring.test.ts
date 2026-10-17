@@ -86,8 +86,8 @@ for (const ratios of [
     );
     const expected =
       (ratios[0] * ratios[1]) / (1 - Math.sqrt((1 - ratios[0]) * (1 - ratios[1]))) ** 2;
-    assert.ok(Math.abs(result.simulation.transmission_out1[500] - expected) < 1e-9);
-    assert.ok(Math.abs(result.simulation.transmission_out0[500] - (1 - expected)) < 1e-9);
+    assert.ok(Math.abs(result.simulation.transmission_out1![500] - expected) < 1e-9);
+    assert.ok(Math.abs(result.simulation.transmission_out0![500] - (1 - expected)) < 1e-9);
     assert.equal(checked(result.verification, 'analytic_ring_agreement').status, 'pass');
     assert.equal(checked(result.verification, 'resonance_sampling').status, 'pass');
     assert.equal(checked(result.verification, 'resonance_features').status, 'pass');

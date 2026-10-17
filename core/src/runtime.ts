@@ -112,6 +112,10 @@ export class Runtime {
       compile: async () => {
         await writeJSON(path.join(directory, 'specification.json'), ir.specification);
         await writeJSON(path.join(directory, 'compiled_ir.json'), ir);
+        if (ir.specification.device === 'circuit') {
+          await writeJSON(path.join(directory, 'engineering_ir.json'), ir);
+          await writeJSON(path.join(directory, 'netlist.json'), ir.netlist);
+        }
         if (Object.keys(controlSettings(ir)).length)
           await writeJSON(path.join(directory, 'controls.json'), controlSettings(ir));
         if (ir.hierarchy) {
@@ -144,14 +148,27 @@ export class Runtime {
         await writeJSON(path.join(directory, 'simulation.json'), simulation);
         await writeFile(
           path.join(directory, 'spectrum.csv'),
-          'wavelength_nm,transmission_out0,transmission_out1\n' +
-            simulation.wavelength_nm
-              .map(
-                (w, i) =>
-                  `${w},${simulation.transmission_out0[i]},${simulation.transmission_out1[i]}`,
-              )
-              .join('\n') +
-            '\n',
+          ir.specification.device === 'circuit'
+            ? 'wavelength_nm,output_port,input_port,real,imag\n' +
+                simulation.wavelength_nm
+                  .flatMap((w, k) =>
+                    simulation.ports.flatMap((output, i) =>
+                      simulation.ports.map(
+                        (input, j) =>
+                          `${w},${output},${input},${simulation.s_real[k][i][j]},${simulation.s_imag[k][i][j]}`,
+                      ),
+                    ),
+                  )
+                  .join('\n') +
+                '\n'
+            : 'wavelength_nm,transmission_out0,transmission_out1\n' +
+                simulation.wavelength_nm
+                  .map(
+                    (w, i) =>
+                      `${w},${simulation.transmission_out0![i]},${simulation.transmission_out1![i]}`,
+                  )
+                  .join('\n') +
+                '\n',
         );
       },
       verify: async () => {

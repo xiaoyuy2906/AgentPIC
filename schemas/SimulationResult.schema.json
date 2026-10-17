@@ -53,19 +53,36 @@
           }
         },
         "input_port": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "transmission_out0": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          }
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "transmission_out1": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          }
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "physical_calibration": {
           "type": "string",

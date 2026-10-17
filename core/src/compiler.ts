@@ -1,4 +1,5 @@
 import { canonical } from './json.js';
+import { genericChecks } from './generic.js';
 export { canonical } from './json.js';
 import { ringCircuit, ringStructureChecks } from './cells/ring.js';
 import { tuningSemantics } from './tuning.js';
@@ -80,6 +81,7 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
     for (const t of tasks.values())
       if (t.depends_on.every((d) => completed.has(d))) completed.add(t.name);
   return [
+    ...genericChecks(ir),
     ...cascadeStructureCheck(ir),
     ...ringStructureChecks(ir),
     ...tuningSemantics(ir),
@@ -164,11 +166,13 @@ export function validateIR(input: unknown): EngineeringIR {
 export function compile(input: unknown): EngineeringIR {
   const s = DesignSpecSchema.parse(input);
   const circuit =
-    s.device === 'mzi'
-      ? { netlist: mziCircuit(s.delta_length_um, s.phase_control) }
-      : s.device === 'ring_add_drop'
-        ? { netlist: ringCircuit(s) }
-        : compileCascade(s);
+    s.device === 'circuit'
+      ? { netlist: s.circuit }
+      : s.device === 'mzi'
+        ? { netlist: mziCircuit(s.delta_length_um, s.phase_control) }
+        : s.device === 'ring_add_drop'
+          ? { netlist: ringCircuit(s) }
+          : compileCascade(s);
   return validateIR({
     design_id: sha256(canonical(s)).slice(0, 16),
     specification: s,
@@ -176,13 +180,25 @@ export function compile(input: unknown): EngineeringIR {
     ...circuit,
     workflow: [
       { name: 'compile', depends_on: [], backend: 'core' },
-      { name: 'layout', depends_on: ['compile'], backend: 'layout' },
-      { name: 'backannotate', depends_on: ['layout'], backend: 'core' },
+      ...(s.device === 'circuit'
+        ? []
+        : [
+            { name: 'layout', depends_on: ['compile'], backend: 'layout' },
+            { name: 'backannotate', depends_on: ['layout'], backend: 'core' },
+          ]),
       ...(s.tuning
         ? [{ name: 'tune', depends_on: ['backannotate'], backend: 'optimization' }]
         : []),
-      { name: 'simulate', depends_on: [s.tuning ? 'tune' : 'backannotate'], backend: 'circuit' },
-      { name: 'verify', depends_on: ['simulate', 'layout'], backend: 'verification' },
+      {
+        name: 'simulate',
+        depends_on: [s.device === 'circuit' ? 'compile' : s.tuning ? 'tune' : 'backannotate'],
+        backend: 'circuit',
+      },
+      {
+        name: 'verify',
+        depends_on: s.device === 'circuit' ? ['simulate'] : ['simulate', 'layout'],
+        backend: 'verification',
+      },
       { name: 'manifest', depends_on: ['verify'], backend: 'core' },
     ],
     assumptions: [
@@ -190,7 +206,9 @@ export function compile(input: unknown): EngineeringIR {
       'Ideal reciprocal compact couplers; prescribed ratios and MMI polygons are not EM calibrated.',
       'Assumed neff=1.8 and ng=1.9 at 1550 nm; zero loss.',
       'Bend loss, taper phase and coupler dispersion omitted.',
-      'Circuit-only compilation uses nominal path lengths; full layout flow backannotates measured lengths.',
+      s.device === 'circuit'
+        ? 'Generic simulation uses supplied path lengths; no layout, backannotation or spectral convergence is established.'
+        : 'Circuit-only compilation uses nominal path lengths; full layout flow backannotates measured lengths.',
       ...(s.device === 'ring_add_drop'
         ? [
             'Model round-trip length includes return waveguides only; MMI internal delay and phase are omitted.',

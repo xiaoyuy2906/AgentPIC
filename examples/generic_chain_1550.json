@@ -1,0 +1,89 @@
+{
+  "device": "circuit",
+  "platform": "sin",
+  "wavelength_nm": 1550,
+  "sweep_span_nm": 40,
+  "sweep_points": 201,
+  "models": {
+    "waveguide": "ideal_sin_waveguide_v1"
+  },
+  "port_order": [
+    "ReceiveA",
+    "LaunchB"
+  ],
+  "circuit": {
+    "instances": [
+      {
+        "name": "first",
+        "kind": "waveguide",
+        "length_um": 11.25,
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          }
+        ]
+      },
+      {
+        "name": "second",
+        "kind": "waveguide",
+        "length_um": 35.5,
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          }
+        ]
+      },
+      {
+        "name": "third",
+        "kind": "waveguide",
+        "length_um": 80,
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          }
+        ]
+      }
+    ],
+    "connections": [
+      {
+        "a": {
+          "instance": "first",
+          "port": "o2"
+        },
+        "b": {
+          "instance": "second",
+          "port": "o1"
+        }
+      },
+      {
+        "a": {
+          "instance": "second",
+          "port": "o2"
+        },
+        "b": {
+          "instance": "third",
+          "port": "o1"
+        }
+      }
+    ],
+    "ports": {
+      "LaunchB": {
+        "instance": "first",
+        "port": "o1"
+      },
+      "ReceiveA": {
+        "instance": "third",
+        "port": "o2"
+      }
+    }
+  }
+}

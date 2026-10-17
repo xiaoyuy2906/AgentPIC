@@ -1,4 +1,5 @@
-import { readFile, stat, realpath } from 'node:fs/promises';
+import { readFile, stat, realpath, readdir } from 'node:fs/promises';
+import { genericLayoutChecks } from './generic.js';
 import path from 'node:path';
 import {
   check,
@@ -234,7 +235,6 @@ export async function verifyArtifacts(
           'Exported hierarchy, primitive source paths and assembly plan match the resolved engineering IR.',
         ),
       );
-    const layout = LayoutResultSchema.parse(await readJSON(path.join(directory, 'layout.json')));
     const simulation = SimulationResultSchema.parse(
       await readJSON(path.join(directory, 'simulation.json')),
     );
@@ -245,6 +245,31 @@ export async function verifyArtifacts(
         'Exported netlist equals resolved IR.',
       ),
     );
+    if (ir.specification.device === 'circuit') {
+      const compiled = compile(ir.specification);
+      checks.push(
+        check(
+          'generic_artifact_consistency',
+          canonical(await readJSON(path.join(directory, 'specification.json'))) ===
+            canonical(ir.specification) &&
+            canonical(await readJSON(path.join(directory, 'compiled_ir.json'))) ===
+              canonical(compiled) &&
+            canonical(ir) === canonical(compiled),
+          'Generic source specification, compiled IR and simulation IR agree without backannotation.',
+        ),
+        check(
+          'generic_layout_boundary',
+          !(await readdir(directory)).some(
+            (name) => name.endsWith('.gds') || name === 'layout.json',
+          ),
+          'Simulation-only workflow exports no unsupported physical artifacts.',
+        ),
+        ...genericLayoutChecks(),
+        ...(await backend.verifySimulation(ir, simulation)),
+      );
+      return report(id, checks);
+    }
+    const layout = LayoutResultSchema.parse(await readJSON(path.join(directory, 'layout.json')));
     checks.push(...physicalChecks(ir, layout));
     if (ir.specification.tuning) {
       const before = EngineeringIRSchema.parse(
@@ -303,6 +328,7 @@ export async function simulateCircuit(
     simulation,
     verification: report(ir.design_id, [
       ...semanticChecks(ir),
+      ...(ir.specification.device === 'circuit' ? genericLayoutChecks() : []),
       ...(await backend.verifySimulation(ir, simulation)),
       ...(tuning ? verifyTuning(ir, before, tuning, simulation) : []),
       ...(tuning
