@@ -1,5 +1,5 @@
 /** Domain-specific policy plugin; the experiment runtime does not know waveguide geometry. */
-import type { PhysicsCapability } from '../physics/registry.js';
+import type { PhysicsCapability } from './registry.js';
 import {
   PhysicsConfigurationSchema,
   type EngineeringGoal,
@@ -9,7 +9,7 @@ import {
   type Hypothesis,
   type Evidence,
   type Diagnostic,
-} from '../physics/contracts.js';
+} from './contracts.js';
 const um = (q: { value: number; unit: 'nm' | 'um' | 'm' }) =>
   q.value * { nm: 0.001, um: 1, m: 1e6 }[q.unit];
 const criteria: Criterion[] = [

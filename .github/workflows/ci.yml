@@ -31,7 +31,7 @@ jobs:
       # The em group adds FDTDX so the slab validation of the characterization method runs in CI.
       - run: uv sync --locked --group em
       - run: npm run generate
-      - run: git diff --exit-code -- schemas src/agentpic/ir.py designs
+      - run: git diff --exit-code -- schemas src/agentpic/ir.py designs README.md
       - run: npm run typecheck
       - run: npm run format:check
       - run: uv run ruff check src tests

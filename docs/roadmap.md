@@ -55,4 +55,6 @@ Agreed order (2026-10-20), each landing as one reviewed commit:
 2. **Generic place and route** (done): automatic single and bundled routing, independent pin-based LVS with crossing detection, and length backannotation for any circuit. Automatic placement remains future work.
 3. **PDK as data** (done): each component declares ports, layout cell, compact model, validity range and source (ADR-008). Neither cspdk 2.1.0 nor ubcpdk 1.3.4 ships calibrated compact models, so they are not adopted as model sources.
 4. **Physics verification ladder** (done): FDTDX characterizes neff/ng of the strip cross-section, validated against the analytic slab and converged over three grids (ADR-009). Next rungs: device-level FDTDX characterization of the MMI coupler, then comparison against measurements.
-5. **Capability registry as code**: implemented/partial/missing with evidence (test names) and limitations; the README table is generated from it.
+5. **Capability registry as code** (done): implemented/partial/missing with evidence tests and limitations; the README table is generated from it (ADR-010).
+
+Next candidates come from `agentpic capabilities --missing`. The recommended stage-2 benchmark that forces breadth is a 4×4 or 8×8 MZI mesh (Clements): it needs device-level coupler characterization, waveguide crossings, many phase shifters, variability analysis and calibration, and has a known target (a unitary matrix).

@@ -9,7 +9,7 @@ import type {
   Diagnostic,
   PhysicsReport,
 } from './contracts.js';
-import { planarTE } from '../capabilities/planar-te.js';
+import { planarTE } from './planar-te.js';
 export interface PhysicsCapability {
   id: string;
   description: string;

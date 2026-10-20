@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { compile, validateIR, canonical, SemanticError } from '../src/compiler.js';
 import { EngineeringIRSchema } from '../src/contracts.js';
 import { openAPI } from '../src/api.js';
+import { listPDKs } from '../src/pdk.js';
 import { designs, mzi, type DesignInput } from '../../designs/templates.js';
 
 const base = designs.mzi;
@@ -73,6 +74,7 @@ test('the PDK is loaded from data, binds the design identity and rejects unknown
   assert.equal(ir.technology.components.ideal_coupler?.cell.factory, 'mmi2x2');
   assert.ok(ir.assumptions.some((a) => a.includes('(assumption)')));
   assert.throws(() => compile({ ...base, pdk: 'no_such_process' }), /pdk_reference/);
+  assert.deepEqual(listPDKs(), ['sin_demo_v1'], 'evidence files are not processes');
   const wide = structuredClone(base) as any;
   wide.circuit.instances[2].phase_control = { phase_rad: 0, active_length_um: 300 };
   wide.circuit.instances[2].kind = 'phase_shifter';

@@ -2,7 +2,6 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { z } from 'zod';
 import { projectRoot } from './paths.js';
-import { listPDKs } from './pdk.js';
 export { projectRoot } from './paths.js';
 import {
   CheckResultSchema,
@@ -105,43 +104,3 @@ export class PythonBackend implements ScientificBackend {
     return z.record(z.string(), z.string()).parse(await pythonRequest({ operation: 'versions' }));
   }
 }
-export const capabilities = () => ({
-  schema_version: '3.0',
-  core: 'typescript',
-  contracts: 'zod-generated-json-schema',
-  design_input: 'generic circuit or hierarchy with optional layout plan, tuning and measurements',
-  primitives: ['ideal_coupler', 'waveguide', 'phase_shifter'],
-  pdks: listPDKs(),
-  circuit: {
-    backend: 'sax',
-    status: 'implemented',
-    max_optical_ports: 64,
-    max_sweep_points: 10001,
-  },
-  layout: {
-    backend: 'gdsfactory',
-    placement: 'explicit absolute or port-anchored',
-    routing: 'declared Manhattan steps, automatic single routes and separated bundles',
-    lvs: 'pin-coincidence extraction, pin geometry and waveguide-crossing checks',
-    automatic_placement: 'not_implemented',
-  },
-  hierarchy: { compilation: 'implemented', layout_by_source_path: 'implemented' },
-  phase_control: {
-    target_tuning: {
-      status: 'implemented',
-      backend: 'scipy_least_squares+sax',
-      max_variables: 4,
-      max_targets: 16,
-      max_evaluations: 512,
-      global_optimality: false,
-    },
-    optical_phase: 'implemented',
-    metal_geometry: 'implemented',
-    electrical_to_phase_calibration: 'not_performed',
-    electrical_solver: 'not_implemented',
-  },
-  spectral_verification: { sampling_adequacy: 'implemented', resonance_measurement: 'implemented' },
-  electromagnetic: { fdtdx: 'not_implemented' },
-  foundry_signoff: false,
-  physical_model_calibration: 'not_performed',
-});

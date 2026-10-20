@@ -118,3 +118,7 @@ Accepted. Circuits are solved only by SAX; electromagnetic fields only by FDTDX 
 3. **Group index**: central difference of extrapolated indices across three wavelengths, so material dispersion is included.
 
 Accepted results update the PDK mode model with source `characterization` (still `calibrated: false`: a simulation, not a measurement) and an evidence file. Every design run verifies that evidence (`mode_characterization`) and reports which used models still lack electromagnetic evidence (`electromagnetic_characterization`); the MMI coupler, a fixed cell, needs device-level characterization of its own and remains `not_run`.
+
+## ADR-010: The capability audit is code with test evidence
+
+Accepted. `core/src/capabilities.ts` lists every capability with a domain, a status (`implemented`, `partial` or `missing`), the tests that prove it and its limitation. `core/tests/capabilities.test.ts` fails if an implemented or partial capability names no test or a test that does not exist, or if a missing capability claims evidence. The same list is served by `GET /v1/capabilities`, MCP `get_capabilities` and `agentpic capabilities [--missing]`, and generates the README table, which CI checks for drift. An agent choosing the next task reads the missing list rather than prose.

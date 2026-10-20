@@ -7,9 +7,11 @@ import { projectRoot } from './paths.js';
 import { PDKSchema, type CheckResult, type EngineeringIR, type PDK } from './contracts.js';
 
 const directory = () => path.join(projectRoot, 'pdks');
+// PDK names cannot contain dots, so evidence files such as <pdk>.<section>.characterization.json
+// that share the directory are never listed as processes.
 export const listPDKs = () =>
   readdirSync(directory())
-    .filter((f) => f.endsWith('.json'))
+    .filter((f) => /^[a-z][a-z0-9_]*\.json$/.test(f))
     .map((f) => f.slice(0, -5))
     .sort();
 export function loadPDK(name: string): PDK {

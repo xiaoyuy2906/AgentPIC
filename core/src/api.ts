@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Contracts } from './contracts.js';
 import { compile, validateIR, SemanticError } from './compiler.js';
 import { flattenCircuit, HierarchyError } from './hierarchy.js';
-import { capabilities } from './backends.js';
+import { capabilityReport } from './capabilities.js';
 import { PhysicsRuntime } from './physics/runtime.js';
 import { capabilityRegistry } from './physics/registry.js';
 import { Runtime } from './runtime.js';
@@ -137,7 +137,7 @@ export function createAPI(runtime = new Runtime()) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     try {
       if (req.method === 'GET' && url.pathname === '/v1/capabilities')
-        return json(200, capabilities());
+        return json(200, capabilityReport());
       if (req.method === 'GET' && url.pathname === '/v1/physics/capabilities')
         return json(200, { capabilities: capabilityRegistry() });
       if (req.method === 'GET' && url.pathname === '/openapi.json') return json(200, openAPI());

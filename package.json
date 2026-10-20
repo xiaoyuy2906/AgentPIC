@@ -8,13 +8,14 @@
     "test": "tsx --test core/tests/*.test.ts",
     "generate:schemas": "tsx scripts/generate-contracts.ts",
     "generate:python": "uv run datamodel-codegen --input schemas/contracts.schema.json --input-file-type jsonschema --output src/agentpic/ir.py --output-model-type pydantic_v2.BaseModel --target-python-version 3.12 --use-standard-collections --use-union-operator --use-annotated --field-constraints --enum-field-as-literal all --disable-timestamp --use-title-as-name --use-default --formatters ruff-check ruff-format --collapse-root-models --strict-nullable --use-type-alias --base-class agentpic.model_base.ContractModel",
-    "generate": "npm run generate:designs && npm run generate:schemas && npm run generate:python",
+    "generate": "npm run generate:designs && npm run generate:schemas && npm run generate:python && npm run generate:capabilities",
     "acceptance": "tsx scripts/acceptance.ts",
     "format": "prettier --write core designs scripts/*.ts",
     "format:check": "prettier --check core designs scripts/*.ts",
     "benchmark:physics": "tsx scripts/benchmark-physics.ts",
     "generate:designs": "tsx scripts/generate-designs.ts",
-    "characterize": "uv run --group em python -m agentpic.characterize"
+    "characterize": "uv run --group em python -m agentpic.characterize",
+    "generate:capabilities": "tsx scripts/generate-capabilities.ts"
   },
   "repository": {
     "type": "git",

@@ -22,7 +22,7 @@ import {
 } from './physics/contracts.js';
 import { Runtime } from './runtime.js';
 import { simulateCircuit } from './verification.js';
-import { capabilities } from './backends.js';
+import { capabilityReport } from './capabilities.js';
 const structured = (value: object) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value) }],
   structuredContent: value as Record<string, unknown>,
@@ -37,8 +37,11 @@ export function createMCP(runtime = new Runtime()) {
   );
   server.registerTool(
     'get_capabilities',
-    { description: 'Discover supported primitives, backends and limits.' },
-    async () => structured(capabilities()),
+    {
+      description:
+        'Read the capability audit: each capability with status, evidence tests and limitation, plus missing capabilities.',
+    },
+    async () => structured(capabilityReport()),
   );
   server.registerTool(
     'get_design_schema',

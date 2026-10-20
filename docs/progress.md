@@ -1,5 +1,9 @@
 # Persistent development progress
 
+## Capability audit as code (2026-10-20)
+
+`core/src/capabilities.ts` now holds 27 capabilities: 16 implemented, 2 partial and 9 missing, each with the tests that prove it and its limitation (ADR-010). A test rejects evidence that names no existing test, and the README table is generated from the registry. The registry replaced the hand-written capability object behind `GET /v1/capabilities` and MCP `get_capabilities`; `agentpic capabilities --missing` lists what to build next. Writing it caught one violation of the freeze rule in the registry itself (evidence titles naming a device), which the architecture test reported. `docs/structure.md` gives a reading order for the whole code base, and the planar TE plugin moved from `core/src/capabilities/` to `core/src/physics/` so the two meanings of "capabilities" no longer share a name.
+
 ## Physics evidence ladder with FDTDX (2026-10-20)
 
 The strip cross-section's mode model is now an FDTDX characterization instead of an assumption: neff 1.63973 and ng 2.0723 at 1550 nm, replacing 1.8 and 1.9. The pipeline (`src/agentpic/characterize.py`) uses only FDTD time stepping, a uniform plane source and phasor detectors; it first reproduces the analytic slab solution (error 8.3e-4 against a 1e-3 criterion), then runs three grids at three wavelengths with Richardson extrapolation (observed orders 2.02–2.04). Evidence is in `pdks/sin_demo_v1.strip.characterization.json`; each design run verifies it, and a tampered index or missing file fails `mode_characterization`. FDTDX is an optional `em` group installed in CI so the slab validation runs there; AgentPIC code never imports tidy3d or uses its mode solver, which the architecture test enforces. Every test reads its constants from the PDK, so no golden reference needed editing when the indices changed.

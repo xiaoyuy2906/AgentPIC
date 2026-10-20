@@ -2,7 +2,7 @@ import { PhysicsRuntime } from './physics/runtime.js';
 import { readFile } from 'node:fs/promises';
 import { compile, validateIR } from './compiler.js';
 import { flattenCircuit } from './hierarchy.js';
-import { capabilities } from './backends.js';
+import { capabilityReport, missingCapabilities } from './capabilities.js';
 import { Runtime } from './runtime.js';
 import { createAPI } from './api.js';
 import { serveMCP } from './mcp.js';
@@ -42,7 +42,8 @@ try {
     const result = await runtime.verifyRun(args[1]);
     print(result);
     if (result.status === 'failed') process.exitCode = 1;
-  } else if (command === 'capabilities') print(capabilities());
+  } else if (command === 'capabilities')
+    print(args.includes('--missing') ? missingCapabilities() : capabilityReport());
   else if (command === 'schema') print(z.toJSONSchema(DesignSpecSchema, { io: 'input' }));
   else if (command === 'mcp') await serveMCP(runtime);
   else if (command === 'serve') {
@@ -56,7 +57,7 @@ try {
     );
   } else {
     console.error(
-      'Usage: agentpic physics GOAL; compile|flatten|validate|simulate|design FILE; verify RUN_ID; serve; mcp; capabilities; schema [--runs-dir DIR]',
+      'Usage: agentpic physics GOAL; compile|flatten|validate|simulate|design FILE; verify RUN_ID; serve; mcp; capabilities [--missing]; schema [--runs-dir DIR]',
     );
     process.exitCode = command === '--help' ? 0 : 2;
   }
