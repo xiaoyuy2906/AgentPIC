@@ -1,5 +1,11 @@
 # Persistent development progress
 
+## PDK as data (2026-10-20)
+
+`pdks/sin_demo_v1.json` now holds every process fact: layers, rules, Sellmeier materials (Luke 2015 Si3N4, Malitson 1965 SiO2), cross-sections with mode models, and components with ports, cells, compact-model versions, validity ranges and sources. The engine reads all of them from the PDK: semantic port and parameter checks, a new `model_validity` check (sweep, parameters and tuning bounds inside each validity range), layout cells and cross-sections, and mode parameters in SAX and the independent reference. The layout backend rejects a cell whose ports disagree with its declaration; the SAX backend rejects model versions it does not implement. The design ID and provenance include the PDK content hash, and verification limitations list every uncalibrated source. Regenerating the designs from PDK-derived cell geometry reproduced them byte for byte.
+
+cspdk 2.1.0 and ubcpdk 1.3.4 were installed in isolation and found to ship only placeholder models (`docs/research.md`), so neither is used as a model source.
+
 ## Generic place and route with independent LVS (2026-10-20)
 
 Routes without steps are now found by GDSFactory's `route_single`; routes listed in a `bundle` are routed together by `route_bundle` with a common separation. The routers only propose Manhattan backbones in a scratch cell. One validator, one circular-bend smoother and one extruder handle every path, so measured lengths and bend radii come from the same representation whatever produced the route. `layout.json` records the router of each path.

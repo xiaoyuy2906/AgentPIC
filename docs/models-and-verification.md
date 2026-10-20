@@ -1,6 +1,6 @@
 # Compact models and verification boundaries
 
-All lengths inside the compact models are in µm. Input wavelengths use nm and are explicitly divided by 1000 at the backend boundary. The nominal process has layer/datatype 1/0 and no foundry association. Index values are engineering assumptions for exercising the design system, not values derived from a mode solver or a measured SiN stack.
+All lengths inside the compact models are in µm. Input wavelengths use nm and are explicitly divided by 1000 at the backend boundary. Every number below comes from `pdks/sin_demo_v1.json`, which records its source: the waveguide indices are engineering assumptions for exercising the design system, not values derived from a mode solver or a measured SiN stack, and are reported as such in every verification report.
 
 ## Waveguide
 

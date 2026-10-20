@@ -2,19 +2,27 @@
 import {
   CircuitSchema,
   DesignSpecSchema,
-  type Circuit,
+  type EngineeringIR,
   type SimulationResult,
 } from '../core/src/contracts.js';
+import { componentMode } from '../core/src/pdk.js';
 
 /**
  * Returns null when a flat circuit has no closed form here (only chains and single couplers).
- * `resolved` is the simulated netlist, whose lengths are measured when the design has a layout.
+ * `resolved` is the simulated IR: measured lengths when the design has a layout, and the PDK
+ * whose waveguide mode model the closed form must use.
  */
-export function genericBenchmark(input: unknown, result: SimulationResult, resolved: Circuit) {
+export function genericBenchmark(
+  input: unknown,
+  result: SimulationResult,
+  resolved: EngineeringIR,
+) {
   const parsed = DesignSpecSchema.parse(input);
   const circuit = CircuitSchema.safeParse(parsed.circuit);
   if (!circuit.success) return null;
-  const spec = { ...parsed, circuit: resolved };
+  const spec = { ...parsed, circuit: resolved.netlist };
+  const mode = componentMode(resolved.technology, 'waveguide')!;
+  const [n0, ng, wl0] = [mode.effective_index, mode.group_index, mode.reference_wavelength_um];
   const chain = spec.circuit.instances.every((i) => i.kind === 'waveguide');
   const coupler =
     spec.circuit.instances.length === 1 && spec.circuit.instances[0].kind === 'ideal_coupler';
@@ -27,7 +35,7 @@ export function genericBenchmark(input: unknown, result: SimulationResult, resol
   let maxError = 0;
   for (const [k, wavelength] of result.wavelength_nm.entries()) {
     const wl = wavelength / 1000;
-    const phase = (2 * Math.PI * (1.8 - (0.1 * (wl - 1.55)) / 1.55) * length) / wl;
+    const phase = (2 * Math.PI * (n0 + ((n0 - ng) * (wl - wl0)) / wl0) * length) / wl;
     for (const [i, output] of spec.port_order.entries())
       for (const [j, incoming] of spec.port_order.entries()) {
         let real = 0,

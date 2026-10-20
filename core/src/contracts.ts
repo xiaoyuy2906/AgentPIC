@@ -5,6 +5,7 @@ const name = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/);
 // Hierarchical instance path such as "module/instance"; a flat instance is its own path.
 const instancePath = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*(\/[A-Za-z][A-Za-z0-9_]*)*$/);
 const positive = () => z.number().positive();
+const pdkName = z.string().regex(/^[a-z][a-z0-9_]*$/);
 const record = <T extends z.ZodType>(value: T) => z.record(z.string(), value);
 const phase = () =>
   z
@@ -69,7 +70,7 @@ export const PhaseControlSchema = z
       .number()
       .min(-4 * Math.PI)
       .max(4 * Math.PI),
-    active_length_um: z.number().min(20).max(200).default(100),
+    active_length_um: positive().default(100),
   })
   .meta({ id: 'PhaseControl' });
 export const PortSchema = z
@@ -197,7 +198,8 @@ export const DesignSpecSchema = z
   .strictObject({
     schema_version: z.literal('3.0').default('3.0'),
     name,
-    platform: z.literal('sin').default('sin'),
+    // A PDK data file in pdks/; its components, models and validity ranges bind the design.
+    pdk: pdkName.default('sin_demo_v1'),
     circuit: z.union([CircuitSchema, CircuitHierarchySchema]),
     port_order: z.array(name).min(1).max(64),
     wavelength_nm: z.number().min(1500).max(1600).default(1550),
@@ -212,31 +214,97 @@ export const DesignSpecSchema = z
     measurements: z.array(MeasurementSchema).max(16).default([]),
   })
   .meta({ id: 'DesignSpec' });
+const range = () => z.tuple([z.number(), z.number()]);
+export const SourceSchema = z
+  .strictObject({
+    kind: z.enum(['assumption', 'literature', 'characterization', 'measurement', 'foundry']),
+    reference: z.string().min(1),
+    calibrated: z.boolean(),
+    // Repository path of the evidence behind a characterized or measured value.
+    evidence: z.string().nullable().default(null),
+  })
+  .meta({ id: 'Source' });
+export const MaterialSchema = z
+  .strictObject({
+    // n² = 1 + Σ b λ² / (λ² − c²), with λ and c in µm.
+    model: z.literal('sellmeier'),
+    terms: z
+      .array(z.strictObject({ b: z.number(), c_um: z.number().nonnegative() }))
+      .min(1)
+      .max(6),
+    validity_wavelength_um: range(),
+    source: SourceSchema,
+  })
+  .meta({ id: 'Material' });
+export const ModeModelSchema = z
+  .strictObject({
+    reference_wavelength_um: positive(),
+    effective_index: positive(),
+    group_index: positive(),
+    loss_db_per_cm: z.number().nonnegative(),
+    source: SourceSchema,
+  })
+  .meta({ id: 'ModeModel' });
+export const CrossSectionSchema = z
+  .strictObject({
+    layer: name,
+    width_um: positive(),
+    thickness_um: positive().nullable().default(null),
+    core_material: name.nullable().default(null),
+    cladding_material: name.nullable().default(null),
+    mode: ModeModelSchema.nullable().default(null),
+  })
+  .meta({ id: 'CrossSection' });
+export const PDKComponentSchema = z
+  .strictObject({
+    // Fixed cells declare local port positions; path-extruded cells have none.
+    ports: z
+      .array(
+        z.strictObject({
+          name,
+          domain: z.enum(['optical', 'electrical']),
+          position_um: z.tuple([z.number(), z.number()]).nullable().default(null),
+          orientation_deg: z.number().nullable().default(null),
+        }),
+      )
+      .min(1),
+    cell: z.strictObject({
+      // A GDSFactory component name, or "extrusion" for a path along the cross-section.
+      factory: z.string().min(1),
+      cross_section: name,
+      settings: record(z.number()).default({}),
+      actuator_cross_section: name.nullable().default(null),
+    }),
+    model: z.strictObject({ name: z.string().min(1), version: z.string().min(1) }),
+    validity: z.strictObject({
+      wavelength_um: range(),
+      parameters: record(range()).default({}),
+    }),
+    source: SourceSchema,
+  })
+  .meta({ id: 'PDKComponent' });
 export const PDKSchema = z
   .strictObject({
-    name: z.literal('sin_demo_v1').default('sin_demo_v1'),
-    foundry: z.null().default(null),
-    calibrated: z.literal(false).default(false),
-    core_layer: z
-      .tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])
-      .default([1, 0]),
-    width_um: positive().default(1),
-    thickness_um: positive().default(0.4),
-    bend_radius_um: positive().default(50),
-    minimum_width_um: positive().default(0.5),
-    minimum_spacing_um: positive().default(0.5),
-    heater_layer: z
-      .tuple([z.number().int().nonnegative(), z.number().int().nonnegative()])
-      .default([2, 0]),
-    heater_width_um: positive().default(2.5),
-    reference_wavelength_um: positive().default(1.55),
-    effective_index: positive().default(1.8),
-    group_index: positive().default(1.9),
-    loss_db_per_cm: z.literal(0).default(0),
-    model_version: z.literal('ideal_sin_v1').default('ideal_sin_v1'),
-    supported_components: z
-      .array(z.enum(['ideal_coupler', 'waveguide', 'phase_shifter']))
-      .default(['ideal_coupler', 'waveguide', 'phase_shifter']),
+    schema_version: z.literal('1.0'),
+    name: pdkName,
+    description: z.string(),
+    foundry: z.string().nullable(),
+    database_unit_um: positive(),
+    layers: z.record(
+      name,
+      z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]),
+    ),
+    rules: z.strictObject({
+      minimum_width_um: positive(),
+      minimum_spacing_um: positive(),
+      bend_radius_um: positive(),
+    }),
+    materials: z.record(name, MaterialSchema),
+    cross_sections: z.record(name, CrossSectionSchema),
+    components: z.partialRecord(
+      z.enum(['ideal_coupler', 'waveguide', 'phase_shifter']),
+      PDKComponentSchema,
+    ),
   })
   .meta({ id: 'PDK' });
 export const TaskSchema = z
@@ -386,6 +454,11 @@ export const Contracts = {
   CircuitDefinition: CircuitDefinitionSchema,
   CircuitHierarchy: CircuitHierarchySchema,
   FlattenedCircuit: FlattenedCircuitSchema,
+  Source: SourceSchema,
+  Material: MaterialSchema,
+  ModeModel: ModeModelSchema,
+  CrossSection: CrossSectionSchema,
+  PDKComponent: PDKComponentSchema,
   PDK: PDKSchema,
   Task: TaskSchema,
   EngineeringIR: EngineeringIRSchema,
@@ -406,6 +479,7 @@ export type PhaseControl = z.infer<typeof PhaseControlSchema>;
 export type TuningResult = z.infer<typeof TuningResultSchema>;
 export type ResolvedTuningVariable = z.infer<typeof ResolvedTuningVariableSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;
+export type PDK = z.infer<typeof PDKSchema>;
 export type Circuit = z.infer<typeof CircuitSchema>;
 export type CircuitHierarchy = z.infer<typeof CircuitHierarchySchema>;
 export type CircuitDefinition = z.infer<typeof CircuitDefinitionSchema>;

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { Runtime } from '../src/runtime.js';
 import { projectRoot } from '../src/backends.js';
 import type { SimulationResult, VerificationReport } from '../src/contracts.js';
+import { componentMode, loadPDK } from '../src/pdk.js';
 
 export const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'));
 export const python = path.resolve(
@@ -62,3 +63,8 @@ export async function acceptance(design: string, output: string) {
   );
   return json(path.join(output, 'acceptance.json'));
 }
+/** Waveguide mode model of the default PDK; golden references must use the same values. */
+export const strip = componentMode(loadPDK('sin_demo_v1'), 'waveguide')!;
+export const neff = strip.effective_index,
+  ng = strip.group_index,
+  wl0 = strip.reference_wavelength_um;

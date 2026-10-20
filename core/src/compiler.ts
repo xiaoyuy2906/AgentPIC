@@ -2,12 +2,13 @@ import { canonical } from './json.js';
 import { check } from './check.js';
 import { designChecks, sourceCircuit } from './design.js';
 import { tuningSemantics } from './tuning.js';
+import { loadPDK, pdkChecks, uncalibratedSources } from './pdk.js';
 import { createHash } from 'node:crypto';
 import {
   DesignSpecSchema,
   EngineeringIRSchema,
-  PDKSchema,
   type EngineeringIR,
+  type PDK,
   type Endpoint,
   type CheckResult,
   type LayoutResult,
@@ -79,11 +80,8 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
     ...tuningSemantics(ir),
     check(
       'specification_semantics',
-      spec.sweep_points % 2 === 1 &&
-        new Set(spec.outputs).size === spec.outputs.length &&
-        spec.wavelength_nm - spec.sweep_span_nm / 2 >= 1450 &&
-        spec.wavelength_nm + spec.sweep_span_nm / 2 <= 1650,
-      'Unique outputs, odd sampling and supported wavelength interval.',
+      spec.sweep_points % 2 === 1 && new Set(spec.outputs).size === spec.outputs.length,
+      'Unique outputs and odd sampling, so the sweep centre is a sample.',
     ),
     check(
       'unique_components_and_ports',
@@ -107,41 +105,7 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
       seen.size === instances.size,
       'The complete circuit graph must be connected.',
     ),
-    check(
-      'component_models',
-      c.instances.every(
-        (i) =>
-          ir.technology.supported_components.includes(i.kind) &&
-          (i.kind === 'phase_shifter'
-            ? i.length_um !== null &&
-              i.coupling_ratio === null &&
-              i.phase_control !== null &&
-              canonical(i.ports.map((p) => `${p.name}:${p.domain}`).sort()) ===
-                canonical(['e1:electrical', 'e2:electrical', 'o1:optical', 'o2:optical'])
-            : i.phase_control === null &&
-              i.ports.every((p) => p.domain === 'optical') &&
-              (i.kind === 'waveguide'
-                ? i.length_um !== null &&
-                  i.coupling_ratio === null &&
-                  i.ports
-                    .map((p) => p.name)
-                    .sort()
-                    .join(',') === 'o1,o2'
-                : i.coupling_ratio !== null &&
-                  i.ports
-                    .map((p) => p.name)
-                    .sort()
-                    .join(',') === 'o1,o2,o3,o4')),
-      ),
-      'Component parameters and named ports must match the declared model and PDK support.',
-    ),
-    check(
-      'pdk_geometry',
-      ir.technology.width_um >= ir.technology.minimum_width_um &&
-        canonical(ir.technology.heater_layer) !== canonical(ir.technology.core_layer) &&
-        ir.technology.heater_width_um >= ir.technology.minimum_width_um,
-      'Core width must satisfy the declared PDK minimum width.',
-    ),
+    ...pdkChecks(ir),
     check(
       'workflow_dependencies',
       tasks.size === ir.workflow.length && completed.size === tasks.size,
@@ -158,10 +122,17 @@ export function validateIR(input: unknown): EngineeringIR {
 export function compile(input: unknown): EngineeringIR {
   const s = DesignSpecSchema.parse(input);
   const physical = s.layout !== null;
+  let technology: PDK;
+  try {
+    technology = loadPDK(s.pdk);
+  } catch (error) {
+    throw new SemanticError([check('pdk_reference', false, `Cannot load PDK ${s.pdk}: ${error}`)]);
+  }
   return validateIR({
-    design_id: sha256(canonical(s)).slice(0, 16),
+    // The PDK content is part of the identity: the same circuit on a changed process differs.
+    design_id: sha256(canonical({ specification: s, technology })).slice(0, 16),
     specification: s,
-    technology: PDKSchema.parse({}),
+    technology,
     ...sourceCircuit(s),
     workflow: [
       { name: 'compile', depends_on: [], backend: 'core' },
@@ -193,9 +164,8 @@ export function compile(input: unknown): EngineeringIR {
       { name: 'manifest', depends_on: ['verify'], backend: 'core' },
     ],
     assumptions: [
-      'Illustrative SiN PDK; no foundry signoff.',
-      'Ideal reciprocal compact couplers; prescribed ratios and MMI polygons are not EM calibrated.',
-      'Assumed neff=1.8 and ng=1.9 at 1550 nm; zero loss.',
+      ...(technology.foundry ? [] : [`${technology.name} is not a foundry PDK; no signoff.`]),
+      ...uncalibratedSources(technology),
       'Bend loss, taper phase and coupler dispersion omitted; coupler internal delay and phase are zero.',
       physical
         ? 'Circuit-only compilation uses nominal path lengths; the layout flow backannotates measured lengths.'

@@ -14,6 +14,8 @@ import numpy as np
 from agentpic.circuit_reference import circuit_reference
 from agentpic.ir import CheckResult, EngineeringIR
 from agentpic.lvs import verify_lvs
+from agentpic.pdk import actuator_section, optical_section
+from agentpic.pdk import layer as pdk_layer
 from agentpic.spectral import sampling_adequacy, verify_measurements
 
 LIMITATIONS = [
@@ -144,13 +146,13 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
     tops = list(layout.top_cells())
     if len(tops) != 1:
         return [_check("gds_readback", False, "Exported GDS must have exactly one top cell.")]
-    tech, top = ir.technology, tops[0]
-    layer = layout.find_layer(*tech.core_layer)
+    top, rules, waveguide = tops[0], ir.technology.rules, optical_section(ir)
+    layer = layout.find_layer(*pdk_layer(ir, waveguide))
     if layer is None:
         return [_check("gds_readback", False, "Core layer is missing in exported GDS.")]
     region = kdb.Region(top.begin_shapes_rec(layer)).merged()
-    width = int(np.ceil(tech.minimum_width_um / layout.dbu))
-    space = int(np.ceil(tech.minimum_spacing_um / layout.dbu))
+    width = int(np.ceil(rules.minimum_width_um / layout.dbu))
+    space = int(np.ceil(rules.minimum_spacing_um / layout.dbu))
     width_errors = region.width_check(width).count()
     spacing_errors = region.space_check(space).count()
     connected_regions = region.count()
@@ -162,7 +164,7 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
             kdb.Point(round(x / layout.dbu), round(y / layout.dbu)) for x, y in points
         ]
         corridor = kdb.Region(
-            kdb.Path(integer_points, round(0.4 * tech.width_um / layout.dbu)).polygon()
+            kdb.Path(integer_points, round(0.4 * waveguide.width_um / layout.dbu)).polygon()
         )
         corridor_missing_area += float((corridor - region).area() * layout.dbu**2)
         a, b = points[1:-1] - points[:-2], points[2:] - points[1:-1]
@@ -196,14 +198,14 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
                 "demo_minimum_width",
                 width_errors == 0,
                 "KLayout width check against the explicit demonstration rule.",
-                threshold_um=tech.minimum_width_um,
+                threshold_um=rules.minimum_width_um,
                 violations=width_errors,
             ),
             _check(
                 "demo_minimum_spacing",
                 spacing_errors == 0,
                 "KLayout spacing check against the explicit demonstration rule.",
-                threshold_um=tech.minimum_spacing_um,
+                threshold_um=rules.minimum_spacing_um,
                 violations=spacing_errors,
             ),
             _check(
@@ -214,7 +216,7 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
             ),
             _check(
                 "demo_bend_radius",
-                minimum_radius >= tech.bend_radius_um - 0.01,
+                minimum_radius >= rules.bend_radius_um - 0.01,
                 "Centerline circumradii meet the demonstration bend-radius rule; straight-only layouts have no bends.",
                 minimum_radius_um=minimum_radius if np.isfinite(minimum_radius) else None,
             ),
@@ -238,8 +240,9 @@ def verify_actuators(ir, metadata, layout, top, core):
                 "Actuator instances do not match controlled primitives.",
             )
         ]
-    tech = ir.technology
-    layer = layout.find_layer(*tech.heater_layer)
+    rules, heater = ir.technology.rules, actuator_section(ir)
+    optical_width = optical_section(ir, "phase_shifter").width_um
+    layer = layout.find_layer(*pdk_layer(ir, heater))
     metal = kdb.Region(top.begin_shapes_rec(layer)).merged() if layer is not None else kdb.Region()
     expected = kdb.Region()
     intent_ok, terminal_ok = True, True
@@ -261,8 +264,8 @@ def verify_actuators(ir, metadata, layout, top, core):
             ]
         )
         intent_ok &= (
-            tuple(actuator["layer"]) == tuple(tech.heater_layer)
-            and abs(actuator["width_um"] - tech.heater_width_um) <= 0.001
+            tuple(actuator["layer"]) == pdk_layer(ir, heater)
+            and abs(actuator["width_um"] - heater.width_um) <= 0.001
             and float(np.max(np.linalg.norm(points - expected_ends, axis=1))) <= 0.001
             and steps[k] >= control.active_length_um
         )
@@ -274,24 +277,24 @@ def verify_actuators(ir, metadata, layout, top, core):
             terminal_ok &= bool(port) and (
                 port["domain"] == "electrical"
                 and np.linalg.norm(np.asarray(port["center_um"]) - points[j]) <= 0.001
-                and abs(port["width_um"] - tech.heater_width_um) <= 0.001
+                and abs(port["width_um"] - heater.width_um) <= 0.001
                 and abs((port["orientation_deg"] - facing + 180) % 360 - 180) <= 1e-6
             )
         integer_points = [
             kdb.Point(round(x / layout.dbu), round(y / layout.dbu)) for x, y in points
         ]
         expected += kdb.Region(
-            kdb.Path(integer_points, round(tech.heater_width_um / layout.dbu)).polygon()
+            kdb.Path(integer_points, round(heater.width_um / layout.dbu)).polygon()
         )
         optical_corridor = kdb.Region(
-            kdb.Path(integer_points, round(0.4 * tech.width_um / layout.dbu)).polygon()
+            kdb.Path(integer_points, round(0.4 * optical_width / layout.dbu)).polygon()
         )
         intent_ok &= (optical_corridor - core).area() == 0
     discrepancy = float((metal ^ expected.merged()).area() * layout.dbu**2)
-    rule = round(tech.minimum_width_um / layout.dbu)
+    rule = round(rules.minimum_width_um / layout.dbu)
     violations = (
         metal.width_check(rule).count()
-        + metal.space_check(round(tech.minimum_spacing_um / layout.dbu)).count()
+        + metal.space_check(round(rules.minimum_spacing_um / layout.dbu)).count()
     )
     return [
         _check(

@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 from agentpic.ir import CheckResult, EngineeringIR
+from agentpic.pdk import actuator_section, layer, optical_section
 
 
 def _check(identifier: str, passed: bool, detail: str, **evidence) -> CheckResult:
@@ -87,7 +88,11 @@ def verify_lvs(ir: EngineeringIR, metadata: dict, layout, top, core) -> list[Che
         "ambiguous_pin_groups": ambiguous,
     }
 
-    heater_layer = layout.find_layer(*tech.heater_layer)
+    heater_layer = (
+        layout.find_layer(*layer(ir, actuator_section(ir)))
+        if "phase_shifter" in tech.components
+        else None
+    )
     metal = (
         kdb.Region(top.begin_shapes_rec(heater_layer)).merged()
         if heater_layer is not None
@@ -107,7 +112,7 @@ def verify_lvs(ir: EngineeringIR, metadata: dict, layout, top, core) -> list[Che
             if not (kdb.Region(box) - region).is_empty():
                 missing_geometry.append(f"{instance},{name}")
 
-    width = tech.width_um
+    width = optical_section(ir).width_um
     corridor = round(0.4 * width / dbu)
     bodies = {}
     for instance in ir.netlist.instances:

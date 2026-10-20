@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Material",
+  "$defs": {
+    "Material": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "const": "sellmeier"
+        },
+        "terms": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "b": {
+                "type": "number"
+              },
+              "c_um": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "b",
+              "c_um"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "validity_wavelength_um": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        }
+      },
+      "required": [
+        "model",
+        "terms",
+        "validity_wavelength_um",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "assumption",
+            "literature",
+            "characterization",
+            "measurement",
+            "foundry"
+          ]
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "reference",
+        "calibrated"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

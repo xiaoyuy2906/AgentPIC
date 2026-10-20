@@ -98,3 +98,11 @@ A design file (`DesignSpec` 3.0) carries everything device-specific as data:
 Verification is generic. The independent reference is dense network elimination of the submitted netlist (`src/agentpic/circuit_reference.py`); it checks the network solver, not the physics of the ideal models. A sampling check compares midpoint interpolation of exported powers with that reference, so an undersampled spectrum fails even when every sample is right. Device closed forms (MZI power law, cascade identity, ring drop formula, free spectral range) are golden references in the tests, never in the engine.
 
 Device knowledge lives in `designs/templates.ts`, which writes the checked-in `designs/*.json`; CI regenerates them and rejects drift. This mirrors digital EDA practice, where a CPU is an input to the tools rather than a code path inside them.
+
+## ADR-008: The PDK is data with sources
+
+Accepted. Process facts live in `pdks/<name>.json`, validated by the `PDK` contract and copied into every Engineering IR; the design names its PDK with `pdk`. The engine hard-codes none of them: port lists and parameter ranges in semantic checks, cross-sections, layers, rules and cells in layout, and mode parameters in SAX and the independent reference are all read from the PDK. The design ID hashes the PDK content, and provenance records its hash.
+
+Every material, mode model and component carries a source (`assumption`, `literature`, `characterization`, `measurement`, `foundry`) with a reference and a calibration flag. Verification reports list every uncalibrated source as a limitation, so an assumed index can never look like a measured one. Backends declare which model versions they implement and reject others; the layout backend rejects a cell whose ports disagree with the PDK declaration.
+
+Open PDKs (cspdk 2.1.0, ubcpdk 1.3.4) were assessed and ship only placeholder compact models (see `docs/research.md`), so they are not used as model sources. Replacing `sin_demo_v1`'s assumed waveguide indices with characterization evidence is the next milestone.

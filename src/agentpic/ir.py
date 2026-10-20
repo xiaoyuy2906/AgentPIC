@@ -407,7 +407,7 @@ class PhaseControl(ContractModel):
         extra="forbid",
     )
     phase_rad: Annotated[float, Field(ge=-12.566370614359172, le=12.566370614359172)]
-    active_length_um: Annotated[float, Field(ge=20.0, le=200.0)] = 100
+    active_length_um: Annotated[float, Field(gt=0.0)] = 100
 
 
 class Endpoint(ContractModel):
@@ -556,37 +556,153 @@ InstancePathsAdditionalProperty = TypeAliasType(
 )
 
 
-type CoreLayerItem = Annotated[int, Field(ge=0, le=9007199254740991)]
+class Source(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: Literal["assumption", "literature", "characterization", "measurement", "foundry"]
+    reference: Annotated[str, Field(min_length=1)]
+    calibrated: bool
+    evidence: str | None = None
 
 
-type HeaterLayerItem = Annotated[int, Field(ge=0, le=9007199254740991)]
+class Term(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    b: float
+    c_um: Annotated[float, Field(ge=0.0)]
+
+
+class Material(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    model: Literal["sellmeier"]
+    terms: Annotated[list[Term], Field(max_length=6, min_length=1)]
+    validity_wavelength_um: tuple[float, float]
+    source: Source
+
+
+class ModeModel(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    reference_wavelength_um: Annotated[float, Field(gt=0.0)]
+    effective_index: Annotated[float, Field(gt=0.0)]
+    group_index: Annotated[float, Field(gt=0.0)]
+    loss_db_per_cm: Annotated[float, Field(ge=0.0)]
+    source: Source
+
+
+type ThicknessUm = Annotated[float, Field(gt=0.0)]
+
+
+type CoreMaterial = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+type CladdingMaterial = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+class CrossSection(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    layer: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    width_um: Annotated[float, Field(gt=0.0)]
+    thickness_um: ThicknessUm | None = None
+    core_material: CoreMaterial | None = None
+    cladding_material: CladdingMaterial | None = None
+    mode: ModeModel | None = None
+
+
+type PositionUm = Annotated[tuple[float, float], Field(max_length=2, min_length=2)]
+
+
+class Port2(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    domain: Literal["optical", "electrical"]
+    position_um: PositionUm | None = None
+    orientation_deg: float | None = None
+
+
+type ActuatorCrossSection = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+
+
+class Cell(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    factory: Annotated[str, Field(min_length=1)]
+    cross_section: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
+    settings: dict[str, float] = {}
+    actuator_cross_section: ActuatorCrossSection | None = None
+
+
+class Model1(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[str, Field(min_length=1)]
+    version: Annotated[str, Field(min_length=1)]
+
+
+ParametersAdditionalProperty = TypeAliasType("ParametersAdditionalProperty", tuple[float, float])
+
+
+class Validity(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    wavelength_um: tuple[float, float]
+    parameters: dict[str, ParametersAdditionalProperty] = {}
+
+
+class PDKComponent(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    ports: Annotated[list[Port2], Field(min_length=1)]
+    cell: Cell
+    model: Model1
+    validity: Validity
+    source: Source
+
+
+type LayersAdditionalPropertyItem = Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
+LayersAdditionalProperty = TypeAliasType(
+    "LayersAdditionalProperty", tuple[LayersAdditionalPropertyItem, LayersAdditionalPropertyItem]
+)
+
+
+class Rules(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    minimum_width_um: Annotated[float, Field(gt=0.0)]
+    minimum_spacing_um: Annotated[float, Field(gt=0.0)]
+    bend_radius_um: Annotated[float, Field(gt=0.0)]
 
 
 class PDK(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    name: Literal["sin_demo_v1"] = "sin_demo_v1"
-    foundry: Annotated[None, Field(None)] = None
-    calibrated: Literal[False] = False
-    core_layer: tuple[CoreLayerItem, CoreLayerItem] = [1, 0]
-    width_um: Annotated[float, Field(gt=0.0)] = 1
-    thickness_um: Annotated[float, Field(gt=0.0)] = 0.4
-    bend_radius_um: Annotated[float, Field(gt=0.0)] = 50
-    minimum_width_um: Annotated[float, Field(gt=0.0)] = 0.5
-    minimum_spacing_um: Annotated[float, Field(gt=0.0)] = 0.5
-    heater_layer: tuple[HeaterLayerItem, HeaterLayerItem] = [2, 0]
-    heater_width_um: Annotated[float, Field(gt=0.0)] = 2.5
-    reference_wavelength_um: Annotated[float, Field(gt=0.0)] = 1.55
-    effective_index: Annotated[float, Field(gt=0.0)] = 1.8
-    group_index: Annotated[float, Field(gt=0.0)] = 1.9
-    loss_db_per_cm: Literal[0] = 0
-    model_version: Literal["ideal_sin_v1"] = "ideal_sin_v1"
-    supported_components: list[Literal["ideal_coupler", "waveguide", "phase_shifter"]] = [
-        "ideal_coupler",
-        "waveguide",
-        "phase_shifter",
-    ]
+    schema_version: Literal["1.0"]
+    name: Annotated[str, Field(pattern="^[a-z][a-z0-9_]*$")]
+    description: str
+    foundry: str | None
+    database_unit_um: Annotated[float, Field(gt=0.0)]
+    layers: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), LayersAdditionalProperty]
+    rules: Rules
+    materials: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), Material]
+    cross_sections: dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*$"), CrossSection]
+    components: dict[Literal["ideal_coupler", "waveguide", "phase_shifter"], PDKComponent]
 
 
 type DependsOnItem = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
@@ -626,7 +742,7 @@ class PhysicalPort(ContractModel):
     domain: Literal["optical", "electrical"] = "optical"
 
 
-type CoreLayerItem2 = Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+type CoreLayerItem = Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
 
 
 LengthsUmAdditionalProperty = TypeAliasType(
@@ -839,7 +955,7 @@ class LayoutResult(ContractModel):
     schema_version: Literal["3.0"]
     top_cell: str
     technology: str
-    core_layer: tuple[CoreLayerItem2, CoreLayerItem2]
+    core_layer: tuple[CoreLayerItem, CoreLayerItem]
     lengths_um: dict[str, LengthsUmAdditionalProperty]
     centerlines_um: dict[str, CenterlinesUmAdditionalProperty]
     ports: dict[str, dict[str, PhysicalPort]]
@@ -855,7 +971,7 @@ class DesignSpec(ContractModel):
     )
     schema_version: Literal["3.0"] = "3.0"
     name: Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*$")]
-    platform: Literal["sin"] = "sin"
+    pdk: Annotated[str, Field(pattern="^[a-z][a-z0-9_]*$")] = "sin_demo_v1"
     circuit: Circuit | CircuitHierarchy
     port_order: Annotated[list[PortOrderItem], Field(max_length=64, min_length=1)]
     wavelength_nm: Annotated[float, Field(ge=1500.0, le=1600.0)] = 1550
@@ -941,6 +1057,11 @@ class Contracts(ContractModel):
     CircuitDefinition_1: Annotated[CircuitDefinition, Field(alias="CircuitDefinition")]
     CircuitHierarchy_1: Annotated[CircuitHierarchy, Field(alias="CircuitHierarchy")]
     FlattenedCircuit_1: Annotated[FlattenedCircuit, Field(alias="FlattenedCircuit")]
+    Source_1: Annotated[Source, Field(alias="Source")]
+    Material_1: Annotated[Material, Field(alias="Material")]
+    ModeModel_1: Annotated[ModeModel, Field(alias="ModeModel")]
+    CrossSection_1: Annotated[CrossSection, Field(alias="CrossSection")]
+    PDKComponent_1: Annotated[PDKComponent, Field(alias="PDKComponent")]
     PDK_1: Annotated[PDK, Field(alias="PDK")]
     Task_1: Annotated[Task, Field(alias="Task")]
     EngineeringIR_1: Annotated[EngineeringIR, Field(alias="EngineeringIR")]

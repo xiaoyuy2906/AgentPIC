@@ -9,7 +9,7 @@ import { PythonBackend } from '../src/backends.js';
 import { simulateCircuit } from '../src/verification.js';
 import { designs, mzi, cascade, ring, type DesignInput } from '../../designs/templates.js';
 import { genericBenchmark } from '../../scripts/generic-benchmark.js';
-import { checked, power } from './helpers.js';
+import { checked, neff, ng, power, wl0 } from './helpers.js';
 
 const backend = new PythonBackend();
 const center = 100;
@@ -19,7 +19,7 @@ test('MZI arm imbalance follows the closed-form power law at the reference wavel
     const result = await simulateCircuit(compile(mzi({ delta_length_um: delta })));
     assert.equal(result.verification.status, 'passed_with_limitations');
     assert.equal(result.ir.length_source, 'specification');
-    const expected = Math.sin((Math.PI * 1.8 * delta) / 1.55) ** 2;
+    const expected = Math.sin((Math.PI * neff * delta) / wl0) ** 2;
     assert.ok(Math.abs(power(result.simulation, 'out0', 'in0', center) - expected) < 1e-9);
   }
 });
@@ -41,7 +41,7 @@ for (const phase of [0, Math.PI / 2, Math.PI, 2 * Math.PI, -Math.PI / 2])
 test('two-stage cascade satisfies the independent power identity', async () => {
   const result = await simulateCircuit(compile(designs.mzi_cascade));
   assert.equal(result.verification.status, 'passed_with_limitations');
-  const expected = Math.cos((Math.PI * 1.8 * (20 - 10)) / 1.55) ** 2;
+  const expected = Math.cos((Math.PI * neff * (20 - 10)) / wl0) ** 2;
   assert.ok(Math.abs(power(result.simulation, 'out0', 'in0', center) - expected) < 1e-9);
 });
 for (const ratios of [
@@ -52,7 +52,7 @@ for (const ratios of [
   test(`ring drop and through powers at resonance follow the feedback formula for ${ratios}`, async () => {
     const nominal = compile(ring({ coupling_ratios: ratios }));
     const length = nominal.netlist.instances.reduce((s, i) => s + (i.length_um ?? 0), 0);
-    const cycles = (1.8 * length) / 1.55;
+    const cycles = (neff * length) / wl0;
     const phase = 2 * Math.PI * (Math.round(cycles) - cycles);
     const result = await simulateCircuit(
       compile(
@@ -74,7 +74,7 @@ for (const ratios of [
     const resonances = checked(result.verification, 'resonances_in0_to_out1')!;
     assert.equal(resonances.status, 'pass');
     // The theoretical free spectral range λ²/(ng L) bounds the measured peak spacing.
-    const fsr = (1550 ** 2 / (1.9 * length * 1000)) as number;
+    const fsr = (wl0 * 1000) ** 2 / (ng * length * 1000);
     for (const spacing of resonances.evidence.spacing_nm as number[])
       assert.ok(Math.abs(spacing - fsr) < 0.01, `${spacing} vs ${fsr}`);
   });
@@ -93,7 +93,7 @@ for (const name of ['waveguide_chain', 'coupler'] as const)
       JSON.stringify(result.verification),
     );
     assert.deepEqual(result.simulation.ports, spec.port_order);
-    assert.equal(genericBenchmark(spec, result.simulation, result.ir.netlist)?.status, 'pass');
+    assert.equal(genericBenchmark(spec, result.simulation, result.ir)?.status, 'pass');
     for (const id of [
       'independent_circuit_agreement',
       'reciprocity',
@@ -116,7 +116,7 @@ test('a phase shifter keeps its electrical terminals outside the optical matrix'
   const result = await simulateCircuit(compile(spec));
   assert.equal(result.verification.status, 'passed_with_limitations');
   assert.deepEqual(result.simulation.ports, spec.port_order);
-  const phase = (2 * Math.PI * 1.8 * 126.75) / 1.55 + 0.7;
+  const phase = (2 * Math.PI * neff * 126.75) / wl0 + 0.7;
   assert.ok(
     Math.hypot(
       result.simulation.s_real[center][0][1] - Math.cos(phase),

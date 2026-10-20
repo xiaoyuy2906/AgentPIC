@@ -12,7 +12,7 @@ import { verifyArtifacts, simulateCircuit, readJSON } from '../src/verification.
 import { createAPI } from '../src/api.js';
 import type { RunResult } from '../src/contracts.js';
 import { designs } from '../../designs/templates.js';
-import { power } from './helpers.js';
+import { neff, power, wl0 } from './helpers.js';
 const spec = designs.mzi;
 const root = await mkdtemp(path.join(tmpdir(), 'agentpic-ts-'));
 const runtime = new Runtime(root);
@@ -24,7 +24,7 @@ test('design → TS IR → semantic validation → JSON → Python SAX → resul
   assert.equal(result.verification.status, 'passed_with_limitations');
   assert.equal(result.ir.length_source, 'specification');
   const t = power(result.simulation, 'out0', 'in0', 100);
-  assert.ok(Math.abs(t - Math.sin((Math.PI * 1.8 * 10) / 1.55) ** 2) < 1e-9);
+  assert.ok(Math.abs(t - Math.sin((Math.PI * neff * 10) / wl0) ** 2) < 1e-9);
   assert.ok(!('sax_netlist' in result.simulation));
 });
 test('reserved EM adapters do not claim execution', async () => {

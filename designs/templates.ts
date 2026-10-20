@@ -3,6 +3,7 @@
  * core/src and src/agentpic only see the generic circuit, layout plan and measurements
  * these functions emit. `npm run generate:designs` writes the JSON files in this folder.
  */
+import { readFileSync } from 'node:fs';
 import type { z } from 'zod';
 import type { DesignSpecSchema, PhaseControl } from '../core/src/contracts.js';
 
@@ -24,10 +25,14 @@ const edge = (a: string, ap: string, b: string, bp: string) => ({
   b: endpoint(b, bp),
 });
 const at = (prefix: string, name: string) => (prefix ? `${prefix}/${name}` : name);
-// sin_demo_v1 cells: the MMI is 40 µm long, its ports sit at x=-10/50 µm and y=±1.25 µm.
-const MMI_LENGTH_UM = 40;
-const MMI_LANE_PITCH_UM = 2.5;
-const BEND_RADIUS_UM = 50;
+// Cell geometry comes from the PDK data, so these designs follow its declared ports.
+const pdk = JSON.parse(readFileSync(new URL('../pdks/sin_demo_v1.json', import.meta.url), 'utf8'));
+const mmiPort = (port: string): [number, number] =>
+  pdk.components.ideal_coupler.ports.find((p: { name: string }) => p.name === port).position_um;
+// Rotating a coupler by 180° and shifting it by o4.x + o1.x puts its o1 under the original o4.
+const MMI_FLIP_SHIFT_UM = mmiPort('o4')[0] + mmiPort('o1')[0];
+const MMI_LANE_PITCH_UM = mmiPort('o2')[1] - mmiPort('o1')[1];
+const BEND_RADIUS_UM: number = pdk.rules.bend_radius_um;
 
 /** Two ideal 50:50 couplers and two arms; `delta` lengthens the top (positive) or bottom arm. */
 export function mziCircuit(delta: number, control: Control = null) {
@@ -303,7 +308,7 @@ export function ring(
     layout: {
       placements: {
         top_coupler: { x_um: 0, y_um: height },
-        bottom_coupler: { x_um: MMI_LENGTH_UM, y_um: 0, rotation_deg: 180 },
+        bottom_coupler: { x_um: MMI_FLIP_SHIFT_UM, y_um: 0, rotation_deg: 180 },
       },
       routes: {
         right_return: { steps: [{ dx_um: extension }] },

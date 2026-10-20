@@ -1,7 +1,9 @@
 import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { z } from 'zod';
+import { projectRoot } from './paths.js';
+import { listPDKs } from './pdk.js';
+export { projectRoot } from './paths.js';
 import {
   CheckResultSchema,
   LayoutResultSchema,
@@ -14,7 +16,6 @@ import {
   type SimulationResult,
   type CheckResult,
 } from './contracts.js';
-export const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
 export interface ScientificBackend {
   layout(ir: EngineeringIR, directory: string): Promise<LayoutResult>;
   simulate(ir: EngineeringIR): Promise<SimulationResult>;
@@ -110,8 +111,7 @@ export const capabilities = () => ({
   contracts: 'zod-generated-json-schema',
   design_input: 'generic circuit or hierarchy with optional layout plan, tuning and measurements',
   primitives: ['ideal_coupler', 'waveguide', 'phase_shifter'],
-  platforms: ['sin'],
-  technology: 'sin_demo_v1',
+  pdks: listPDKs(),
   circuit: {
     backend: 'sax',
     status: 'implemented',

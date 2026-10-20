@@ -3,6 +3,25 @@
 import numpy as np
 
 from agentpic.ir import EngineeringIR
+from agentpic.pdk import component, optical_section
+
+# Compact models this backend implements, keyed by PDK model name, with their versions.
+IMPLEMENTED = {
+    "ideal_coupler": "ideal_coupler_v1",
+    "waveguide": "ideal_sin_waveguide_v1",
+    "phase_shifter": "ideal_phase_shifter_v1",
+}
+
+
+def model_versions(ir: EngineeringIR) -> str:
+    """Check every used PDK model is implemented here and name the combination."""
+    used = {}
+    for kind in sorted({i.kind for i in ir.netlist.instances}):
+        model = component(ir, kind).model
+        if IMPLEMENTED.get(model.name) != model.version:
+            raise ValueError(f"SAX backend does not implement {model.name} {model.version}")
+        used[model.name] = model.version
+    return "+".join(used.values())
 
 
 class SAXBackend:
@@ -42,22 +61,24 @@ def build_circuit(ir: EngineeringIR):
         tuning = jnp.exp(1j * phase_rad * wl0 / jnp.asarray(wl))
         return {ports: value * tuning for ports, value in passive.items()}
 
-    tech = ir.technology
+    model_versions(ir)
     instances = {}
     for instance in ir.netlist.instances:
         if instance.kind == "ideal_coupler":
             settings = {"coupling": instance.coupling_ratio}
         else:
+            mode = optical_section(ir, instance.kind).mode
             settings = {
                 "length_um": instance.length_um,
-                "neff": tech.effective_index,
-                "ng": tech.group_index,
-                "wl0": tech.reference_wavelength_um,
-                "loss": tech.loss_db_per_cm,
+                "neff": mode.effective_index,
+                "ng": mode.group_index,
+                "wl0": mode.reference_wavelength_um,
+                "loss": mode.loss_db_per_cm,
             }
             if instance.kind == "phase_shifter":
                 settings["phase_rad"] = instance.phase_control.phase_rad
-        instances[instance.name] = {"component": instance.kind, "settings": settings}
+        model = component(ir, instance.kind).model.name
+        instances[instance.name] = {"component": model, "settings": settings}
     domains = {(i.name, p.name): p.domain for i in ir.netlist.instances for p in i.ports}
     netlist = {
         "instances": instances,
@@ -98,7 +119,7 @@ def simulate(ir: EngineeringIR) -> dict:
     return {
         "schema_version": "3.0",
         "backend": "sax",
-        "model_version": ir.technology.model_version,
+        "model_version": model_versions(ir),
         "wavelength_nm": wavelengths.tolist(),
         "ports": ports,
         "s_real": matrix.real.tolist(),

@@ -12,6 +12,8 @@ from pathlib import Path
 import numpy as np
 
 from agentpic.ir import EngineeringIR
+from agentpic.pdk import actuator_section, layer, optical_section
+from agentpic.pdk import component as declared
 
 
 class GDSFactoryBackend:
@@ -109,21 +111,39 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     gf.gpdk.PDK.activate()
     gf.clear_cache()
     tech = ir.technology
-    cross_section = gf.cross_section.strip(
-        width=tech.width_um, layer=tech.core_layer, radius=tech.bend_radius_um
-    )
-    heater_section = gf.cross_section.heater_metal(
-        width=tech.heater_width_um, layer=tech.heater_layer
-    )
-    mmi = gf.components.mmi2x2(
-        width=tech.width_um,
-        width_taper=1.5,
-        length_taper=10,
-        length_mmi=40,
-        width_mmi=5,
-        gap_mmi=1,
-        cross_section=cross_section,
-    )
+    radius = tech.rules.bend_radius_um
+    kinds = sorted({i.kind for i in ir.netlist.instances})
+    sections = {
+        kind: gf.cross_section.strip(
+            width=optical_section(ir, kind).width_um,
+            layer=layer(ir, optical_section(ir, kind)),
+            radius=radius,
+        )
+        for kind in kinds
+    }
+    if "phase_shifter" in kinds:
+        actuator = actuator_section(ir)
+        heater_section = gf.cross_section.heater_metal(
+            width=actuator.width_um, layer=layer(ir, actuator)
+        )
+    # Fixed cells come from GDSFactory factories named by the PDK, which also declares their
+    # ports; a cell that disagrees with its declaration is a PDK error, not a layout detail.
+    cells = {}
+    for kind in kinds:
+        definition = declared(ir, kind)
+        if definition.cell.factory == "extrusion":
+            continue
+        factory = getattr(gf.components, definition.cell.factory)
+        cell = factory(cross_section=sections[kind], **definition.cell.settings)
+        actual = {port.name: port for port in cell.ports}
+        if set(actual) != {port.name for port in definition.ports}:
+            raise ValueError(f"{tech.name} {kind} cell ports differ from the PDK declaration")
+        for port in definition.ports:
+            offset = np.subtract(actual[port.name].center, port.position_um)
+            turn = (actual[port.name].orientation - port.orientation_deg) % 360
+            if np.linalg.norm(offset) > 1e-6 or min(turn, 360 - turn) > 1e-6:
+                raise ValueError(f"{tech.name} {kind} port {port.name} is not where the PDK says")
+        cells[kind] = cell
     component = gf.Component(f"agentpic_{ir.specification.name}_{ir.design_id}")
     instances = {i.name: i for i in ir.netlist.instances}
     index = {"/".join(path): name for name, path in ir.instance_paths.items()}
@@ -132,7 +152,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     references, lengths, centerlines, actuators = {}, {}, {}, {}
 
     def waveguide_cell(name: str, path) -> gf.Component:
-        waveguide = gf.path.extrude(path, cross_section=cross_section)
+        waveguide = gf.path.extrude(path, cross_section=sections[instances[name].kind])
         control = instances[name].phase_control
         if control is None:
             waveguide.name = f"{name}_{ir.design_id}"
@@ -155,8 +175,8 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     def place(name: str) -> None:
         placement = placements[name]
         instance = instances[name]
-        if instance.kind == "ideal_coupler":
-            cell = mmi
+        if instance.kind in cells:
+            cell = cells[instance.kind]
         else:
             straight = gf.Path(np.array([(0.0, 0.0), (instance.length_um, 0.0)]))
             cell = waveguide_cell(name, straight)
@@ -175,7 +195,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
                 )
             )
         references[name] = reference
-        if instance.kind != "ideal_coupler":
+        if instance.kind not in cells:
             ends = [reference.ports[p].center for p in ("o1", "o2")]
             centerlines[name] = [list(map(float, point)) for point in ends]
             lengths[name] = float(instance.length_um)
@@ -206,7 +226,11 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
 
     # GDSFactory's routers only propose Manhattan backbones in a scratch cell; every path is
     # then validated, smoothed with circular PDK-radius bends and extruded the same way.
-    bend = gf.components.bend_circular(radius=tech.bend_radius_um, cross_section=cross_section)
+    def bend(name: str):
+        return gf.components.bend_circular(
+            radius=radius, cross_section=sections[instances[name].kind]
+        )
+
     dbu = component.kcl.dbu
 
     def backbone(route) -> list:
@@ -221,8 +245,8 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
             gf.Component(f"bundle_{k}_{ir.design_id}"),
             [a for a, _ in pairs],
             [b for _, b in pairs],
-            cross_section=cross_section,
-            bend=bend,
+            cross_section=sections[instances[members[0]].kind],
+            bend=bend(members[0]),
             separation=bundle.separation_um,
             sort_ports=False,
         )
@@ -239,7 +263,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
                 end_port.center,
                 end_port.orientation,
                 route.steps,
-                tech.bend_radius_um,
+                radius,
             )
             routers[name] = "steps"
         else:
@@ -247,20 +271,18 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
                 gf.Component(f"route_{name}_{ir.design_id}"),
                 start_port,
                 end_port,
-                cross_section=cross_section,
-                bend=bend,
+                cross_section=sections[instances[name].kind],
+                bend=bend(name),
             )
             backbones[name], routers[name] = backbone(found), "auto"
     for name, points in backbones.items():
         start_port, end_port = ends(name)
-        points = validated_backbone(
-            points, start_port.orientation, end_port.orientation, tech.bend_radius_um
-        )
+        points = validated_backbone(points, start_port.orientation, end_port.orientation, radius)
         # Routers put corners exactly one radius from a port. smooth() recomputes the radius
         # from its discretised arc and rejects that tie on rounding noise, so shave 1 pm: a
         # thousandth of the database unit, invisible in the written GDS.
         path = (
-            gf.path.smooth(points, radius=tech.bend_radius_um - 1e-6, bend=gf.path.arc, npoints=128)
+            gf.path.smooth(points, radius=radius - 1e-6, bend=gf.path.arc, npoints=128)
             if len(points) > 2
             else gf.Path(points)
         )
@@ -274,7 +296,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
                 "centerline_um": [
                     list(map(float, reference.ports[p].center)) for p in ("e1", "e2")
                 ],
-                "layer": list(tech.heater_layer),
+                "layer": list(layer(ir, actuator_section(ir))),
                 "width_um": float(reference.ports["e1"].width),
             }
     for name, endpoint in ir.netlist.ports.items():
@@ -324,12 +346,12 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         "schema_version": "3.0",
         "top_cell": component.name,
         "technology": tech.name,
-        "core_layer": list(tech.core_layer),
+        "core_layer": list(layer(ir, optical_section(ir))),
         "lengths_um": lengths,
         "centerlines_um": centerlines,
         "ports": ports,
         "extracted_circuit": extracted_circuit,
-        "bend_radius_um": tech.bend_radius_um,
+        "bend_radius_um": radius,
         "actuators": actuators,
         "routers": routers,
     }

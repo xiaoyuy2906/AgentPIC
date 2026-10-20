@@ -47,7 +47,7 @@ async function sourceHash() {
     ).join('\n'),
   );
 }
-export async function provenance(backend: ScientificBackend) {
+export async function provenance(backend: ScientificBackend, ir?: EngineeringIR) {
   let git_commit: string | null = null,
     git_dirty: boolean | null = null;
   try {
@@ -71,6 +71,7 @@ export async function provenance(backend: ScientificBackend) {
     uv_lock_sha256: sha256(await readFile(path.join(projectRoot, 'uv.lock'))),
     npm_lock_sha256: sha256(await readFile(path.join(projectRoot, 'package-lock.json'))),
     schema_sha256: sha256(await readFile(path.join(projectRoot, 'schemas/contracts.schema.json'))),
+    ...(ir ? { pdk: ir.technology.name, pdk_sha256: sha256(canonical(ir.technology)) } : {}),
     git_commit,
     git_dirty,
   };
@@ -165,7 +166,10 @@ export class Runtime {
         await writeJSON(path.join(directory, 'verification.json'), verification);
       },
       manifest: async () => {
-        await writeJSON(path.join(directory, 'provenance.json'), await provenance(this.backend));
+        await writeJSON(
+          path.join(directory, 'provenance.json'),
+          await provenance(this.backend, ir),
+        );
       },
     };
     while (tasks.some((t) => t.state === 'pending')) {

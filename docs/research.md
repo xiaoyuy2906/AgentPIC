@@ -16,3 +16,14 @@ Milestone 1 research and integration decisions, checked 2026-10-11 against prima
 SAX and GDSFactory both expose useful dictionaries but these are backend contracts, not the complete engineering record. AgentPIC therefore keeps versioned TypeScript/Zod IR, units, design intent, assumptions, workflow dependencies and verification status outside those libraries. This avoids conflating a solver result, a physical layout and a validated engineering deliverable.
 
 The main integration finding was that simulation must use actual routed lengths. Layout generation therefore precedes final SAX execution, with a compiler backannotation stage between them. Validation also needs independent equations and GDS readback: successful library calls alone cannot establish either physical connectivity or the model's correctness.
+
+## Open PDK assessment (2026-10-20)
+
+Both candidates were installed into an isolated environment next to the pinned gdsfactory 9.51.0 and SAX 0.18.2 and their model sources read directly.
+
+| PDK | Version | Compact models found | Decision |
+|---|---|---|---|
+| [cspdk](https://github.com/gdsfactory/cspdk) (Cornerstone) | 2.1.0 | `sin300.models.straight` uses constant `neff=1.60`, `ng=1.95`; MMIs are generic Gaussian `sax.models` with `fwhm=0.2`; `coupler_straight` and `coupler_symmetric` raise `NotImplementedError`. No measured or simulated S-parameter data. | Not a model source. Its layer maps and cells could later become a second PDK data file whose models come from characterization. |
+| [ubcpdk](https://github.com/gdsfactory/ubcpdk) (SiEPIC EBeam) | 1.3.4 | `simulation/circuits/waveguide.py` is a polynomial `neff(λ)` with n1=2.4; no S-parameter data files ship with the package. | Not a model source. |
+
+Neither ships calibrated compact models, so adopting one would replace one placeholder with another. AgentPIC instead keeps its PDK as a data file (`pdks/sin_demo_v1.json`) in which every model, material and rule names its source, and replaces assumed values with characterization evidence (ADR-008).

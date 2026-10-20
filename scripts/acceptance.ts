@@ -187,7 +187,7 @@ const layout = physical
 const resolved = JSON.parse(
   await readFile(path.join(httpRun!.artifact_directory, 'engineering_ir.json'), 'utf8'),
 );
-const benchmark = genericBenchmark(specification, simulation, resolved.netlist);
+const benchmark = genericBenchmark(specification, simulation, resolved);
 if (benchmark) await writeJSON(path.join(output, 'independent-reference.json'), benchmark);
 const counts: Record<string, number> = {};
 for (const check of httpReport!.checks) counts[check.status] = (counts[check.status] ?? 0) + 1;

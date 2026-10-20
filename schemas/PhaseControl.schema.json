@@ -13,8 +13,7 @@
         "active_length_um": {
           "default": 100,
           "type": "number",
-          "minimum": 20,
-          "maximum": 200
+          "exclusiveMinimum": 0
         }
       },
       "required": [

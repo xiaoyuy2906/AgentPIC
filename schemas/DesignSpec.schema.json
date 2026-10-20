@@ -14,10 +14,10 @@
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
         },
-        "platform": {
-          "default": "sin",
+        "pdk": {
+          "default": "sin_demo_v1",
           "type": "string",
-          "const": "sin"
+          "pattern": "^[a-z][a-z0-9_]*$"
         },
         "circuit": {
           "anyOf": [
@@ -253,8 +253,7 @@
         "active_length_um": {
           "default": 100,
           "type": "number",
-          "minimum": 20,
-          "maximum": 200
+          "exclusiveMinimum": 0
         }
       },
       "required": [

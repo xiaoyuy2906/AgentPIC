@@ -47,7 +47,9 @@ A design contains:
 - `tuning` (optional): power targets over phase-shifter variables, solved by bounded SciPy search.
 - `measurements` (optional): spectral features such as complete resonances between two ports.
 
-The full contract is in [docs/interfaces.md](docs/interfaces.md). To add a device, write a generator in `designs/templates.ts`, run `npm run generate`, and add golden-reference tests; if that needs an engine change, the engine is missing a generic capability.
+Process facts live in a PDK data file named by the design's `pdk` field (default `pdks/sin_demo_v1.json`): layers, rules, materials, cross-sections with mode models, and components with ports, cells, compact-model versions, validity ranges and the source of every value ([ADR-008](docs/architecture.md#adr-008-the-pdk-is-data-with-sources)).
+
+The full contract is in [docs/interfaces.md](docs/interfaces.md). To add a device, write a generator in `designs/templates.ts`, run `npm run generate`, and add golden-reference tests; to add a process, add a PDK file. If either needs an engine change, the engine is missing a generic capability.
 
 ## Interfaces
 
@@ -71,7 +73,7 @@ Invalid structure or semantics return 422 with the failing checks; a completed t
 
 TypeScript checks references, port occupancy and compatibility, topology, the layout plan, extracted connectivity, port alignment, measured lengths and layout constraints. Python checks the full SAX matrix against independent dense network elimination, spectral sampling adequacy, reciprocity, passivity and lossless power balance, then reopens the GDS with KLayout for connectivity, width, spacing, bend radius and metal geometry, and runs pin-based LVS: connectivity re-extracted from physical pins, pins backed by real geometry, and no crossing waveguides.
 
-These checks verify the solver, the netlist and the geometry against the **stated ideal models**. `sin_demo_v1` assumes neff = 1.8 and ng = 1.9 at 1550 nm, ideal couplers and zero loss; these are not derived from a mode solver or a measured stack. Electromagnetic calibration, measurement validation and foundry signoff are always reported `not_run`, and controlled designs also report electrical-to-phase calibration as `not_run`. See [models and verification](docs/models-and-verification.md).
+These checks verify the solver, the netlist and the geometry against the **stated ideal models**. `sin_demo_v1` assumes neff = 1.8 and ng = 1.9 at 1550 nm, ideal couplers and zero loss; its PDK file marks these as uncalibrated assumptions and every report lists them as limitations. Electromagnetic calibration, measurement validation and foundry signoff are always reported `not_run`, and controlled designs also report electrical-to-phase calibration as `not_run`. See [models and verification](docs/models-and-verification.md).
 
 A separate physics workflow (`npm run --silent agentpic -- physics examples/straight_waveguide.json`) runs a planar TE slab benchmark with independent dispersion evidence; see [physics verification](docs/physics-verification.md).
 

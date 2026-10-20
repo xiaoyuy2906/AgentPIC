@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/ModeModel",
+  "$defs": {
+    "ModeModel": {
+      "type": "object",
+      "properties": {
+        "reference_wavelength_um": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "effective_index": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "group_index": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "loss_db_per_cm": {
+          "type": "number",
+          "minimum": 0
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        }
+      },
+      "required": [
+        "reference_wavelength_um",
+        "effective_index",
+        "group_index",
+        "loss_db_per_cm",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "assumption",
+            "literature",
+            "characterization",
+            "measurement",
+            "foundry"
+          ]
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "reference",
+        "calibrated"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

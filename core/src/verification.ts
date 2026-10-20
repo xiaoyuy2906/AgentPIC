@@ -11,6 +11,7 @@ import {
   backannotate,
 } from './compiler.js';
 import { pathIndex } from './design.js';
+import { componentMode, uncalibratedSources } from './pdk.js';
 import { applyOperatingPoint, resolveVariables } from './tuning.js';
 import { verifyTuning } from './tuning-verification.js';
 import {
@@ -26,11 +27,12 @@ import {
   VerificationReportSchema,
 } from './contracts.js';
 import { PythonBackend, type ScientificBackend } from './backends.js';
-const limitations = [
-  'Illustrative SiN PDK; no foundry signoff rule deck.',
-  'Ideal compact models are mathematically checked, not EM- or measurement-calibrated.',
+const limitations = (ir: EngineeringIR | null) => [
+  ...(ir
+    ? uncalibratedSources(ir.technology)
+    : ['PDK unknown: the engineering IR could not be read.']),
   'No bend loss, manufacturing variation or thermal model.',
-  'Port-based connectivity with geometry checks is not full foundry LVS.',
+  'Pin-based LVS with geometry checks is not full foundry LVS; no foundry signoff rule deck.',
 ];
 export const readJSON = async (file: string) => JSON.parse(await readFile(file, 'utf8')) as unknown;
 export const controlSettings = (ir: EngineeringIR) =>
@@ -41,7 +43,8 @@ export const controlSettings = (ir: EngineeringIR) =>
         i.name,
         {
           ...i.phase_control,
-          reference_wavelength_um: ir.technology.reference_wavelength_um,
+          reference_wavelength_um: componentMode(ir.technology, 'phase_shifter')!
+            .reference_wavelength_um,
           electrical_mapping: 'not_calibrated',
         },
       ]),
@@ -147,7 +150,7 @@ export const layoutNotRunChecks = (): CheckResult[] => [
     evidence: {},
   },
 ];
-export function report(designID: string, checks: CheckResult[]): VerificationReport {
+export function report(ir: EngineeringIR | null, checks: CheckResult[]): VerificationReport {
   for (const [id, detail] of [
     ['electromagnetic_calibration', 'No electromagnetic solver or model calibration executed.'],
     ['measurement_validation', 'No fabricated-device measurements supplied.'],
@@ -155,10 +158,10 @@ export function report(designID: string, checks: CheckResult[]): VerificationRep
   ])
     checks.push({ id, status: 'not_run', detail, evidence: {} });
   return VerificationReportSchema.parse({
-    design_id: designID,
+    design_id: ir?.design_id ?? 'unknown',
     status: checks.some((c) => c.status === 'fail') ? 'failed' : 'passed_with_limitations',
     checks,
-    limitations,
+    limitations: limitations(ir),
   });
 }
 export async function verifyArtifacts(
@@ -167,7 +170,7 @@ export async function verifyArtifacts(
   artifacts?: RunResult['artifacts'],
 ): Promise<VerificationReport> {
   const checks: CheckResult[] = [];
-  let id = 'unknown';
+  let read: EngineeringIR | null = null;
   if (artifacts) {
     const mismatches: string[] = [];
     for (const artifact of artifacts) {
@@ -197,7 +200,7 @@ export async function verifyArtifacts(
     const ir = EngineeringIRSchema.parse(
       await readJSON(path.join(directory, 'engineering_ir.json')),
     );
-    id = ir.design_id;
+    read = ir;
     checks.push(...semanticChecks(ir));
     if (Object.keys(controlSettings(ir)).length)
       checks.push(
@@ -278,7 +281,7 @@ export async function verifyArtifacts(
   } catch (error) {
     checks.push(check('artifact_read_or_validation', false, String(error)));
   }
-  return report(id, checks);
+  return report(read, checks);
 }
 export async function simulateCircuit(
   input: unknown,
@@ -301,7 +304,7 @@ export async function simulateCircuit(
     ir,
     tuning,
     simulation,
-    verification: report(ir.design_id, [
+    verification: report(ir, [
       ...semanticChecks(ir),
       ...layoutNotRunChecks(),
       ...(await backend.verifySimulation(ir, simulation)),

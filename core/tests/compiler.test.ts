@@ -23,7 +23,7 @@ const failing = (ir: ReturnType<typeof compile>) => {
 
 for (const [label, change] of [
   ['unknown device field', (d: any) => (d.device = 'mzi')],
-  ['unknown platform', (d: any) => (d.platform = 'silicon')],
+  ['the removed platform field', (d: any) => (d.platform = 'sin')],
   ['missing name', (d: any) => delete d.name],
   ['NaN wavelength', (d: any) => (d.wavelength_nm = NaN)],
   ['zero wavelength', (d: any) => (d.wavelength_nm = 0)],
@@ -67,6 +67,23 @@ test('a hierarchical design flattens with source paths and keeps its module defi
   assert.ok(ir.hierarchy);
   assert.ok(Object.values(ir.instance_paths).some((p) => p.join('/') === 'second/top_arm'));
 });
+test('the PDK is loaded from data, binds the design identity and rejects unknown names', () => {
+  const ir = compile(base);
+  assert.equal(ir.technology.name, 'sin_demo_v1');
+  assert.equal(ir.technology.components.ideal_coupler?.cell.factory, 'mmi2x2');
+  assert.ok(ir.assumptions.some((a) => a.includes('(assumption)')));
+  assert.throws(() => compile({ ...base, pdk: 'no_such_process' }), /pdk_reference/);
+  const wide = structuredClone(base) as any;
+  wide.circuit.instances[2].phase_control = { phase_rad: 0, active_length_um: 300 };
+  wide.circuit.instances[2].kind = 'phase_shifter';
+  wide.circuit.instances[2].ports.push(
+    { name: 'e1', domain: 'electrical' },
+    { name: 'e2', domain: 'electrical' },
+  );
+  wide.circuit.ports.p1 = { instance: 'top_arm', port: 'e1' };
+  wide.circuit.ports.p2 = { instance: 'top_arm', port: 'e2' };
+  assert.throws(() => compile(wide), /active_length_um=300 outside \[20, 200\]/);
+});
 test('a design without a layout plan skips layout and backannotation', () => {
   assert.deepEqual(
     compile(designs.coupler).workflow.map((t) => t.name),
@@ -105,7 +122,19 @@ const mutations: Record<string, [(ir: ReturnType<typeof compile>) => void, strin
     'unique_components_and_ports',
   ],
   missing_parameter: [(ir) => (ir.netlist.instances[2].length_um = null), 'component_models'],
-  pdk_violation: [(ir) => (ir.technology.width_um = 0.1), 'pdk_geometry'],
+  pdk_violation: [(ir) => (ir.technology.cross_sections.strip.width_um = 0.1), 'pdk_geometry'],
+  missing_pdk_component: [
+    (ir) => delete ir.technology.components.ideal_coupler,
+    'component_models',
+  ],
+  narrowed_validity: [
+    (ir) => (ir.technology.components.waveguide!.validity.wavelength_um = [1.55, 1.6]),
+    'model_validity',
+  ],
+  undeclared_port: [
+    (ir) => (ir.technology.components.ideal_coupler!.ports[0].name = 'p1'),
+    'component_models',
+  ],
   task_cycle: [(ir) => (ir.workflow[0].depends_on = ['manifest']), 'workflow_dependencies'],
   unknown_dependency: [(ir) => (ir.workflow[0].depends_on = ['unknown']), 'workflow_dependencies'],
   changed_ratio: [

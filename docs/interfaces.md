@@ -11,7 +11,7 @@ A design is data. The engine has no device-specific fields or code paths (ADR-00
 | `name` | required | Design name, used in GDS cell names |
 | `circuit` | required | A flat `Circuit` or a `CircuitHierarchy` of reusable modules |
 | `port_order` | required | Every external optical port exactly once; fixes S-matrix row/column order |
-| `platform` | `sin` | Illustrative `sin_demo_v1` PDK |
+| `pdk` | `sin_demo_v1` | Name of a PDK data file in `pdks/` |
 | `wavelength_nm` | 1550 | Sweep centre, 1500–1600 nm |
 | `sweep_span_nm` | 40 | Greater than zero, at most 100 nm; the full sweep must lie in 1450–1650 nm |
 | `sweep_points` | 201 | Odd integer, 3–10001 |
@@ -50,10 +50,10 @@ Actuators sit centred on the longest straight section of a phase shifter's path.
 
 ## Typed engineering records
 
-- **PDK:** process identifier, layers, geometry rules, assumed indices and supported components. The current PDK is a demonstration declaration, not a foundry integration.
+- **PDK:** a data file in `pdks/`, copied into every Engineering IR. It declares `layers`, `rules` (minimum width/spacing, bend radius), `materials` (Sellmeier terms with validity range), `cross_sections` (layer, width, thickness, materials and an optional mode model: reference wavelength, effective and group index, loss) and `components`. Each component declares its ports (with local positions for fixed cells), its layout cell (a GDSFactory factory and settings, or `extrusion` along a cross-section, plus an actuator cross-section for phase shifters), its compact model name and version, its validity ranges (wavelength and named parameters) and its source. Every source states `kind` (`assumption`, `literature`, `characterization`, `measurement` or `foundry`), a reference, whether it is calibrated, and optional evidence. `sin_demo_v1` is a demonstration process, not a foundry integration.
 - **EngineeringIR:** version, design ID, the submitted specification, PDK, flat netlist, source `hierarchy` and `instance_paths`, optional `operating_point`, workflow DAG, `layout_resolved`, `length_source` and assumptions.
 
-Schemas reject unknown fields. Semantic validation separately rejects unresolved references, duplicate names, double-used/dangling ports, incompatible domains/directions, disconnected circuits, missing model parameters, PDK violations, invalid task dependencies, port-order mismatches, layout-plan errors and any netlist that differs from the submitted circuit beyond measured lengths and the applied operating point.
+Schemas reject unknown fields. Semantic validation separately rejects unresolved references, duplicate names, double-used/dangling ports, incompatible domains/directions, disconnected circuits, instances whose ports or parameters disagree with their PDK component, values outside PDK validity ranges, inconsistent PDK geometry, invalid task dependencies, port-order mismatches, layout-plan errors and any netlist that differs from the submitted circuit beyond measured lengths and the applied operating point.
 
 ## Runtime and backend boundary
 

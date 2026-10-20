@@ -9,6 +9,7 @@ or adequate sampling of every possible resonant network.
 import numpy as np
 
 from agentpic.ir import EngineeringIR
+from agentpic.pdk import optical_section
 
 
 def circuit_reference(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarray:
@@ -20,11 +21,7 @@ def circuit_reference(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarray:
     ]
     indices = {port: index for index, port in enumerate(ports)}
     matrix = np.zeros((len(wavelengths), len(ports), len(ports)), dtype=complex)
-    tech = ir.technology
     wl = wavelengths / 1000
-    index = tech.effective_index + (tech.effective_index - tech.group_index) * (
-        wl / tech.reference_wavelength_um - 1
-    )
     for instance in ir.netlist.instances:
         if instance.kind == "ideal_coupler":
             through, cross = (
@@ -38,12 +35,20 @@ def circuit_reference(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarray:
                 ("o2", "o4", cross),
             ]
         else:
+            mode = optical_section(ir, instance.kind).mode
+            wl0 = mode.reference_wavelength_um
+            index = mode.effective_index + (mode.effective_index - mode.group_index) * (
+                wl / wl0 - 1
+            )
             phase = (
-                instance.phase_control.phase_rad * tech.reference_wavelength_um / wl
+                instance.phase_control.phase_rad * wl0 / wl
                 if instance.phase_control is not None
                 else 0
             )
-            propagation = np.exp(1j * (2 * np.pi * index * instance.length_um / wl + phase))
+            amplitude = 10 ** (-mode.loss_db_per_cm * instance.length_um / 1e4 / 20)
+            propagation = amplitude * np.exp(
+                1j * (2 * np.pi * index * instance.length_um / wl + phase)
+            )
             pairs = [("o1", "o2", propagation)]
         for left, right, value in pairs:
             a, b = indices[(instance.name, left)], indices[(instance.name, right)]
