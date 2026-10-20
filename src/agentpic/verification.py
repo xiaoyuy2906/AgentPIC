@@ -1,6 +1,7 @@
 """Independent numerical and geometry checks; semantic verification lives in TypeScript.
 
-This module deliberately does not import the SAX models or the layout builder.
+This module deliberately does not import the SAX models or the layout builder, and it never
+names a device family: the reference is dense network elimination of the submitted netlist.
 Numerical agreement verifies the stated ideal models, not physical calibration.
 """
 
@@ -12,7 +13,7 @@ import numpy as np
 
 from agentpic.circuit_reference import circuit_reference
 from agentpic.ir import CheckResult, EngineeringIR
-from agentpic.spectral import verify_ring_spectrum
+from agentpic.spectral import sampling_adequacy, verify_measurements
 
 LIMITATIONS = [
     "Demonstration SiN process; no foundry PDK or signoff rule deck.",
@@ -28,80 +29,10 @@ def _check(identifier: str, passed: bool, detail: str, **evidence) -> CheckResul
     )
 
 
-def analytic_scattering(ir: EngineeringIR, wavelengths: np.ndarray) -> np.ndarray:
-    if ir.specification.device == "circuit":
-        return circuit_reference(ir, wavelengths)
-    tech = ir.technology
-    controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
-    lengths = {i.name: i.length_um for i in ir.netlist.instances if i.kind != "ideal_coupler"}
-    wl = wavelengths / 1000
-    # Independent propagation followed by family-specific closed-form composition.
-    index = (
-        tech.effective_index
-        + (tech.effective_index - tech.group_index)
-        * (wl - tech.reference_wavelength_um)
-        / tech.reference_wavelength_um
-    )
-
-    def propagation(name: str) -> np.ndarray:
-        induced_path = (
-            controls[name].phase_rad * tech.reference_wavelength_um / (2 * np.pi)
-            if name in controls
-            else 0.0
-        )
-        return np.exp(2j * np.pi * (index * lengths[name] + induced_path) / wl)
-
-    def mzi_transfer(top_name: str, bottom_name: str) -> np.ndarray:
-        top, bottom = propagation(top_name), propagation(bottom_name)
-        transfer = np.zeros((len(wl), 2, 2), dtype=complex)
-        transfer[:, 0, 0], transfer[:, 1, 1] = (bottom - top) / 2, (top - bottom) / 2
-        transfer[:, 0, 1] = transfer[:, 1, 0] = 1j * (bottom + top) / 2
-        return transfer
-
-    if ir.specification.device == "ring_add_drop":
-        ratios = {
-            i.name: i.coupling_ratio for i in ir.netlist.instances if i.kind == "ideal_coupler"
-        }
-        k1, k2 = ratios["top_coupler"], ratios["bottom_coupler"]
-        t1, t2 = np.sqrt(1 - k1), np.sqrt(1 - k2)
-        right, left = propagation("right_return"), propagation("left_return")
-        feedback = right * left
-        denominator = 1 - t1 * t2 * feedback
-        transfer = np.zeros((len(wl), 2, 2), dtype=complex)
-        transfer[:, 0, 0] = (t1 - t2 * feedback) / denominator
-        transfer[:, 1, 1] = (t2 - t1 * feedback) / denominator
-        transfer[:, 1, 0] = -np.sqrt(k1 * k2) * right / denominator
-        transfer[:, 0, 1] = -np.sqrt(k1 * k2) * left / denominator
-    elif ir.assembly is None:
-        transfer = mzi_transfer("top_arm", "bottom_arm")
-    else:
-        blocks = ir.assembly.blocks
-        transfer = mzi_transfer(blocks[0].primitives["top_arm"], blocks[0].primitives["bottom_arm"])
-        for previous, block in zip(blocks, blocks[1:]):
-            links = {
-                link.a.port: link.instance
-                for link in ir.assembly.links
-                if link.a.instance == previous.name and link.b.instance == block.name
-            }
-            connecting = np.zeros_like(transfer)
-            connecting[:, 0, 0] = propagation(links["out0"])
-            connecting[:, 1, 1] = propagation(links["out1"])
-            transfer = (
-                mzi_transfer(block.primitives["top_arm"], block.primitives["bottom_arm"])
-                @ connecting
-                @ transfer
-            )
-    expected = np.zeros((len(wl), 4, 4), dtype=complex)
-    expected[:, 2:, :2] = transfer
-    expected[:, :2, 2:] = transfer.transpose(0, 2, 1)
-    return expected
-
-
 def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
     spec = ir.specification
-    expected_ports = spec.port_order if spec.device == "circuit" else ["in0", "in1", "out0", "out1"]
-    size = len(expected_ports)
+    size = len(spec.port_order)
     try:
         real, imag = np.asarray(simulation["s_real"]), np.asarray(simulation["s_imag"])
         if real.shape != imag.shape:
@@ -109,7 +40,7 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         matrix = real + 1j * imag
     except ValueError:
         return [_check("simulation_shape_and_finiteness", False, "Malformed complex matrix.")]
-    controls = {i.name: i.phase_control for i in ir.netlist.instances if i.kind == "phase_shifter"}
+    controlled = any(i.phase_control is not None for i in ir.netlist.instances)
     calibration = (
         [
             CheckResult(
@@ -119,18 +50,9 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
                 evidence={},
             )
         ]
-        if controls
+        if controlled
         else []
     )
-    if spec.device == "circuit":
-        calibration.append(
-            CheckResult(
-                id="generic_spectral_resolution",
-                status="not_run",
-                detail="Only requested samples are checked; generic resonance coverage and spectral convergence are not certified.",
-                evidence={},
-            )
-        )
     expected_grid = np.linspace(
         spec.wavelength_nm - spec.sweep_span_nm / 2,
         spec.wavelength_nm + spec.sweep_span_nm / 2,
@@ -141,7 +63,7 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
         or wavelengths.shape != expected_grid.shape
         or not np.all(np.isfinite(matrix))
         or not np.all(np.isfinite(wavelengths))
-        or simulation["ports"] != expected_ports
+        or simulation["ports"] != list(spec.port_order)
     ):
         return calibration + [
             _check(
@@ -151,7 +73,8 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
             )
         ]
     try:
-        expected = analytic_scattering(ir, wavelengths)
+        expected = circuit_reference(ir, wavelengths)
+        sampling = sampling_adequacy(ir, wavelengths, matrix)
     except (ValueError, np.linalg.LinAlgError) as exc:
         return calibration + [
             _check(
@@ -169,22 +92,6 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     reciprocity = float(np.max(np.abs(matrix - matrix.transpose(0, 2, 1))))
     unitary_error = float(np.max(np.abs(matrix.conj().transpose(0, 2, 1) @ matrix - np.eye(size))))
     largest_gain = float(np.max(np.linalg.svd(matrix, compute_uv=False)))
-    out0 = np.asarray(simulation["transmission_out0"])
-    out1 = np.asarray(simulation["transmission_out1"])
-    powers_consistent = (
-        all(
-            simulation[key] is None
-            for key in ("input_port", "transmission_out0", "transmission_out1")
-        )
-        if spec.device == "circuit"
-        else (
-            simulation["input_port"] == "in0"
-            and out0.shape == wavelengths.shape
-            and out1.shape == wavelengths.shape
-            and np.allclose(out0, np.abs(matrix[:, 2, 0]) ** 2, atol=1e-12, rtol=0)
-            and np.allclose(out1, np.abs(matrix[:, 3, 0]) ** 2, atol=1e-12, rtol=0)
-        )
-    )
     return (
         calibration
         + [
@@ -192,7 +99,7 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
                 "simulation_shape_and_finiteness",
                 True,
                 "Complex matrix dimensions, finiteness and explicit optical port order agree.",
-                ports=expected_ports,
+                ports=list(spec.port_order),
                 shape=list(matrix.shape),
             ),
             _check(
@@ -201,17 +108,9 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
                 "Spectrum covers the requested wavelength range and center.",
             ),
             _check(
-                "independent_circuit_agreement"
-                if spec.device == "circuit"
-                else "analytic_ring_agreement"
-                if ir.specification.device == "ring_add_drop"
-                else "analytic_cascade_agreement"
-                if ir.assembly is not None
-                else "analytic_mzi_agreement",
+                "independent_circuit_agreement",
                 error < 1e-9,
-                "Full complex SAX S-matrix agrees with independent NumPy network elimination."
-                if spec.device == "circuit"
-                else "Full complex SAX S-matrix agrees with independent closed-form network response and physical path propagation.",
+                "Full complex SAX S-matrix agrees with independent NumPy network elimination.",
                 max_complex_error=error,
                 tolerance=1e-9,
             ),
@@ -230,21 +129,9 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
                 "All optical inputs satisfy S†S=I for the stated lossless model.",
                 max_error=unitary_error,
             ),
-            _check(
-                "generic_result_representation"
-                if spec.device == "circuit"
-                else "reported_transmission",
-                bool(powers_consistent),
-                "Generic results use the complete complex matrix; fixed-name summaries are null."
-                if spec.device == "circuit"
-                else "Reported transmission powers agree with the exported S-matrix.",
-            ),
+            sampling,
         ]
-        + (
-            verify_ring_spectrum(ir, wavelengths, np.abs(matrix[:, 3, 0]) ** 2)
-            if ir.specification.device == "ring_add_drop"
-            else []
-        )
+        + verify_measurements(ir, wavelengths, matrix)
     )
 
 
@@ -316,15 +203,15 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
             violations=spacing_errors,
         ),
         _check(
-            "gds_contains_arm_centerlines",
+            "gds_contains_waveguide_centerlines",
             corridor_missing_area < 1e-6,
             "Every waveguide centerline corridor is contained in the exported GDS core.",
             missing_area_um2=corridor_missing_area,
         ),
         _check(
             "demo_bend_radius",
-            np.isfinite(minimum_radius) and minimum_radius >= tech.bend_radius_um - 0.01,
-            "Centerline circumradii meet the demonstration bend-radius rule.",
+            minimum_radius >= tech.bend_radius_um - 0.01,
+            "Centerline circumradii meet the demonstration bend-radius rule; straight-only layouts have no bends.",
             minimum_radius_um=minimum_radius if np.isfinite(minimum_radius) else None,
         ),
     ]
@@ -356,28 +243,34 @@ def verify_actuators(ir, metadata, layout, top, core):
         actuator = actual[name]
         points = np.asarray(actuator["centerline_um"], dtype=float)
         route = np.asarray(metadata["centerlines_um"][name], dtype=float)
-        straight = [
-            (a, b) for a, b in zip(route, route[1:]) if abs(b[1] - a[1]) < 1e-9 and b[0] > a[0]
-        ]
-        a, b = max(straight, key=lambda pair: pair[1][0] - pair[0][0])
-        midpoint = (a + b) / 2
+        # Independently locate the longest straight section of the optical centerline.
+        steps = np.linalg.norm(np.diff(route, axis=0), axis=1)
+        k = int(np.argmax(steps))
+        a, b = route[k], route[k + 1]
+        unit = (b - a) / steps[k]
+        heading = float(np.degrees(np.arctan2(unit[1], unit[0])))
+        expected_ends = np.array(
+            [
+                (a + b) / 2 - unit * control.active_length_um / 2,
+                (a + b) / 2 + unit * control.active_length_um / 2,
+            ]
+        )
         intent_ok &= (
             tuple(actuator["layer"]) == tuple(tech.heater_layer)
             and abs(actuator["width_um"] - tech.heater_width_um) <= 0.001
-            and np.linalg.norm(points.mean(axis=0) - midpoint) <= 0.001
-            and abs(points[1, 1] - points[0, 1]) <= 0.001
-            and points[1, 0] > points[0, 0]
-            and b[0] - a[0] >= control.active_length_um
+            and float(np.max(np.linalg.norm(points - expected_ends, axis=1))) <= 0.001
+            and steps[k] >= control.active_length_um
         )
         length_error = abs(np.linalg.norm(points[1] - points[0]) - control.active_length_um)
         max_length_error = max(max_length_error, float(length_error))
         for j, port_name in enumerate(("e1", "e2")):
             port = metadata["ports"][name].get(port_name)
+            facing = heading + (180 if j == 0 else 0)
             terminal_ok &= bool(port) and (
                 port["domain"] == "electrical"
                 and np.linalg.norm(np.asarray(port["center_um"]) - points[j]) <= 0.001
                 and abs(port["width_um"] - tech.heater_width_um) <= 0.001
-                and abs(port["orientation_deg"] - (180 if j == 0 else 0)) <= 1e-6
+                and abs((port["orientation_deg"] - facing + 180) % 360 - 180) <= 1e-6
             )
         integer_points = [
             kdb.Point(round(x / layout.dbu), round(y / layout.dbu)) for x, y in points
@@ -424,19 +317,19 @@ def verify_actuators(ir, metadata, layout, top, core):
 
 
 def verify_tuning(ir: EngineeringIR, tuning: dict) -> list[CheckResult]:
-    """Replay every recorded candidate with independent transfer composition, without SAX."""
+    """Replay every recorded candidate with independent network elimination, without SAX."""
     request = ir.specification.tuning
     if request is None:
         return [_check("tuning_trace_reference", False, "No tuning request")]
     wavelengths = np.array([t.wavelength_nm for t in request.targets])
-    ports = ["in0", "in1", "out0", "out1"]
+    ports = list(ir.specification.port_order)
     error = 0.0
     for entry in tuning["evaluation_trace"]:
         candidate = ir.model_copy(deep=True)
         for component in candidate.netlist.instances:
             if component.name in entry["controls"] and component.phase_control is not None:
                 component.phase_control.phase_rad = entry["controls"][component.name]
-        scattering = analytic_scattering(candidate, wavelengths)
+        scattering = circuit_reference(candidate, wavelengths)
         powers = np.array(
             [
                 abs(scattering[i, ports.index(t.output_port), ports.index(t.input_port)]) ** 2
@@ -451,7 +344,7 @@ def verify_tuning(ir: EngineeringIR, tuning: dict) -> list[CheckResult]:
         _check(
             "tuning_trace_reference",
             error < 1e-9,
-            "Every candidate agrees with independent transfer composition; this is not physical calibration.",
+            "Every candidate agrees with independent network elimination; this is not physical calibration.",
             maximum_power_error=error,
             candidates=len(tuning["evaluation_trace"]),
         )

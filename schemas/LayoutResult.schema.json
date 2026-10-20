@@ -7,7 +7,7 @@
       "properties": {
         "schema_version": {
           "type": "string",
-          "const": "2.0"
+          "const": "3.0"
         },
         "top_cell": {
           "type": "string"
@@ -89,22 +89,6 @@
           "type": "number",
           "exclusiveMinimum": 0
         },
-        "delta_length_um": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "path_imbalances_um": {
-          "default": {},
-          "type": "object",
-          "propertyNames": {
-            "type": "string"
-          },
-          "additionalProperties": {
-            "type": "number"
-          }
-        },
         "actuators": {
           "default": {},
           "type": "object",
@@ -125,8 +109,7 @@
         "centerlines_um",
         "ports",
         "extracted_circuit",
-        "bend_radius_um",
-        "delta_length_um"
+        "bend_radius_um"
       ],
       "additionalProperties": false
     },

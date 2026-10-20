@@ -2,6 +2,8 @@
 import { z } from 'zod';
 import { PhysicsContracts } from './physics/contracts.js';
 const name = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/);
+// Hierarchical instance path such as "module/instance"; a flat instance is its own path.
+const instancePath = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*(\/[A-Za-z][A-Za-z0-9_]*)*$/);
 const positive = () => z.number().positive();
 const record = <T extends z.ZodType>(value: T) => z.record(z.string(), value);
 const phase = () =>
@@ -70,54 +72,6 @@ export const PhaseControlSchema = z
     active_length_um: z.number().min(20).max(200).default(100),
   })
   .meta({ id: 'PhaseControl' });
-const DesignFields = {
-  tuning: TuningSpecSchema.nullable().default(null),
-  platform: z.literal('sin').default('sin'),
-  wavelength_nm: z.number().min(1500).max(1600).default(1550),
-  outputs: z
-    .array(z.enum(['netlist', 'simulation', 'gds', 'verification']))
-    .min(1)
-    .default(['netlist', 'simulation', 'gds', 'verification']),
-  sweep_span_nm: z.number().positive().max(100).default(40),
-  sweep_points: z.number().int().min(3).max(2001).default(201),
-};
-export const MZISpecSchema = z
-  .strictObject({
-    ...DesignFields,
-    device: z.literal('mzi').default('mzi'),
-    delta_length_um: z.number().min(-200).max(200).default(10),
-    phase_control: PhaseControlSchema.nullable().default(null),
-  })
-  .meta({ id: 'MZISpec' });
-export const CascadeStageSchema = z
-  .strictObject({
-    name,
-    delta_length_um: z.number().min(-200).max(200),
-    phase_control: PhaseControlSchema.nullable().default(null),
-  })
-  .meta({ id: 'CascadeStage' });
-export const CascadeSpecSchema = z
-  .strictObject({
-    ...DesignFields,
-    device: z.literal('mzi_cascade'),
-    stages: z.array(CascadeStageSchema).min(2).max(4),
-    link_length_um: z.number().min(10).max(1000).default(100),
-  })
-  .meta({ id: 'CascadeSpec' });
-export const RingSpecSchema = z
-  .strictObject({
-    ...DesignFields,
-    device: z.literal('ring_add_drop'),
-    loop_height_um: z.number().min(200).max(600).default(300),
-    side_extension_um: z.number().min(150).max(500).default(200),
-    coupling_ratios: z
-      .tuple([z.number().min(0.05).max(0.8), z.number().min(0.05).max(0.8)])
-      .default([0.5, 0.5]),
-    phase_control: PhaseControlSchema.nullable().default(null),
-    sweep_span_nm: z.number().positive().max(100).default(4),
-    sweep_points: z.number().int().min(3).max(10001).default(1001),
-  })
-  .meta({ id: 'RingSpec' });
 export const PortSchema = z
   .strictObject({
     name,
@@ -148,25 +102,6 @@ export const CircuitSchema = z
     ports: record(EndpointSchema),
   })
   .meta({ id: 'Circuit' });
-export const GenericCircuitSpecSchema = z
-  .strictObject({
-    ...DesignFields,
-    device: z.literal('circuit'),
-    circuit: CircuitSchema.extend({
-      instances: z.array(ComponentSchema).min(1).max(32),
-      ports: z.record(name, EndpointSchema),
-    }),
-    // Neutral model identifiers, keyed by primitive kind; never backend callables.
-    models: record(z.string().min(1)),
-    port_order: z.array(name).min(1).max(16),
-    tuning: z.null().default(null),
-    outputs: DesignFields.outputs.default(['netlist', 'simulation', 'verification']),
-    sweep_points: z.number().int().min(3).max(1001).default(201),
-  })
-  .meta({ id: 'GenericCircuitSpec' });
-export const DesignSpecSchema = z
-  .union([MZISpecSchema, CascadeSpecSchema, RingSpecSchema, GenericCircuitSpecSchema])
-  .meta({ id: 'DesignSpec' });
 export const ModuleInstanceSchema = z
   .strictObject({ name, definition: name })
   .meta({ id: 'ModuleInstance' });
@@ -194,6 +129,80 @@ export const FlattenedCircuitSchema = z
     instance_paths: record(z.array(name).min(1)),
   })
   .meta({ id: 'FlattenedCircuit' });
+export const PlacementSchema = z
+  .strictObject({
+    x_um: z.number().default(0),
+    y_um: z.number().default(0),
+    rotation_deg: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0),
+    // With an anchor, (x_um, y_um) offsets this instance's `port` from the anchor port.
+    anchor: z.strictObject({ instance: instancePath, port: name }).nullable().default(null),
+    port: name.nullable().default(null),
+  })
+  .meta({ id: 'Placement' });
+export const RouteStepSchema = z
+  .union([
+    z.strictObject({ dx_um: z.number() }),
+    z.strictObject({ dy_um: z.number() }),
+    z.strictObject({ x_um: z.number() }),
+    z.strictObject({ y_um: z.number() }),
+    z.strictObject({ x_from_end_um: z.number() }),
+    z.strictObject({ y_from_end_um: z.number() }),
+  ])
+  .meta({ id: 'RouteStep' });
+export const RouteSchema = z
+  .strictObject({ steps: z.array(RouteStepSchema).max(16).default([]) })
+  .meta({ id: 'Route' });
+export const LayoutConstraintSchema = z
+  .discriminatedUnion('kind', [
+    z.strictObject({
+      kind: z.literal('length'),
+      instance: instancePath,
+      value_um: positive(),
+      tolerance_um: positive().default(0.001),
+    }),
+    z.strictObject({
+      kind: z.literal('length_difference'),
+      a: instancePath,
+      b: instancePath,
+      value_um: z.number(),
+      tolerance_um: positive().default(0.002),
+    }),
+  ])
+  .meta({ id: 'LayoutConstraint' });
+export const LayoutPlanSchema = z
+  .strictObject({
+    placements: z.record(instancePath, PlacementSchema),
+    routes: z.record(instancePath, RouteSchema).default({}),
+    constraints: z.array(LayoutConstraintSchema).max(64).default([]),
+  })
+  .meta({ id: 'LayoutPlan' });
+export const MeasurementSchema = z
+  .strictObject({
+    kind: z.literal('resonances'),
+    input_port: name,
+    output_port: name,
+    min_count: z.number().int().min(1).max(64).default(2),
+  })
+  .meta({ id: 'Measurement' });
+export const DesignSpecSchema = z
+  .strictObject({
+    schema_version: z.literal('3.0').default('3.0'),
+    name,
+    platform: z.literal('sin').default('sin'),
+    circuit: z.union([CircuitSchema, CircuitHierarchySchema]),
+    port_order: z.array(name).min(1).max(64),
+    wavelength_nm: z.number().min(1500).max(1600).default(1550),
+    sweep_span_nm: z.number().positive().max(100).default(40),
+    sweep_points: z.number().int().min(3).max(10001).default(201),
+    outputs: z
+      .array(z.enum(['netlist', 'simulation', 'gds', 'verification']))
+      .min(1)
+      .default(['netlist', 'simulation', 'gds', 'verification']),
+    layout: LayoutPlanSchema.nullable().default(null),
+    tuning: TuningSpecSchema.nullable().default(null),
+    measurements: z.array(MeasurementSchema).max(16).default([]),
+  })
+  .meta({ id: 'DesignSpec' });
 export const PDKSchema = z
   .strictObject({
     name: z.literal('sin_demo_v1').default('sin_demo_v1'),
@@ -224,32 +233,15 @@ export const PDKSchema = z
 export const TaskSchema = z
   .strictObject({ name, depends_on: z.array(name), backend: z.string() })
   .meta({ id: 'Task' });
-export const LayoutBlockSchema = z
-  .strictObject({
-    name,
-    cell: z.literal('mzi'),
-    primitives: z.record(name, name),
-    delta_length_um: z.number().min(-200).max(200),
-  })
-  .meta({ id: 'LayoutBlock' });
-export const AssemblyPlanSchema = z
-  .strictObject({
-    arrangement: z.literal('series'),
-    blocks: z.array(LayoutBlockSchema).min(2).max(4),
-    link_length_um: positive(),
-    links: z.array(z.strictObject({ instance: name, a: EndpointSchema, b: EndpointSchema })),
-  })
-  .meta({ id: 'AssemblyPlan' });
 export const EngineeringIRSchema = z
   .strictObject({
-    schema_version: z.literal('2.0').default('2.0'),
+    schema_version: z.literal('3.0').default('3.0'),
     design_id: z.string().regex(/^[0-9a-f]{16}$/),
     specification: DesignSpecSchema,
     technology: PDKSchema,
     netlist: CircuitSchema,
     hierarchy: CircuitHierarchySchema.nullable().default(null),
-    instance_paths: record(z.array(name).min(1)).default({}),
-    assembly: AssemblyPlanSchema.nullable().default(null),
+    instance_paths: record(z.array(name).min(1)),
     operating_point: record(phase()).nullable().default(null),
     workflow: z.array(TaskSchema),
     layout_resolved: z.boolean().default(false),
@@ -274,7 +266,7 @@ export const ActuatorLayoutSchema = z
   .meta({ id: 'ActuatorLayout' });
 export const LayoutResultSchema = z
   .strictObject({
-    schema_version: z.literal('2.0'),
+    schema_version: z.literal('3.0'),
     top_cell: z.string(),
     technology: z.string(),
     core_layer: z.tuple([z.number().int(), z.number().int()]),
@@ -283,23 +275,18 @@ export const LayoutResultSchema = z
     ports: record(record(PhysicalPortSchema)),
     extracted_circuit: CircuitSchema,
     bend_radius_um: positive(),
-    delta_length_um: z.number().nullable(),
-    path_imbalances_um: record(z.number()).default({}),
     actuators: record(ActuatorLayoutSchema).default({}),
   })
   .meta({ id: 'LayoutResult' });
 export const SimulationResultSchema = z
   .strictObject({
-    schema_version: z.literal('2.0'),
+    schema_version: z.literal('3.0'),
     backend: z.string(),
     model_version: z.string(),
     wavelength_nm: z.array(positive()),
     ports: z.array(z.string()),
     s_real: z.array(z.array(z.array(z.number()))),
     s_imag: z.array(z.array(z.array(z.number()))),
-    input_port: z.string().nullable(),
-    transmission_out0: z.array(z.number()).nullable(),
-    transmission_out1: z.array(z.number()).nullable(),
     physical_calibration: z.literal('not_performed'),
   })
   .meta({ id: 'SimulationResult' });
@@ -313,7 +300,7 @@ export const CheckResultSchema = z
   .meta({ id: 'CheckResult' });
 export const VerificationReportSchema = z
   .strictObject({
-    schema_version: z.literal('2.0').default('2.0'),
+    schema_version: z.literal('3.0').default('3.0'),
     design_id: z.string(),
     status: z.enum(['passed_with_limitations', 'failed']),
     checks: z.array(CheckResultSchema),
@@ -331,7 +318,7 @@ export const ArtifactSchema = z
   .meta({ id: 'Artifact' });
 export const RunResultSchema = z
   .strictObject({
-    schema_version: z.literal('2.0').default('2.0'),
+    schema_version: z.literal('3.0').default('3.0'),
     run_id: z.string(),
     design_id: z.string(),
     artifact_directory: z.string(),
@@ -373,13 +360,12 @@ export const Contracts = {
   DesignSpec: DesignSpecSchema,
   PhaseControl: PhaseControlSchema,
   ActuatorLayout: ActuatorLayoutSchema,
-  MZISpec: MZISpecSchema,
-  CascadeSpec: CascadeSpecSchema,
-  RingSpec: RingSpecSchema,
-  GenericCircuitSpec: GenericCircuitSpecSchema,
-  CascadeStage: CascadeStageSchema,
-  LayoutBlock: LayoutBlockSchema,
-  AssemblyPlan: AssemblyPlanSchema,
+  Placement: PlacementSchema,
+  RouteStep: RouteStepSchema,
+  Route: RouteSchema,
+  LayoutConstraint: LayoutConstraintSchema,
+  LayoutPlan: LayoutPlanSchema,
+  Measurement: MeasurementSchema,
   Port: PortSchema,
   Component: ComponentSchema,
   Endpoint: EndpointSchema,
@@ -404,13 +390,10 @@ export const Contracts = {
   ElectromagneticResult: ElectromagneticResultSchema,
 };
 export type DesignSpec = z.infer<typeof DesignSpecSchema>;
+export type LayoutPlan = z.infer<typeof LayoutPlanSchema>;
 export type PhaseControl = z.infer<typeof PhaseControlSchema>;
 export type TuningResult = z.infer<typeof TuningResultSchema>;
 export type ResolvedTuningVariable = z.infer<typeof ResolvedTuningVariableSchema>;
-export type RingSpec = z.infer<typeof RingSpecSchema>;
-export type GenericCircuitSpec = z.infer<typeof GenericCircuitSpecSchema>;
-export type CascadeSpec = z.infer<typeof CascadeSpecSchema>;
-export type AssemblyPlan = z.infer<typeof AssemblyPlanSchema>;
 export type EngineeringIR = z.infer<typeof EngineeringIRSchema>;
 export type Circuit = z.infer<typeof CircuitSchema>;
 export type CircuitHierarchy = z.infer<typeof CircuitHierarchySchema>;

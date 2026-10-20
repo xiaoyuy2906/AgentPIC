@@ -9,7 +9,7 @@ The product is a minimum complete agent-native PIC EDA. A 1550 nm SiN Mach–Zeh
 | Typed engineering IR | Zod Component, Port, Connection, Circuit, PDK and workflow schemas | Strict TypeScript tests; generated JSON Schema/Pydantic drift checks |
 | Circuit compilation | Specification normalization, topology, port/reference and model/PDK validation | Valid input and schema-valid but semantically invalid circuits |
 | Backend independence | Typed JSON process boundary and scientific interfaces | Neutral IR/results; no SAX/GDSFactory internals exposed |
-| Circuit simulation | Real SAX/JAX complex S-matrix | Independent analytic MZI comparison, reciprocity, passivity and lossless power balance |
+| Circuit simulation | Real SAX/JAX complex S-matrix | Independent network elimination, sampling adequacy, reciprocity, passivity and lossless power balance; MZI closed form in tests |
 | Physical layout | Real GDSFactory geometry and extracted connectivity | GDS readback, extracted circuit, physical port/length consistency and demonstration geometry checks |
 | Workflow and verification | TypeScript dependency DAG and independent verification manager | Failed task persistence, downstream blocking and corruption detection |
 | Machine interfaces | HTTP API and standard MCP stdio | Real clients submit specifications, retrieve reports and download binary GDS |
@@ -18,18 +18,14 @@ The product is a minimum complete agent-native PIC EDA. A 1550 nm SiN Mach–Zeh
 
 ## Stage 2: complete MZI benchmark
 
-Submit through `POST /v1/designs` or MCP `design_pic` (under `specification`):
-
-```json
-{"device":"mzi","platform":"sin","wavelength_nm":1550,"outputs":["netlist","simulation","gds","verification"]}
-```
+Submit `designs/mzi.json` through `POST /v1/designs` or MCP `design_pic` (under `specification`). It is a generic design file: a four-instance netlist, a layout plan and an arm-imbalance constraint.
 
 Run `npm run acceptance -- --output runs/acceptance` to exercise both transports. Required outcomes:
 
 1. The specification compiles into valid typed circuit IR and the circuit-only path invokes SAX successfully.
 2. The complete workflow creates actual GDS, extracts layout connectivity and backannotates routed lengths before final simulation.
 3. Verification passes within the demonstration model's stated limits, including connectivity, complex amplitude/phase behavior, optical power and layout consistency.
-4. Reverification reports 27 passing checks and three explicit `not_run` items: EM model calibration, measurement validation and foundry signoff.
+4. Reverification reports 33 passing checks and three explicit `not_run` items: EM model calibration, measurement validation and foundry signoff.
 5. HTTP and MCP retrieve actual binary GDS and produce matching hashes for GDS, resolved IR, layout, netlist and simulation.
 6. Invalid input, corrupted artifacts and backend failures are detected by the automated suite.
 
@@ -37,7 +33,7 @@ The final simulation uses physical routed lengths. A nominal circuit-only simula
 
 ## Limits of acceptance
 
-The Stage 1–2 benchmark covers parameterized SiN MZIs. Stage 3 separately adds generic circuit hierarchy compilation and complete 2–4 stage cascades under [its own acceptance gates](stage3-cascade.md). Arbitrary PIC synthesis or hierarchy placement/routing, automatic optimization, qualified foundry PDKs and fabrication signoff are not implemented.
+CI runs the same acceptance for every file in `designs/`. Automatic placement and routing without a layout plan, PIC synthesis, qualified foundry PDKs and fabrication signoff are not implemented. Earlier milestone gates are kept in `docs/history/`.
 
 The demonstration compact model uses ideal couplers and explicit propagation assumptions. Mathematical checks validate those equations and their integration, not a fabricated device. The physical MMI has not been EM-calibrated to the ideal model. See `docs/models-and-verification.md`.
 

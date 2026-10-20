@@ -47,8 +47,12 @@ Unknown physics capabilities produce a persisted `development-request.json` with
 
 Verification is layered: circuit references and port topology; model validity and full complex S-parameter constraints; numerical convergence where required; extracted layout connectivity and lengths; qualified PDK rules when available. These checks are not a universal photonic equivalent of digital logic equivalence checking. Physics reasoning generates testable hypotheses and further experiments; explanations alone never establish correctness.
 
-## Next development milestone
+## Next development milestones
 
-The bounded generic circuit compilation/simulation milestone lets external primitive circuits flow through existing IR, SAX, independent verification and API/MCP without device-specific recipes. Two-port waveguide chains and standalone four-port couplers are the new benchmarks. Generic GDS, new solvers and unrelated registry/runtime refactoring are outside this milestone. See [fixed acceptance gates](stage3-generic-circuits.md) and [execution evidence](progress.md).
+Agreed order (2026-10-20), each landing as one reviewed commit:
 
-After that milestone is accepted, the next smallest scientific gap is a traceable waveguide compact model with documented physical source, units, wavelength/geometry validity range and independent reference evidence. Current effective/group indices remain assumptions. General placement/routing, coupler geometry calibration, qualified PDK rules and new EM integrations remain separate milestones; no work on them is authorized by the generic-circuit milestone.
+1. **Freeze device code** (done): designs are data; engine code never names a device (ADR-007).
+2. **Generic place and route**: automatic routing when a design gives no steps, explicit layout-versus-schematic comparison of the extracted netlist, and length backannotation for any circuit.
+3. **PDK as data**: each component declares ports, layout cell, compact model, validity range and source. Neither cspdk 2.1.0 nor ubcpdk 1.3.4 ships calibrated compact models (both use fixed placeholder indices), so they are not adopted as model sources.
+4. **Physics verification ladder**: FDTDX (3D FDTD, MIT) characterizes neff/ng from the PDK cross-section by time-domain propagation, checked by grid convergence and the existing analytic slab reference. AgentPIC code never calls tidy3d, which FDTDX installs as a dependency.
+5. **Capability registry as code**: implemented/partial/missing with evidence (test names) and limitations; the README table is generated from it.

@@ -8,7 +8,7 @@ AgentPIC separates engineering logic from scientific computation. TypeScript own
 
 `core/src/contracts.ts` defines Component, Port, Connection, Circuit, PDK, EngineeringIR, requests, results, and verification reports using TypeScript and Zod. `npm run generate` exports JSON Schema into `schemas/`, then uses the locked datamodel-code-generator to generate `src/agentpic/ir.py`. Never edit the generated Python models. The generic Python base model only sets validation policy, not engineering definitions. CI regenerates both outputs and rejects drift.
 
-The public contract is version 2.0; the Python-core prototype's 1.0 run artifacts are not silently migrated. Units are explicit in field names. Supported model identifiers are owned by AgentPIC; backend objects never form part of the IR.
+The public contract is version 3.0 (see ADR-007); earlier run artifacts are not silently migrated. Units are explicit in field names. Supported model identifiers are owned by AgentPIC; backend objects never form part of the IR.
 
 ## 2. Backend independence
 
@@ -20,7 +20,7 @@ SAX dictionaries and GDSFactory objects stay in Python. The SAX adapter translat
 
 JSON Schema validates structure; it does not establish electrical/optical correctness. `core/src/compiler.ts` separately checks unique component/port names, endpoint references, port occupancy, domain/direction compatibility, connected topology, supported model parameters, PDK width constraints, and workflow dependency cycles/missing references. Invalid engineering data that passes the schema is still rejected.
 
-TypeScript also compares extracted/intended connectivity, physical port alignment, centerline lengths and requested imbalance, and aggregates verification status. Python independently checks the complex SAX result against analytic interference equations and reopens GDS for geometric checks. Numerical or DRC checks are never replaced with TS approximations or a successful process exit.
+TypeScript also compares extracted/intended connectivity, physical port alignment, centerline lengths and declared layout constraints, and aggregates verification status. Python independently checks the complex SAX result against dense network elimination of the submitted netlist, checks spectral sampling adequacy against that reference and reopens GDS for geometric checks. Numerical or DRC checks are never replaced with TS approximations or a successful process exit.
 
 ## 4. Agent-first interfaces
 
@@ -30,7 +30,7 @@ The HTTP API and MCP use the same Zod contracts, compiler and runtime. Both retu
 
 ```mermaid
 flowchart LR
-  S[PIC specification] --> C[TS compiler and semantic validation]
+  S[Design file: circuit, layout plan, tuning, measurements] --> C[TS compiler and semantic validation]
   C --> IR[Canonical Engineering JSON]
   IR --> SAX[Python SAX adapter]
   SAX --> N[Numerical checks]
@@ -42,7 +42,7 @@ flowchart LR
   D --> V
 ```
 
-The circuit-only path uses a nominal 800 µm base arm plus the requested imbalance; it is the first architecture acceptance test. The full design path measures actual routed lengths and backannotates them before SAX. This preserves the previous GDS milestone under the new architecture without maintaining two compilers.
+The circuit-only path simulates the lengths written in the design. When the design has a layout plan, the full path places cells, routes waveguides, measures the routed lengths and backannotates them before SAX.
 
 ## Execution and model boundaries
 
@@ -58,7 +58,7 @@ A registered capability is implemented, not universally verified. Per-revision b
 
 ## ADR-003: Logical hierarchy and explicit physical assembly
 
-Accepted. Reusable module definitions and alias resolution belong to the TypeScript compiler. Flattened primitive IDs encode hierarchy paths without collisions; source-path records preserve traceability. Backends receive neutral primitive circuits rather than library-specific hierarchy objects.
+Accepted; the physical assembly plan below is superseded by ADR-007. Reusable module definitions and alias resolution belong to the TypeScript compiler. Flattened primitive IDs encode hierarchy paths without collisions; source-path records preserve traceability. Backends receive neutral primitive circuits rather than library-specific hierarchy objects.
 
 Physical assembly is a separate explicit plan, bound to the submitted intent by semantic verification. The first implementation supports 2–4 MZI blocks connected in series. GDSFactory places their primitives and real interconnects, extracts connectivity and returns measured lengths. Nominal source definitions are preserved while resolved simulation lengths are backannotated. Independent numerical verification composes analytic transfer matrices rather than reusing the SAX network solver. This decision enables further supported design recipes without claiming arbitrary hierarchy placement, routing or optical calibration.
 
@@ -70,7 +70,7 @@ Optical control state and actuator geometry are distinct evidence: `controls.jso
 
 ## ADR-005: Target intent, bounded search and independently verified operating points
 
-Accepted. Target powers and selected phase-variable paths belong to the typed specification; applied operating points are separate IR state. TypeScript resolves variables, validates units/ports/bounds, schedules optimization after physical length backannotation and verifies state preservation. Original specification/hierarchy and the measured pre-tuning IR remain immutable artifacts.
+Accepted; candidate replay now uses generic network elimination (ADR-007). Target powers and selected phase-variable paths belong to the typed specification; applied operating points are separate IR state. TypeScript resolves variables, validates units/ports/bounds, schedules optimization after physical length backannotation and verifies state preservation. Original specification/hierarchy and the measured pre-tuning IR remain immutable artifacts.
 
 Python reuses SciPy bounded least squares and a parameterized SAX evaluator. Every objective call, including finite-difference probes, consumes the explicit search budget. Deterministic starts avoid relying on a stationary initial phase. The numerical adapter reports the best evaluated candidate and honest search termination, not an engineering verdict.
 
@@ -78,6 +78,23 @@ Acceptance independently reads final S-parameters, checks targets and trace/boun
 
 ## ADR-006: Feedback topology with independent spectral adequacy checks
 
-Accepted. Feedback cycles are ordinary neutral Circuit connections, not recursively defined hierarchy. SAX remains the network solver. The first feedback recipe is a four-port MMI-coupled add/drop ring, assembled from existing ideal couplers and return waveguides. GDSFactory places the actual primitives and routes; measured paths feed the same simulation and optimization workflow.
+Accepted; the ring recipe and its closed-form summation are superseded by ADR-007. Feedback cycles are ordinary neutral Circuit connections, not recursively defined hierarchy. SAX remains the network solver. The first feedback recipe is a four-port MMI-coupled add/drop ring, assembled from existing ideal couplers and return waveguides. GDSFactory places the actual primitives and routes; measured paths feed the same simulation and optimization workflow.
 
 Independent numerical verification uses closed-form geometric-series summation for the ring and retains full complex reciprocity/passivity checks. A separate spectral module predicts resonant phase orders and evaluates actual peak positions, adjacent spacings and half-maximum widths from the exported spectrum with SciPy/NumPy. Correct isolated samples do not establish a resolved spectrum: minimum linewidth sampling and complete-resonance coverage are acceptance requirements. Ideal-model Q and wavelengths remain explicitly uncalibrated; geometric coupling calibration and finite MMI phase/delay require separate models and evidence.
+
+## ADR-007: Designs are data; engines never name a device
+
+Accepted. Supersedes the device recipes of ADR-003, ADR-005 and ADR-006.
+
+**Rule: adding a device must not change compiler, simulation, verification or layout code.** `core/tests/architecture.test.ts` enforces it by scanning `core/src` and `src/agentpic` for device families, instance names and port names, and by forbidding imports from `designs/`.
+
+A design file (`DesignSpec` 3.0) carries everything device-specific as data:
+
+- `circuit`: a flat netlist or a module hierarchy. Hierarchical designs are flattened by the existing compiler; layout and tuning refer to instances by source path such as `second/top_arm`.
+- `port_order`: the explicit S-matrix order of every external optical port.
+- `layout` (optional): `placements` (absolute, or a port anchored to another instance's port with an offset), `routes` (Manhattan steps: `dx_um`, `dy_um`, `x_um`, `y_um`, `x_from_end_um`, `y_from_end_um`; the engine adds at most one final corner and smooths with the PDK bend radius) and `constraints` (`length`, `length_difference`). Couplers are placed; waveguides and phase shifters are placed as straights or routed between two placed ports. Actuators sit on the longest straight section of their waveguide.
+- `tuning` and `measurements` (optional): target powers over phase variables, and spectral measurements such as complete resonances between two ports.
+
+Verification is generic. The independent reference is dense network elimination of the submitted netlist (`src/agentpic/circuit_reference.py`); it checks the network solver, not the physics of the ideal models. A sampling check compares midpoint interpolation of exported powers with that reference, so an undersampled spectrum fails even when every sample is right. Device closed forms (MZI power law, cascade identity, ring drop formula, free spectral range) are golden references in the tests, never in the engine.
+
+Device knowledge lives in `designs/templates.ts`, which writes the checked-in `designs/*.json`; CI regenerates them and rejects drift. This mirrors digital EDA practice, where a CPU is an input to the tools rather than a code path inside them.

@@ -37,7 +37,7 @@ export function createMCP(runtime = new Runtime()) {
   );
   server.registerTool(
     'get_capabilities',
-    { description: 'Discover supported devices and backends.' },
+    { description: 'Discover supported primitives, backends and limits.' },
     async () => structured(capabilities()),
   );
   server.registerTool(
@@ -85,7 +85,7 @@ export function createMCP(runtime = new Runtime()) {
     'design_pic',
     {
       description:
-        'Run a persisted design workflow. Recipes include layout; generic circuits run SAX and verification with layout explicitly not_run.',
+        'Run a persisted design workflow. Designs with a layout plan produce GDS and measured lengths; without one, layout checks are explicitly not_run.',
       inputSchema: { specification: DesignSpecSchema },
       outputSchema: RunResultSchema.shape,
     },

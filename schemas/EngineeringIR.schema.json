@@ -6,9 +6,9 @@
       "type": "object",
       "properties": {
         "schema_version": {
-          "default": "2.0",
+          "default": "3.0",
           "type": "string",
-          "const": "2.0"
+          "const": "3.0"
         },
         "design_id": {
           "type": "string",
@@ -35,7 +35,6 @@
           ]
         },
         "instance_paths": {
-          "default": {},
           "type": "object",
           "propertyNames": {
             "type": "string"
@@ -48,17 +47,6 @@
               "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
             }
           }
-        },
-        "assembly": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/AssemblyPlan"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "operating_point": {
           "default": null,
@@ -109,553 +97,153 @@
         "specification",
         "technology",
         "netlist",
+        "instance_paths",
         "workflow",
         "assumptions"
       ],
       "additionalProperties": false
     },
     "DesignSpec": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/MZISpec"
-        },
-        {
-          "$ref": "#/$defs/CascadeSpec"
-        },
-        {
-          "$ref": "#/$defs/RingSpec"
-        },
-        {
-          "$ref": "#/$defs/GenericCircuitSpec"
-        }
-      ]
-    },
-    "MZISpec": {
       "type": "object",
       "properties": {
-        "tuning": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TuningSpec"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "platform": {
-          "default": "sin",
+        "schema_version": {
+          "default": "3.0",
           "type": "string",
-          "const": "sin"
+          "const": "3.0"
         },
-        "wavelength_nm": {
-          "default": 1550,
-          "type": "number",
-          "minimum": 1500,
-          "maximum": 1600
-        },
-        "outputs": {
-          "default": [
-            "netlist",
-            "simulation",
-            "gds",
-            "verification"
-          ],
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "netlist",
-              "simulation",
-              "gds",
-              "verification"
-            ]
-          }
-        },
-        "sweep_span_nm": {
-          "default": 40,
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "sweep_points": {
-          "default": 201,
-          "type": "integer",
-          "minimum": 3,
-          "maximum": 2001
-        },
-        "device": {
-          "default": "mzi",
-          "type": "string",
-          "const": "mzi"
-        },
-        "delta_length_um": {
-          "default": 10,
-          "type": "number",
-          "minimum": -200,
-          "maximum": 200
-        },
-        "phase_control": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PhaseControl"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "TuningSpec": {
-      "type": "object",
-      "properties": {
-        "targets": {
-          "minItems": 1,
-          "maxItems": 16,
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "input_port": {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-              },
-              "output_port": {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-              },
-              "wavelength_nm": {
-                "type": "number",
-                "minimum": 1450,
-                "maximum": 1650
-              },
-              "power": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1
-              }
-            },
-            "required": [
-              "input_port",
-              "output_port",
-              "wavelength_nm",
-              "power"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "variables": {
-          "minItems": 1,
-          "maxItems": 4,
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "instance_path": {
-                "minItems": 1,
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-                }
-              },
-              "min_phase_rad": {
-                "type": "number",
-                "minimum": -12.566370614359172,
-                "maximum": 12.566370614359172
-              },
-              "max_phase_rad": {
-                "type": "number",
-                "minimum": -12.566370614359172,
-                "maximum": 12.566370614359172
-              }
-            },
-            "required": [
-              "instance_path",
-              "min_phase_rad",
-              "max_phase_rad"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "power_tolerance": {
-          "default": 0.000001,
-          "type": "number",
-          "minimum": 1e-9,
-          "maximum": 0.001
-        },
-        "max_evaluations": {
-          "default": 128,
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 512
-        }
-      },
-      "required": [
-        "targets",
-        "variables"
-      ],
-      "additionalProperties": false
-    },
-    "PhaseControl": {
-      "type": "object",
-      "properties": {
-        "phase_rad": {
-          "type": "number",
-          "minimum": -12.566370614359172,
-          "maximum": 12.566370614359172
-        },
-        "active_length_um": {
-          "default": 100,
-          "type": "number",
-          "minimum": 20,
-          "maximum": 200
-        }
-      },
-      "required": [
-        "phase_rad"
-      ],
-      "additionalProperties": false
-    },
-    "CascadeSpec": {
-      "type": "object",
-      "properties": {
-        "tuning": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TuningSpec"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "platform": {
-          "default": "sin",
-          "type": "string",
-          "const": "sin"
-        },
-        "wavelength_nm": {
-          "default": 1550,
-          "type": "number",
-          "minimum": 1500,
-          "maximum": 1600
-        },
-        "outputs": {
-          "default": [
-            "netlist",
-            "simulation",
-            "gds",
-            "verification"
-          ],
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "netlist",
-              "simulation",
-              "gds",
-              "verification"
-            ]
-          }
-        },
-        "sweep_span_nm": {
-          "default": 40,
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "sweep_points": {
-          "default": 201,
-          "type": "integer",
-          "minimum": 3,
-          "maximum": 2001
-        },
-        "device": {
-          "type": "string",
-          "const": "mzi_cascade"
-        },
-        "stages": {
-          "minItems": 2,
-          "maxItems": 4,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/CascadeStage"
-          }
-        },
-        "link_length_um": {
-          "default": 100,
-          "type": "number",
-          "minimum": 10,
-          "maximum": 1000
-        }
-      },
-      "required": [
-        "device",
-        "stages"
-      ],
-      "additionalProperties": false
-    },
-    "CascadeStage": {
-      "type": "object",
-      "properties": {
         "name": {
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
         },
-        "delta_length_um": {
-          "type": "number",
-          "minimum": -200,
-          "maximum": 200
-        },
-        "phase_control": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PhaseControl"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "name",
-        "delta_length_um"
-      ],
-      "additionalProperties": false
-    },
-    "RingSpec": {
-      "type": "object",
-      "properties": {
-        "tuning": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TuningSpec"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "platform": {
           "default": "sin",
           "type": "string",
           "const": "sin"
-        },
-        "wavelength_nm": {
-          "default": 1550,
-          "type": "number",
-          "minimum": 1500,
-          "maximum": 1600
-        },
-        "outputs": {
-          "default": [
-            "netlist",
-            "simulation",
-            "gds",
-            "verification"
-          ],
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "netlist",
-              "simulation",
-              "gds",
-              "verification"
-            ]
-          }
-        },
-        "sweep_span_nm": {
-          "default": 4,
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "sweep_points": {
-          "default": 1001,
-          "type": "integer",
-          "minimum": 3,
-          "maximum": 10001
-        },
-        "device": {
-          "type": "string",
-          "const": "ring_add_drop"
-        },
-        "loop_height_um": {
-          "default": 300,
-          "type": "number",
-          "minimum": 200,
-          "maximum": 600
-        },
-        "side_extension_um": {
-          "default": 200,
-          "type": "number",
-          "minimum": 150,
-          "maximum": 500
-        },
-        "coupling_ratios": {
-          "default": [
-            0.5,
-            0.5
-          ],
-          "type": "array",
-          "prefixItems": [
-            {
-              "type": "number",
-              "minimum": 0.05,
-              "maximum": 0.8
-            },
-            {
-              "type": "number",
-              "minimum": 0.05,
-              "maximum": 0.8
-            }
-          ],
-          "items": false,
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "phase_control": {
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PhaseControl"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "device"
-      ],
-      "additionalProperties": false
-    },
-    "GenericCircuitSpec": {
-      "type": "object",
-      "properties": {
-        "tuning": {
-          "default": null,
-          "type": "null"
-        },
-        "platform": {
-          "default": "sin",
-          "type": "string",
-          "const": "sin"
-        },
-        "wavelength_nm": {
-          "default": 1550,
-          "type": "number",
-          "minimum": 1500,
-          "maximum": 1600
-        },
-        "outputs": {
-          "default": [
-            "netlist",
-            "simulation",
-            "verification"
-          ],
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "netlist",
-              "simulation",
-              "gds",
-              "verification"
-            ]
-          }
-        },
-        "sweep_span_nm": {
-          "default": 40,
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "sweep_points": {
-          "default": 201,
-          "type": "integer",
-          "minimum": 3,
-          "maximum": 1001
-        },
-        "device": {
-          "type": "string",
-          "const": "circuit"
         },
         "circuit": {
-          "type": "object",
-          "properties": {
-            "instances": {
-              "minItems": 1,
-              "maxItems": 32,
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/Component"
-              }
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Circuit"
             },
-            "connections": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/Connection"
-              }
-            },
-            "ports": {
-              "type": "object",
-              "propertyNames": {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-              },
-              "additionalProperties": {
-                "$ref": "#/$defs/Endpoint"
-              }
+            {
+              "$ref": "#/$defs/CircuitHierarchy"
             }
-          },
-          "required": [
-            "instances",
-            "connections",
-            "ports"
-          ],
-          "additionalProperties": false
-        },
-        "models": {
-          "type": "object",
-          "propertyNames": {
-            "type": "string"
-          },
-          "additionalProperties": {
-            "type": "string",
-            "minLength": 1
-          }
+          ]
         },
         "port_order": {
           "minItems": 1,
-          "maxItems": 16,
+          "maxItems": 64,
           "type": "array",
           "items": {
             "type": "string",
             "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
           }
+        },
+        "wavelength_nm": {
+          "default": 1550,
+          "type": "number",
+          "minimum": 1500,
+          "maximum": 1600
+        },
+        "sweep_span_nm": {
+          "default": 40,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "sweep_points": {
+          "default": 201,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 10001
+        },
+        "outputs": {
+          "default": [
+            "netlist",
+            "simulation",
+            "gds",
+            "verification"
+          ],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "netlist",
+              "simulation",
+              "gds",
+              "verification"
+            ]
+          }
+        },
+        "layout": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutPlan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tuning": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TuningSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measurements": {
+          "default": [],
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Measurement"
+          }
         }
       },
       "required": [
-        "device",
+        "name",
         "circuit",
-        "models",
         "port_order"
+      ],
+      "additionalProperties": false
+    },
+    "Circuit": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Component"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Endpoint"
+          }
+        }
+      },
+      "required": [
+        "instances",
+        "connections",
+        "ports"
       ],
       "additionalProperties": false
     },
@@ -755,6 +343,26 @@
       ],
       "additionalProperties": false
     },
+    "PhaseControl": {
+      "type": "object",
+      "properties": {
+        "phase_rad": {
+          "type": "number",
+          "minimum": -12.566370614359172,
+          "maximum": 12.566370614359172
+        },
+        "active_length_um": {
+          "default": 100,
+          "type": "number",
+          "minimum": 20,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "phase_rad"
+      ],
+      "additionalProperties": false
+    },
     "Connection": {
       "type": "object",
       "properties": {
@@ -786,6 +394,483 @@
       "required": [
         "instance",
         "port"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitHierarchy": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "default": "1.0",
+          "type": "string",
+          "const": "1.0"
+        },
+        "top": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "definitions": {
+          "minItems": 1,
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CircuitDefinition"
+          }
+        }
+      },
+      "required": [
+        "top",
+        "definitions"
+      ],
+      "additionalProperties": false
+    },
+    "CircuitDefinition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "primitives": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Component"
+          }
+        },
+        "modules": {
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModuleInstance"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Endpoint"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "primitives",
+        "modules",
+        "connections",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "ModuleInstance": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "definition": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "name",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "LayoutPlan": {
+      "type": "object",
+      "properties": {
+        "placements": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Placement"
+          }
+        },
+        "routes": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Route"
+          }
+        },
+        "constraints": {
+          "default": [],
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LayoutConstraint"
+          }
+        }
+      },
+      "required": [
+        "placements"
+      ],
+      "additionalProperties": false
+    },
+    "Placement": {
+      "type": "object",
+      "properties": {
+        "x_um": {
+          "default": 0,
+          "type": "number"
+        },
+        "y_um": {
+          "default": 0,
+          "type": "number"
+        },
+        "rotation_deg": {
+          "default": 0,
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 0
+            },
+            {
+              "type": "number",
+              "const": 90
+            },
+            {
+              "type": "number",
+              "const": 180
+            },
+            {
+              "type": "number",
+              "const": 270
+            }
+          ]
+        },
+        "anchor": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "instance": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+                },
+                "port": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+                }
+              },
+              "required": [
+                "instance",
+                "port"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "port": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Route": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "default": [],
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteStep"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteStep": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "dx_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "dx_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dy_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "dy_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "y_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "y_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x_from_end_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_from_end_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "y_from_end_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "y_from_end_um"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "LayoutConstraint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "length"
+            },
+            "instance": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            },
+            "value_um": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "tolerance_um": {
+              "default": 0.001,
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "instance",
+            "value_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "length_difference"
+            },
+            "a": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            },
+            "b": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            },
+            "value_um": {
+              "type": "number"
+            },
+            "tolerance_um": {
+              "default": 0.002,
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "a",
+            "b",
+            "value_um"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TuningSpec": {
+      "type": "object",
+      "properties": {
+        "targets": {
+          "minItems": 1,
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "input_port": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "output_port": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+              },
+              "wavelength_nm": {
+                "type": "number",
+                "minimum": 1450,
+                "maximum": 1650
+              },
+              "power": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "input_port",
+              "output_port",
+              "wavelength_nm",
+              "power"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "variables": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instance_path": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+                }
+              },
+              "min_phase_rad": {
+                "type": "number",
+                "minimum": -12.566370614359172,
+                "maximum": 12.566370614359172
+              },
+              "max_phase_rad": {
+                "type": "number",
+                "minimum": -12.566370614359172,
+                "maximum": 12.566370614359172
+              }
+            },
+            "required": [
+              "instance_path",
+              "min_phase_rad",
+              "max_phase_rad"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "power_tolerance": {
+          "default": 0.000001,
+          "type": "number",
+          "minimum": 1e-9,
+          "maximum": 0.001
+        },
+        "max_evaluations": {
+          "default": 128,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512
+        }
+      },
+      "required": [
+        "targets",
+        "variables"
+      ],
+      "additionalProperties": false
+    },
+    "Measurement": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "resonances"
+        },
+        "input_port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "output_port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "min_count": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      },
+      "required": [
+        "kind",
+        "input_port",
+        "output_port"
       ],
       "additionalProperties": false
     },
@@ -922,219 +1007,6 @@
           }
         }
       },
-      "additionalProperties": false
-    },
-    "Circuit": {
-      "type": "object",
-      "properties": {
-        "instances": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Component"
-          }
-        },
-        "connections": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Connection"
-          }
-        },
-        "ports": {
-          "type": "object",
-          "propertyNames": {
-            "type": "string"
-          },
-          "additionalProperties": {
-            "$ref": "#/$defs/Endpoint"
-          }
-        }
-      },
-      "required": [
-        "instances",
-        "connections",
-        "ports"
-      ],
-      "additionalProperties": false
-    },
-    "CircuitHierarchy": {
-      "type": "object",
-      "properties": {
-        "schema_version": {
-          "default": "1.0",
-          "type": "string",
-          "const": "1.0"
-        },
-        "top": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "definitions": {
-          "minItems": 1,
-          "maxItems": 256,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/CircuitDefinition"
-          }
-        }
-      },
-      "required": [
-        "top",
-        "definitions"
-      ],
-      "additionalProperties": false
-    },
-    "CircuitDefinition": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "primitives": {
-          "maxItems": 256,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Component"
-          }
-        },
-        "modules": {
-          "maxItems": 256,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ModuleInstance"
-          }
-        },
-        "connections": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Connection"
-          }
-        },
-        "ports": {
-          "type": "object",
-          "propertyNames": {
-            "type": "string",
-            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-          },
-          "additionalProperties": {
-            "$ref": "#/$defs/Endpoint"
-          }
-        }
-      },
-      "required": [
-        "name",
-        "primitives",
-        "modules",
-        "connections",
-        "ports"
-      ],
-      "additionalProperties": false
-    },
-    "ModuleInstance": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "definition": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        }
-      },
-      "required": [
-        "name",
-        "definition"
-      ],
-      "additionalProperties": false
-    },
-    "AssemblyPlan": {
-      "type": "object",
-      "properties": {
-        "arrangement": {
-          "type": "string",
-          "const": "series"
-        },
-        "blocks": {
-          "minItems": 2,
-          "maxItems": 4,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/LayoutBlock"
-          }
-        },
-        "link_length_um": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "links": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "instance": {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-              },
-              "a": {
-                "$ref": "#/$defs/Endpoint"
-              },
-              "b": {
-                "$ref": "#/$defs/Endpoint"
-              }
-            },
-            "required": [
-              "instance",
-              "a",
-              "b"
-            ],
-            "additionalProperties": false
-          }
-        }
-      },
-      "required": [
-        "arrangement",
-        "blocks",
-        "link_length_um",
-        "links"
-      ],
-      "additionalProperties": false
-    },
-    "LayoutBlock": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-        },
-        "cell": {
-          "type": "string",
-          "const": "mzi"
-        },
-        "primitives": {
-          "type": "object",
-          "propertyNames": {
-            "type": "string",
-            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-          },
-          "additionalProperties": {
-            "type": "string",
-            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
-          }
-        },
-        "delta_length_um": {
-          "type": "number",
-          "minimum": -200,
-          "maximum": 200
-        }
-      },
-      "required": [
-        "name",
-        "cell",
-        "primitives",
-        "delta_length_um"
-      ],
       "additionalProperties": false
     },
     "Task": {

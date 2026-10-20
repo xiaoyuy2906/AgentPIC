@@ -1,12 +1,16 @@
 /** Closed-form acceptance references; never imported by the production compiler/backend. */
-import { GenericCircuitSpecSchema, type SimulationResult } from '../core/src/contracts.js';
+import { CircuitSchema, DesignSpecSchema, type SimulationResult } from '../core/src/contracts.js';
 
+/** Returns null when a flat circuit has no closed form here (only chains and single couplers). */
 export function genericBenchmark(input: unknown, result: SimulationResult) {
-  const spec = GenericCircuitSpecSchema.parse(input);
+  const parsed = DesignSpecSchema.parse(input);
+  const circuit = CircuitSchema.safeParse(parsed.circuit);
+  if (!circuit.success) return null;
+  const spec = { ...parsed, circuit: circuit.data };
   const chain = spec.circuit.instances.every((i) => i.kind === 'waveguide');
   const coupler =
     spec.circuit.instances.length === 1 && spec.circuit.instances[0].kind === 'ideal_coupler';
-  if (!chain && !coupler) throw new Error('No closed-form acceptance reference for this benchmark');
+  if (!chain && !coupler) return null;
   if (JSON.stringify(result.ports) !== JSON.stringify(spec.port_order))
     throw new Error('Port order changed');
   if (chain && result.ports.length !== 2)

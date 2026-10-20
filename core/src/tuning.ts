@@ -47,7 +47,7 @@ export function validateControls(
       throw new Error(`Phase outside requested bounds: ${v.instance}`);
   }
 }
-/** Used for recipe comparison; semantic checks separately constrain the allowed keys/bounds. */
+/** Apply phases to a circuit; semantic checks separately constrain the allowed keys/bounds. */
 export function circuitAtPoint(circuit: Circuit, point: Record<string, number> | null): Circuit {
   const result = structuredClone(circuit);
   if (point)

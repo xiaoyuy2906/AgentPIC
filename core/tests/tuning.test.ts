@@ -1,10 +1,8 @@
+/** Target-driven optical operating points: bounded search, budgets and independent evidence. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdtemp, cp } from 'node:fs/promises';
-import { execFile, execFileSync } from 'node:child_process';
-import { promisify } from 'node:util';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import { compile, validateIR } from '../src/compiler.js';
 import {
   DesignSpecSchema,
@@ -14,14 +12,22 @@ import {
   type TuningResult,
 } from '../src/contracts.js';
 import { Runtime } from '../src/runtime.js';
-import { PythonBackend, projectRoot } from '../src/backends.js';
+import { PythonBackend } from '../src/backends.js';
 import { simulateCircuit, verifyArtifacts } from '../src/verification.js';
 import { resolveVariables } from '../src/tuning.js';
+import { designs, cascade } from '../../designs/templates.js';
+import {
+  acceptance,
+  assertSameGeometry,
+  checked,
+  corruptCopy,
+  json,
+  power,
+  tempRuntime,
+} from './helpers.js';
 
-const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'));
-const spec = DesignSpecSchema.parse(await json('examples/target_mzi_1550.json'));
-const root = await mkdtemp(path.join(tmpdir(), 'agentpic-target-'));
-const runtime = new Runtime(root);
+const spec = DesignSpecSchema.parse(designs.mzi_target);
+const { root, runtime } = await tempRuntime('target');
 let full: RunResult;
 const mutate = (fn: (s: typeof spec) => void) => {
   const s = structuredClone(spec);
@@ -30,46 +36,20 @@ const mutate = (fn: (s: typeof spec) => void) => {
 };
 
 test('targets reject invalid paths, domains, sampling, duplicates, bounds and units before execution', () => {
-  const changes = [
-    (s: typeof spec) => {
-      s.tuning!.variables[0].instance_path = ['missing'];
-    },
-    (s: typeof spec) => {
-      s.tuning!.variables[0].instance_path = ['bottom_arm'];
-    },
-    (s: typeof spec) => {
-      s.tuning!.targets[0].output_port = 'phase_e1';
-    },
-    (s: typeof spec) => {
-      s.tuning!.targets[0].wavelength_nm = 1550.01;
-    },
-    (s: typeof spec) => {
-      s.tuning!.targets[0].wavelength_nm = 1600;
-    },
-    (s: typeof spec) => {
-      s.tuning!.targets.push(s.tuning!.targets[0]);
-    },
-    (s: typeof spec) => {
-      s.tuning!.variables.push(s.tuning!.variables[0]);
-    },
-    (s: typeof spec) => {
-      s.tuning!.variables[0].max_phase_rad = 0;
-    },
-    (s: typeof spec) => {
-      s.tuning!.variables[0].min_phase_rad = 1;
-    },
-    (s: typeof spec) => {
-      s.tuning!.targets[0].power = 1.1;
-    },
-    (s: typeof spec) => {
-      s.tuning!.power_tolerance = 1e-10;
-    },
-    (s: typeof spec) => {
-      s.tuning!.max_evaluations = 513;
-    },
-    (s: typeof spec) => {
-      s.tuning!.targets[0].wavelength_nm = 1.55;
-    },
+  const changes: ((s: typeof spec) => void)[] = [
+    (s) => (s.tuning!.variables[0].instance_path = ['missing']),
+    (s) => (s.tuning!.variables[0].instance_path = ['bottom_arm']),
+    (s) => (s.tuning!.targets[0].output_port = 'phase_e1'),
+    (s) => (s.tuning!.targets[0].wavelength_nm = 1550.01),
+    (s) => (s.tuning!.targets[0].wavelength_nm = 1600),
+    (s) => s.tuning!.targets.push(s.tuning!.targets[0]),
+    (s) => s.tuning!.variables.push(s.tuning!.variables[0]),
+    (s) => (s.tuning!.variables[0].max_phase_rad = 0),
+    (s) => (s.tuning!.variables[0].min_phase_rad = 1),
+    (s) => (s.tuning!.targets[0].power = 1.1),
+    (s) => (s.tuning!.power_tolerance = 1e-10),
+    (s) => (s.tuning!.max_evaluations = 513),
+    (s) => (s.tuning!.targets[0].wavelength_nm = 1.55),
   ];
   for (const change of changes) assert.throws(() => compile(mutate(change)));
   assert.throws(() => compile({ ...spec, tuning: { ...spec.tuning, voltage: 1 } }));
@@ -77,11 +57,11 @@ test('targets reject invalid paths, domains, sampling, duplicates, bounds and un
   invalid.operating_point = { bottom_arm: 1 };
   assert.throws(() => validateIR(invalid));
 });
-for (const power of [0, 0.2, 0.5, 0.8, 1])
-  test(`target power ${power} is solved from a stationary initial phase and independently checked`, async () => {
+for (const target of [0, 0.2, 0.5, 0.8, 1])
+  test(`target power ${target} is solved from a stationary initial phase and independently checked`, async () => {
     const input = compile(
       mutate((s) => {
-        s.tuning!.targets[0].power = power;
+        s.tuning!.targets[0].power = target;
         s.tuning!.power_tolerance = 1e-9;
       }),
     );
@@ -95,15 +75,12 @@ for (const power of [0, 0.2, 0.5, 0.8, 1])
     assert.ok(result.tuning!.evaluations <= spec.tuning!.max_evaluations);
     assert.equal(result.tuning!.evaluation_trace.length, result.tuning!.evaluations);
     const phase = result.ir.operating_point!.top_arm;
-    assert.ok(Math.abs(Math.sin(phase / 2) ** 2 - power) <= 1e-9);
-    assert.ok(Math.abs(result.simulation.transmission_out0![100] - power) <= 1e-9);
+    assert.ok(Math.abs(Math.sin(phase / 2) ** 2 - target) <= 1e-9);
+    assert.ok(Math.abs(power(result.simulation, 'out0', 'in0', 100) - target) <= 1e-9);
     assert.equal(result.ir.length_source, 'specification');
     assert.equal(input.operating_point, null);
     assert.deepEqual(result.ir.specification, input.specification);
-    assert.equal(
-      result.verification.checks.find((c) => c.id === 'tuning_trace_reference')?.status,
-      'pass',
-    );
+    assert.equal(checked(result.verification, 'tuning_trace_reference')?.status, 'pass');
   });
 test('full target design uses measured lengths and preserves exact optical and metal polygons', async () => {
   full = await runtime.run(spec);
@@ -116,8 +93,9 @@ test('full target design uses measured lengths and preserves exact optical and m
   const before = await json(path.join(full.artifact_directory, 'pre-tuning-ir.json'));
   assert.equal(before.operating_point, null);
   assert.equal(ir.length_source, 'layout');
-  assert.ok(
-    before.netlist.instances.find((i: { name: string }) => i.name === 'top_arm').length_um !== 800,
+  assert.notEqual(
+    before.netlist.instances.find((i: { name: string }) => i.name === 'top_arm').length_um,
+    800,
   );
   assert.deepEqual(
     ir.netlist.instances.map((i) => i.length_um),
@@ -125,74 +103,50 @@ test('full target design uses measured lengths and preserves exact optical and m
   );
   const fixed = await runtime.run({ ...spec, tuning: null });
   assert.equal(fixed.status, 'completed');
-  const python = path.resolve(
-    projectRoot,
-    process.env.UV_PROJECT_ENVIRONMENT ?? '.venv',
-    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
-  );
-  execFileSync(python, [
-    '-c',
-    `import sys, klayout.db as k
-a,b=k.Layout(),k.Layout()
-a.read(sys.argv[1]); b.read(sys.argv[2])
-assert a.dbu == b.dbu
-for layer in [(1,0),(2,0)]:
- r=k.Region(a.top_cell().begin_shapes_rec(a.find_layer(*layer))).merged()
- s=k.Region(b.top_cell().begin_shapes_rec(b.find_layer(*layer))).merged()
- assert not r.is_empty() and (r ^ s).is_empty(), layer
-`,
+  assertSameGeometry(
     path.join(full.artifact_directory, 'design.gds'),
     path.join(fixed.artifact_directory, 'design.gds'),
-  ]);
+  );
 });
 test('trace, target, fixed-state and selected-control corruption fail without relying on artifact hashes', async () => {
-  const faults: Record<string, string> = {
-    trace: 'tuning_trace_reference',
-    budget: 'tuning_search_evidence',
-    status: 'tuning_search_evidence',
-    prediction: 'tuning_prediction_agreement',
-    phase: 'tuning_semantics',
-    target: 'tuning_source_intent',
-    before: 'tuning_state_preservation',
-    bounds: 'tuning_evidence_validation',
+  const faults: Record<string, [string, (d: any) => void, string]> = {
+    trace: [
+      'tuning.json',
+      (t) => (t.evaluation_trace[0].powers[0] = 0.3),
+      'tuning_trace_reference',
+    ],
+    budget: ['tuning.json', (t) => (t.evaluations += 1), 'tuning_search_evidence'],
+    status: ['tuning.json', (t) => (t.status = 'budget_exhausted'), 'tuning_search_evidence'],
+    prediction: [
+      'tuning.json',
+      (t) => (t.predicted_powers[0] = 0.1),
+      'tuning_prediction_agreement',
+    ],
+    phase: ['engineering_ir.json', (ir) => (ir.operating_point.top_arm += 0.1), 'tuning_semantics'],
+    target: [
+      'engineering_ir.json',
+      (ir) => (ir.specification.tuning.targets[0].power = 0.1),
+      'workflow_state_consistency',
+    ],
+    before: [
+      'pre-tuning-ir.json',
+      (ir) =>
+        (ir.netlist.instances.find((i: { name: string }) => i.name === 'bottom_arm').length_um +=
+          10),
+      'tuning_state_preservation',
+    ],
+    bounds: ['tuning.json', (t) => (t.controls.top_arm = -1), 'tuning_evidence_validation'],
   };
-  for (const [fault, check] of Object.entries(faults)) {
+  for (const [fault, [file, edit, id]] of Object.entries(faults)) {
     const dir = path.join(root, `corrupt-${fault}`);
-    await cp(full.artifact_directory, dir, { recursive: true });
-    const file = path.join(
-      dir,
-      fault === 'phase' || fault === 'target'
-        ? 'engineering_ir.json'
-        : fault === 'before'
-          ? 'pre-tuning-ir.json'
-          : 'tuning.json',
-    );
-    const data = await json(file);
-    if (fault === 'trace') data.evaluation_trace[0].powers[0] = 0.3;
-    if (fault === 'budget') data.evaluations += 1;
-    if (fault === 'status') data.status = 'budget_exhausted';
-    if (fault === 'prediction') data.predicted_powers[0] = 0.1;
-    if (fault === 'phase') data.operating_point.top_arm += 0.1;
-    if (fault === 'target') data.specification.tuning.targets[0].power = 0.1;
-    if (fault === 'before')
-      data.netlist.instances.find((i: { name: string }) => i.name === 'bottom_arm').length_um += 10;
-    if (fault === 'bounds') data.controls.top_arm = -1;
-    await writeFile(file, JSON.stringify(data));
+    await corruptCopy(full.artifact_directory, dir, file, edit);
     const verified = await verifyArtifacts(dir);
     assert.equal(verified.status, 'failed', fault);
-    assert.equal(
-      verified.checks.find((c) => c.id === check)?.status,
-      'fail',
-      `${fault}: ${JSON.stringify(verified)}`,
-    );
+    assert.equal(checked(verified, id)?.status, 'fail', `${fault}: ${id}`);
   }
 });
 test('hard budget failure retains best candidate, GDS, final simulation and independent failed report', async () => {
-  const run = await runtime.run(
-    mutate((s) => {
-      s.tuning!.max_evaluations = 1;
-    }),
-  );
+  const run = await runtime.run(mutate((s) => (s.tuning!.max_evaluations = 1)));
   assert.equal(run.status, 'failed');
   assert.equal(run.verification_status, 'failed');
   assert.equal(run.error, null);
@@ -203,8 +157,8 @@ test('hard budget failure retains best candidate, GDS, final simulation and inde
   assert.ok(run.artifacts.some((a) => a.name === 'design.gds'));
   assert.ok(run.artifacts.some((a) => a.name === 'simulation.json'));
   const verified = await runtime.verifyRun(run.run_id);
-  assert.equal(verified.checks.find((c) => c.id === 'optical_targets')?.status, 'fail');
-  assert.equal(verified.checks.find((c) => c.id === 'tuning_search_evidence')?.status, 'pass');
+  assert.equal(checked(verified, 'optical_targets')?.status, 'fail');
+  assert.equal(checked(verified, 'tuning_search_evidence')?.status, 'pass');
   // Even internally consistent fabricated solver success cannot override final S or reference replay.
   result.status = 'target_met';
   result.maximum_error = 0;
@@ -213,26 +167,31 @@ test('hard budget failure retains best candidate, GDS, final simulation and inde
   await writeFile(path.join(run.artifact_directory, 'tuning.json'), JSON.stringify(result));
   const forged = await verifyArtifacts(run.artifact_directory);
   for (const id of ['optical_targets', 'tuning_trace_reference', 'tuning_prediction_agreement'])
-    assert.equal(forged.checks.find((c) => c.id === id)?.status, 'fail', id);
+    assert.equal(checked(forged, id)?.status, 'fail', id);
 });
 test('incompatible powers and bounded unreachable requests never pass on optimizer convergence', async () => {
   for (const s of [
     mutate((s) => {
       s.tuning!.targets.push({ ...s.tuning!.targets[0], output_port: 'out1', power: 0.8 });
     }),
-    mutate((s) => {
-      s.tuning!.variables[0].max_phase_rad = 0.1;
-    }),
+    mutate((s) => (s.tuning!.variables[0].max_phase_rad = 0.1)),
   ]) {
     const result = await simulateCircuit(compile(s));
     assert.equal(result.verification.status, 'failed');
     assert.notEqual(result.tuning!.status, 'target_met');
     assert.ok(result.tuning!.evaluations <= s.tuning!.max_evaluations);
-    assert.equal(
-      result.verification.checks.find((c) => c.id === 'tuning_search_evidence')?.status,
-      'pass',
-    );
+    assert.equal(checked(result.verification, 'tuning_search_evidence')?.status, 'pass');
   }
+});
+test('asymmetric ring coupling cannot be reported as unit drop transmission by tuning', async () => {
+  const target = structuredClone(designs.ring_target) as any;
+  target.circuit.instances[0].coupling_ratio = 0.3;
+  target.circuit.instances[1].coupling_ratio = 0.6;
+  const result = await simulateCircuit(compile(target));
+  assert.equal(result.verification.status, 'failed');
+  assert.equal(checked(result.verification, 'optical_targets')?.status, 'fail');
+  assert.equal(checked(result.verification, 'independent_circuit_agreement')?.status, 'pass');
+  assert.equal(checked(result.verification, 'tuning_trace_reference')?.status, 'pass');
 });
 test('backend exception or out-of-bound result fails the tuning task and retains prior artifacts', async () => {
   class Broken extends PythonBackend {
@@ -255,39 +214,38 @@ test('backend exception or out-of-bound result fails the tuning task and retains
     assert.ok(run.artifacts.some((a) => a.name === 'pre-tuning-ir.json'));
   }
 });
-test('multiple cascade variables, inputs and wavelengths complete real HTTP/MCP with identical evidence', async () => {
-  const output = path.join(root, 'acceptance');
-  await promisify(execFile)(
-    process.execPath,
-    [
-      '--import',
-      'tsx',
-      'scripts/acceptance.ts',
-      '--specification',
-      'examples/target_cascade_1550.json',
-      '--output',
-      output,
-    ],
-    { cwd: projectRoot, maxBuffer: 1024 * 1024 },
-  );
-  const accepted = await json(path.join(output, 'acceptance.json'));
-  assert.equal(accepted.status, 'passed_with_limitations');
-  assert.ok(accepted.transport_artifacts_identical.includes('tuning.json'));
-  assert.ok(accepted.transport_artifacts_identical.includes('pre-tuning-ir.json'));
-  const result = await json(path.join(accepted.http_artifact_directory, 'tuning.json'));
-  assert.equal(Object.keys(result.controls).length, 2);
-  assert.equal(result.predicted_powers.length, 3);
-  assert.equal(result.status, 'target_met');
-  const circuit = await json(path.join(output, 'circuit-only.json'));
-  assert.equal(circuit.ir.length_source, 'specification');
-  assert.equal(circuit.tuning.status, 'target_met');
-});
+for (const design of ['mzi_cascade_target', 'ring_target'])
+  test(`${design} completes real HTTP/MCP acceptance with identical tuning evidence`, async () => {
+    const accepted = await acceptance(`designs/${design}.json`, path.join(root, design));
+    assert.equal(accepted.status, 'passed_with_limitations');
+    assert.ok(accepted.transport_artifacts_identical.includes('tuning.json'));
+    assert.ok(accepted.transport_artifacts_identical.includes('pre-tuning-ir.json'));
+    const result = await json(path.join(accepted.http_artifact_directory, 'tuning.json'));
+    assert.equal(result.status, 'target_met');
+    const circuit = await json(path.join(root, design, 'circuit-only.json'));
+    assert.equal(circuit.ir.length_source, 'specification');
+    assert.equal(circuit.tuning.status, 'target_met');
+    if (design === 'ring_target') {
+      const sim = await json(path.join(accepted.http_artifact_directory, 'simulation.json'));
+      const middle = Math.floor(sim.wavelength_nm.length / 2);
+      assert.ok(Math.abs(power(sim, 'out1', 'in0', middle) - 1) <= 1e-6);
+      const off = await runtime.run({ ...designs.ring_target, tuning: null });
+      assert.equal(off.status, 'completed');
+      assertSameGeometry(
+        path.join(accepted.http_artifact_directory, 'design.gds'),
+        path.join(off.artifact_directory, 'design.gds'),
+      );
+    } else {
+      assert.equal(Object.keys(result.controls).length, 2);
+      assert.equal(result.predicted_powers.length, 3);
+    }
+  });
 test('four-variable, sixteen-target workflow supports the declared maximum and signed phase bounds', async () => {
   const ports = ['in0', 'in1', 'out0', 'out1'];
   const stages = ['a', 'b', 'c', 'd'].map((name) => ({
     name,
     delta_length_um: 0,
-    phase_control: { phase_rad: 0 },
+    phase_control: { phase_rad: 0, active_length_um: 100 },
   }));
   const targets = ports.flatMap((input_port, i) =>
     ports.map((output_port, o) => ({
@@ -297,20 +255,21 @@ test('four-variable, sixteen-target workflow supports the declared maximum and s
       power: i < 2 === o < 2 ? 0 : i % 2 === o % 2 ? 0.7 : 0.3,
     })),
   );
-  const run = await runtime.run({
-    device: 'mzi_cascade',
-    stages,
-    tuning: {
-      targets,
-      variables: stages.map((s) => ({
-        instance_path: [s.name, 'top_arm'],
-        min_phase_rad: -2 * Math.PI,
-        max_phase_rad: 2 * Math.PI,
-      })),
-      max_evaluations: 512,
-      power_tolerance: 1e-8,
-    },
-  });
+  const run = await runtime.run(
+    cascade({
+      stages,
+      tuning: {
+        targets,
+        variables: stages.map((s) => ({
+          instance_path: [s.name, 'top_arm'],
+          min_phase_rad: -2 * Math.PI,
+          max_phase_rad: 2 * Math.PI,
+        })),
+        max_evaluations: 512,
+        power_tolerance: 1e-8,
+      },
+    }),
+  );
   assert.equal(run.status, 'completed', JSON.stringify(run));
   const result = await json(path.join(run.artifact_directory, 'tuning.json'));
   assert.equal(Object.keys(result.controls).length, 4);
@@ -318,11 +277,11 @@ test('four-variable, sixteen-target workflow supports the declared maximum and s
   assert.equal((await runtime.verifyRun(run.run_id)).status, 'passed_with_limitations');
 });
 test('unselected phase and original hierarchical intent stay fixed while a selected phase is optimized', async () => {
-  const cascade = await json('examples/target_cascade_1550.json');
-  cascade.stages[1].phase_control.phase_rad = 0.37;
-  cascade.tuning.variables = cascade.tuning.variables.slice(0, 1);
-  cascade.tuning.targets = cascade.tuning.targets.slice(0, 2);
-  const ir = compile(cascade);
+  const design = structuredClone(designs.mzi_cascade_target) as any;
+  design.circuit.definitions[1].primitives[2].phase_control.phase_rad = 0.37;
+  design.tuning.variables = design.tuning.variables.slice(0, 1);
+  design.tuning.targets = design.tuning.targets.slice(0, 2);
+  const ir = compile(design);
   const result = await simulateCircuit(ir);
   assert.equal(
     result.verification.status,

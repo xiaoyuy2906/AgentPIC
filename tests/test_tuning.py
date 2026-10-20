@@ -8,25 +8,23 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from agentpic.backends import tuning
-from agentpic.ir import Contracts, EngineeringIR, ResolvedTuningVariable
+from agentpic.ir import DesignSpec, EngineeringIR, ResolvedTuningVariable
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = TypeAdapter(Contracts.model_fields["DesignSpec"].annotation)
+SPEC = TypeAdapter(DesignSpec)
 
 
 @pytest.fixture(scope="module")
 def circuit():
     output = subprocess.check_output(
-        ["node", "--import", "tsx", "core/src/cli.ts", "compile", "examples/target_mzi_1550.json"],
+        ["node", "--import", "tsx", "core/src/cli.ts", "compile", "designs/mzi_target.json"],
         cwd=ROOT,
     )
     return EngineeringIR.model_validate_json(output, strict=True)
 
 
 def test_generated_tuning_contract_round_trip():
-    parsed = SPEC.validate_json(
-        (ROOT / "examples/target_cascade_1550.json").read_text(), strict=True
-    )
+    parsed = SPEC.validate_json((ROOT / "designs/mzi_cascade_target.json").read_text(), strict=True)
     assert len(parsed.tuning.variables) == 2
     assert len(parsed.tuning.targets) == 3
     assert SPEC.validate_json(parsed.model_dump_json(), strict=True) == parsed
@@ -42,7 +40,7 @@ def test_generated_tuning_contract_round_trip():
     ],
 )
 def test_generated_tuning_limits(field, value):
-    source = json.loads((ROOT / "examples/target_mzi_1550.json").read_text())
+    source = json.loads((ROOT / "designs/mzi_target.json").read_text())
     source["tuning"][field] = value
     with pytest.raises(ValidationError):
         SPEC.validate_json(json.dumps(source), strict=True)

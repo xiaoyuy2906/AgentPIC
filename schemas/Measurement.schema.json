@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Measurement",
+  "$defs": {
+    "Measurement": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "resonances"
+        },
+        "input_port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "output_port": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "min_count": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      },
+      "required": [
+        "kind",
+        "input_port",
+        "output_port"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

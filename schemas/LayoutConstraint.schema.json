@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/LayoutConstraint",
+  "$defs": {
+    "LayoutConstraint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "length"
+            },
+            "instance": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            },
+            "value_um": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "tolerance_um": {
+              "default": 0.001,
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "instance",
+            "value_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "length_difference"
+            },
+            "a": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            },
+            "b": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            },
+            "value_um": {
+              "type": "number"
+            },
+            "tolerance_um": {
+              "default": 0.002,
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "a",
+            "b",
+            "value_um"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

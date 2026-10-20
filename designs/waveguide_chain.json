@@ -1,16 +1,5 @@
 {
-  "device": "circuit",
-  "platform": "sin",
-  "wavelength_nm": 1550,
-  "sweep_span_nm": 40,
-  "sweep_points": 201,
-  "models": {
-    "waveguide": "ideal_sin_waveguide_v1"
-  },
-  "port_order": [
-    "ReceiveA",
-    "LaunchB"
-  ],
+  "name": "waveguide_chain",
   "circuit": {
     "instances": [
       {
@@ -85,5 +74,14 @@
         "port": "o2"
       }
     }
-  }
+  },
+  "port_order": [
+    "ReceiveA",
+    "LaunchB"
+  ],
+  "outputs": [
+    "netlist",
+    "simulation",
+    "verification"
+  ]
 }

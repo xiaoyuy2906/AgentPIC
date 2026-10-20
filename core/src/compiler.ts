@@ -1,10 +1,7 @@
 import { canonical } from './json.js';
-import { genericChecks } from './generic.js';
-export { canonical } from './json.js';
-import { ringCircuit, ringStructureChecks } from './cells/ring.js';
+import { check } from './check.js';
+import { designChecks, sourceCircuit } from './design.js';
 import { tuningSemantics } from './tuning.js';
-import { mziCircuit } from './cells/mzi.js';
-import { compileCascade, cascadeStructureCheck } from './cascade.js';
 import { createHash } from 'node:crypto';
 import {
   DesignSpecSchema,
@@ -15,6 +12,8 @@ import {
   type CheckResult,
   type LayoutResult,
 } from './contracts.js';
+export { canonical } from './json.js';
+export { check } from './check.js';
 export const sha256 = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 export const endpointKey = (e: Endpoint) => `${e.instance},${e.port}` as const;
 export class SemanticError extends Error {
@@ -22,18 +21,13 @@ export class SemanticError extends Error {
     super(
       checks
         .filter((c) => c.status === 'fail')
-        .map((c) => `${c.id}: ${c.detail}`)
+        .map((c) => {
+          const problems = c.evidence.problems;
+          return `${c.id}: ${c.detail}${Array.isArray(problems) && problems.length ? ` [${problems.join('; ')}]` : ''}`;
+        })
         .join('; '),
     );
   }
-}
-export function check(
-  id: string,
-  ok: boolean,
-  detail: string,
-  evidence: Record<string, unknown> = {},
-): CheckResult {
-  return { id, status: ok ? 'pass' : 'fail', detail, evidence };
 }
 /** Structural schema validation never replaces these engineering rules. */
 export function semanticChecks(ir: EngineeringIR): CheckResult[] {
@@ -81,9 +75,7 @@ export function semanticChecks(ir: EngineeringIR): CheckResult[] {
     for (const t of tasks.values())
       if (t.depends_on.every((d) => completed.has(d))) completed.add(t.name);
   return [
-    ...genericChecks(ir),
-    ...cascadeStructureCheck(ir),
-    ...ringStructureChecks(ir),
+    ...designChecks(ir),
     ...tuningSemantics(ir),
     check(
       'specification_semantics',
@@ -165,38 +157,37 @@ export function validateIR(input: unknown): EngineeringIR {
 }
 export function compile(input: unknown): EngineeringIR {
   const s = DesignSpecSchema.parse(input);
-  const circuit =
-    s.device === 'circuit'
-      ? { netlist: s.circuit }
-      : s.device === 'mzi'
-        ? { netlist: mziCircuit(s.delta_length_um, s.phase_control) }
-        : s.device === 'ring_add_drop'
-          ? { netlist: ringCircuit(s) }
-          : compileCascade(s);
+  const physical = s.layout !== null;
   return validateIR({
     design_id: sha256(canonical(s)).slice(0, 16),
     specification: s,
     technology: PDKSchema.parse({}),
-    ...circuit,
+    ...sourceCircuit(s),
     workflow: [
       { name: 'compile', depends_on: [], backend: 'core' },
-      ...(s.device === 'circuit'
-        ? []
-        : [
+      ...(physical
+        ? [
             { name: 'layout', depends_on: ['compile'], backend: 'layout' },
             { name: 'backannotate', depends_on: ['layout'], backend: 'core' },
-          ]),
+          ]
+        : []),
       ...(s.tuning
-        ? [{ name: 'tune', depends_on: ['backannotate'], backend: 'optimization' }]
+        ? [
+            {
+              name: 'tune',
+              depends_on: [physical ? 'backannotate' : 'compile'],
+              backend: 'optimization',
+            },
+          ]
         : []),
       {
         name: 'simulate',
-        depends_on: [s.device === 'circuit' ? 'compile' : s.tuning ? 'tune' : 'backannotate'],
+        depends_on: [s.tuning ? 'tune' : physical ? 'backannotate' : 'compile'],
         backend: 'circuit',
       },
       {
         name: 'verify',
-        depends_on: s.device === 'circuit' ? ['simulate'] : ['simulate', 'layout'],
+        depends_on: physical ? ['simulate', 'layout'] : ['simulate'],
         backend: 'verification',
       },
       { name: 'manifest', depends_on: ['verify'], backend: 'core' },
@@ -205,15 +196,10 @@ export function compile(input: unknown): EngineeringIR {
       'Illustrative SiN PDK; no foundry signoff.',
       'Ideal reciprocal compact couplers; prescribed ratios and MMI polygons are not EM calibrated.',
       'Assumed neff=1.8 and ng=1.9 at 1550 nm; zero loss.',
-      'Bend loss, taper phase and coupler dispersion omitted.',
-      s.device === 'circuit'
-        ? 'Generic simulation uses supplied path lengths; no layout, backannotation or spectral convergence is established.'
-        : 'Circuit-only compilation uses nominal path lengths; full layout flow backannotates measured lengths.',
-      ...(s.device === 'ring_add_drop'
-        ? [
-            'Model round-trip length includes return waveguides only; MMI internal delay and phase are omitted.',
-          ]
-        : []),
+      'Bend loss, taper phase and coupler dispersion omitted; coupler internal delay and phase are zero.',
+      physical
+        ? 'Circuit-only compilation uses nominal path lengths; the layout flow backannotates measured lengths.'
+        : 'No layout plan: simulation uses supplied path lengths and claims no physical layout.',
     ],
   });
 }

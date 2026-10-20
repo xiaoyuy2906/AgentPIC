@@ -1,4 +1,10 @@
-"""GDSFactory adapter for composed feed-forward and resonant feedback circuits."""
+"""Generic GDSFactory layout: place cells, route waveguides along Manhattan steps, extract.
+
+The engine knows primitive kinds and the demonstration PDK cells, never device families.
+Placements are absolute or anchored to another instance's port. A routed waveguide joins
+the two placed ports it connects to; its path follows the declared steps, gains at most one
+final corner to reach the end port and is smoothed with circular bends of the PDK radius.
+"""
 
 from pathlib import Path
 
@@ -14,9 +20,84 @@ class GDSFactoryBackend:
         return build_layout(ir, directory)
 
 
+def direction(orientation_deg: float) -> np.ndarray:
+    """Unit vector pointing out of a port."""
+    angle = np.deg2rad(orientation_deg)
+    return np.round(np.array([np.cos(angle), np.sin(angle)]), 12)
+
+
+def longest_segment(points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The longest straight section of a smoothed path; actuators are centred on it."""
+    lengths = np.linalg.norm(np.diff(points, axis=0), axis=1)
+    k = int(np.argmax(lengths))
+    return points[k], points[k + 1]
+
+
+def manhattan_points(start, start_orientation, end, end_orientation, steps, radius) -> np.ndarray:
+    """Polyline from start through the steps to end, adding at most one final corner."""
+    start, end = np.asarray(start, float), np.asarray(end, float)
+    points = [start]
+    for step in steps:
+        ((key, value),) = step.model_dump().items()
+        x, y = points[-1]
+        if key == "dx_um":
+            x += value
+        elif key == "dy_um":
+            y += value
+        elif key == "x_um":
+            x = value
+        elif key == "y_um":
+            y = value
+        elif key == "x_from_end_um":
+            x = end[0] + value
+        else:
+            y = end[1] + value
+        points.append(np.array([x, y]))
+    arrival = -direction(end_orientation)
+    last = points[-1]
+    if abs(arrival[0]) > 0.5 and abs(last[1] - end[1]) > 1e-9:
+        points.append(np.array([last[0], end[1]]))
+    elif abs(arrival[1]) > 0.5 and abs(last[0] - end[0]) > 1e-9:
+        points.append(np.array([end[0], last[1]]))
+    points.append(end)
+    # Drop repeated points and merge collinear runs so every interior point is a real corner.
+    merged = [points[0]]
+    for point in points[1:]:
+        if np.linalg.norm(point - merged[-1]) < 1e-9:
+            continue
+        if len(merged) >= 2:
+            a, b = merged[-1] - merged[-2], point - merged[-1]
+            if abs(a[0] * b[1] - a[1] * b[0]) < 1e-9 and np.dot(a, b) > 0:
+                merged[-1] = point
+                continue
+        merged.append(point)
+    path = np.array(merged)
+    segments = np.diff(path, axis=0)
+    if len(segments) == 0:
+        raise ValueError("Route start and end ports coincide")
+    if np.any(np.all(np.abs(segments) > 1e-9, axis=1)):
+        raise ValueError("Route segments must be axis aligned")
+    lengths = np.linalg.norm(segments, axis=1)
+    unit = segments / lengths[:, None]
+    if not np.allclose(unit[0], direction(start_orientation), atol=1e-9):
+        raise ValueError("Route must leave its start port along the port direction")
+    if not np.allclose(unit[-1], arrival, atol=1e-9):
+        raise ValueError("Route must enter its end port along the port direction")
+    if np.any(np.einsum("ij,ij->i", unit[1:], unit[:-1]) < -0.5):
+        raise ValueError("Route reverses direction")
+    room = np.full(len(lengths), 2 * radius)
+    room[0] = room[-1] = radius
+    if len(lengths) == 1:
+        room[0] = 0
+    if np.any(lengths < room - 1e-9):
+        raise ValueError("Route segment is too short for the PDK bend radius")
+    return path
+
+
 def build_layout(ir: EngineeringIR, directory: Path) -> dict:
-    if ir.specification.device == "circuit":
-        raise NotImplementedError("Generic circuit layout and GDS export are not implemented")
+    plan = ir.specification.layout
+    if plan is None:
+        raise NotImplementedError("The design has no layout plan")
     import gdsfactory as gf
     import klayout.db as kdb
 
@@ -26,8 +107,10 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     cross_section = gf.cross_section.strip(
         width=tech.width_um, layer=tech.core_layer, radius=tech.bend_radius_um
     )
-    component = gf.Component(f"agentpic_{ir.specification.device}_{ir.design_id}")
-    coupler = gf.components.mmi2x2(
+    heater_section = gf.cross_section.heater_metal(
+        width=tech.heater_width_um, layer=tech.heater_layer
+    )
+    mmi = gf.components.mmi2x2(
         width=tech.width_um,
         width_taper=1.5,
         length_taper=10,
@@ -36,145 +119,113 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         gap_mmi=1,
         cross_section=cross_section,
     )
-    references, lengths, centerlines, block_ports, imbalances, actuators = {}, {}, {}, {}, {}, {}
+    component = gf.Component(f"agentpic_{ir.specification.name}_{ir.design_id}")
     instances = {i.name: i for i in ir.netlist.instances}
+    index = {"/".join(path): name for name, path in ir.instance_paths.items()}
+    placements = {index[path]: p for path, p in plan.placements.items()}
+    routes = {index[path]: r for path, r in plan.routes.items()}
+    references, lengths, centerlines, actuators = {}, {}, {}, {}
 
-    def add_path(name: str, path: gf.Path) -> None:
+    def waveguide_cell(name: str, path) -> gf.Component:
         waveguide = gf.path.extrude(path, cross_section=cross_section)
         control = instances[name].phase_control
-        if control is not None:
-            cell = gf.Component(f"{name}_{ir.design_id}")
-            optical = cell.add_ref(waveguide)
-            cell.add_ports(optical.ports)
-            # The longest horizontal segment is the straight section of the arm.
-            points = path.points
-            segments = [
-                (a, b)
-                for a, b in zip(points, points[1:])
-                if abs(b[1] - a[1]) < 1e-9 and b[0] > a[0]
-            ]
-            a, b = max(segments, key=lambda pair: pair[1][0] - pair[0][0])
-            if b[0] - a[0] < control.active_length_um:
-                raise ValueError("No straight section can contain the specified actuator")
-            heater = cell.add_ref(
-                gf.components.straight(
-                    length=control.active_length_um,
-                    cross_section=gf.cross_section.heater_metal(
-                        width=tech.heater_width_um, layer=tech.heater_layer
-                    ),
-                )
-            )
-            heater.dmove(((a[0] + b[0] - control.active_length_um) / 2, a[1]))
-            cell.add_ports(heater.ports)
-            actuators[name] = {
-                "centerline_um": [list(map(float, heater.ports[p].center)) for p in ("e1", "e2")],
-                "layer": list(tech.heater_layer),
-                "width_um": float(heater.ports["e1"].width),
-            }
-            waveguide = cell
-        else:
+        if control is None:
             waveguide.name = f"{name}_{ir.design_id}"
-        references[name] = component.add_ref(waveguide, name=name)
-        lengths[name] = float(path.length())
-        centerlines[name] = path.points.tolist()
-
-    def add_block(name: str, primitive_ids: dict[str, str], delta: float, origin: float) -> None:
-        splitter = component.add_ref(coupler, name=primitive_ids["splitter"])
-        combiner = component.add_ref(coupler, name=primitive_ids["combiner"])
-        splitter.dmove((origin, 0))
-        combiner.dmove((origin + 650, 0))
-        references[primitive_ids["splitter"]] = splitter
-        references[primitive_ids["combiner"]] = combiner
-        for local, start_port, end_port, direction, height in [
-            ("top_arm", "o3", "o2", 1, 150 + max(delta, 0) / 2),
-            ("bottom_arm", "o4", "o1", -1, 150 + max(-delta, 0) / 2),
-        ]:
-            start, end = (
-                tuple(splitter.ports[start_port].center),
-                tuple(combiner.ports[end_port].center),
-            )
-            route_y = start[1] + direction * height
-            points = np.array(
-                [
-                    start,
-                    (start[0] + 100, start[1]),
-                    (start[0] + 100, route_y),
-                    (end[0] - 100, route_y),
-                    (end[0] - 100, end[1]),
-                    end,
-                ]
-            )
-            path = gf.path.smooth(points, radius=tech.bend_radius_um, bend=gf.path.arc, npoints=128)
-            add_path(primitive_ids[local], path)
-        block_ports[name] = {
-            "in0": splitter.ports["o1"],
-            "in1": splitter.ports["o2"],
-            "out0": combiner.ports["o4"],
-            "out1": combiner.ports["o3"],
-        }
-        imbalances[name] = lengths[primitive_ids["top_arm"]] - lengths[primitive_ids["bottom_arm"]]
-
-    if ir.specification.device == "ring_add_drop":
-        spec = ir.specification
-        top = component.add_ref(coupler, name="top_coupler")
-        bottom = component.add_ref(coupler, name="bottom_coupler")
-        top.dmove((0, spec.loop_height_um))
-        bottom.drotate(180)
-        bottom.dmove((40, 0))
-        references.update(top_coupler=top, bottom_coupler=bottom)
-        for name, start_port, end_port, direction in [
-            ("right_return", top.ports["o4"], bottom.ports["o1"], 1),
-            ("left_return", bottom.ports["o4"], top.ports["o1"], -1),
-        ]:
-            x, y = start_port.center
-            ex, ey = end_port.center
-            points = np.array(
-                [
-                    (x, y),
-                    (x + direction * spec.side_extension_um, y),
-                    (ex + direction * spec.side_extension_um, ey),
-                    (ex, ey),
-                ]
-            )
-            add_path(
-                name,
-                gf.path.smooth(points, radius=tech.bend_radius_um, bend=gf.path.arc, npoints=128),
-            )
-    elif ir.assembly is None:
-        if ir.specification.device != "mzi":
-            raise ValueError("An assembled design requires a physical assembly plan")
-        add_block(
-            "mzi",
-            {n: n for n in ("splitter", "combiner", "top_arm", "bottom_arm")},
-            ir.specification.delta_length_um,
-            0,
+            return waveguide
+        cell = gf.Component(f"{name}_{ir.design_id}")
+        cell.add_ports(cell.add_ref(waveguide).ports)
+        a, b = longest_segment(np.asarray(path.points))
+        span = float(np.linalg.norm(b - a))
+        if span < control.active_length_um:
+            raise ValueError("No straight section can contain the specified actuator")
+        unit = (b - a) / span
+        heater = cell.add_ref(
+            gf.components.straight(length=control.active_length_um, cross_section=heater_section)
         )
-    else:
-        origin = 0.0
-        for block in ir.assembly.blocks:
-            add_block(block.name, block.primitives, block.delta_length_um, origin)
-            origin = (
-                float(block_ports[block.name]["out0"].center[0])
-                + ir.assembly.link_length_um
-                - float(coupler.ports["o1"].center[0])
-            )
-        for link in ir.assembly.links:
-            start = np.asarray(block_ports[link.a.instance][link.a.port].center)
-            end = np.asarray(block_ports[link.b.instance][link.b.port].center)
-            if end[0] <= start[0] or abs(end[1] - start[1]) > 1e-9:
-                raise ValueError(
-                    "Series assembly requires aligned forward-facing interconnect ports"
-                )
-            # Port placement snaps to the 0.001 µm database grid. Preserve the
-            # requested intent; the verifier independently enforces this same
-            # predeclared 1 nm physical-length tolerance after backannotation.
-            if abs(float(np.linalg.norm(end - start)) - ir.assembly.link_length_um) > 0.001:
-                raise ValueError("Physical interconnect does not meet the requested link length")
-            add_path(link.instance, gf.Path(np.array([start, end])))
+        heater.drotate(float(np.degrees(np.arctan2(unit[1], unit[0]))))
+        heater.dmove(tuple((a + b) / 2 - unit * control.active_length_um / 2))
+        cell.add_ports(heater.ports)
+        return cell
 
+    def place(name: str) -> None:
+        placement = placements[name]
+        instance = instances[name]
+        if instance.kind == "ideal_coupler":
+            cell = mmi
+        else:
+            straight = gf.Path(np.array([(0.0, 0.0), (instance.length_um, 0.0)]))
+            cell = waveguide_cell(name, straight)
+        reference = component.add_ref(cell, name=name)
+        if placement.rotation_deg:
+            reference.drotate(placement.rotation_deg)
+        if placement.anchor is None:
+            reference.dmove((placement.x_um, placement.y_um))
+        else:
+            anchor = references[index[placement.anchor.instance]].ports[placement.anchor.port]
+            own = reference.ports[placement.port].center
+            reference.dmove(
+                (
+                    anchor.center[0] + placement.x_um - own[0],
+                    anchor.center[1] + placement.y_um - own[1],
+                )
+            )
+        references[name] = reference
+        if instance.kind != "ideal_coupler":
+            ends = [reference.ports[p].center for p in ("o1", "o2")]
+            centerlines[name] = [list(map(float, point)) for point in ends]
+            lengths[name] = float(instance.length_um)
+
+    pending = list(placements)
+    while pending:
+        ready = [
+            n
+            for n in pending
+            if placements[n].anchor is None or index[placements[n].anchor.instance] in references
+        ]
+        if not ready:
+            raise ValueError("Placement anchors form a cycle")
+        for name in ready:
+            place(name)
+            pending.remove(name)
+
+    neighbour = {}
+    for edge in ir.netlist.connections:
+        neighbour[(edge.a.instance, edge.a.port)] = edge.b
+        neighbour[(edge.b.instance, edge.b.port)] = edge.a
+    for name, route in routes.items():
+        start = neighbour[(name, "o1")]
+        end = neighbour[(name, "o2")]
+        start_port = references[start.instance].ports[start.port]
+        end_port = references[end.instance].ports[end.port]
+        points = manhattan_points(
+            start_port.center,
+            start_port.orientation,
+            end_port.center,
+            end_port.orientation,
+            route.steps,
+            tech.bend_radius_um,
+        )
+        path = (
+            gf.path.smooth(points, radius=tech.bend_radius_um, bend=gf.path.arc, npoints=128)
+            if len(points) > 2
+            else gf.Path(points)
+        )
+        references[name] = component.add_ref(waveguide_cell(name, path), name=name)
+        lengths[name] = float(path.length())
+        centerlines[name] = np.asarray(path.points).tolist()
+
+    for name, reference in references.items():
+        if instances[name].phase_control is not None:
+            actuators[name] = {
+                "centerline_um": [
+                    list(map(float, reference.ports[p].center)) for p in ("e1", "e2")
+                ],
+                "layer": list(tech.heater_layer),
+                "width_um": float(reference.ports["e1"].width),
+            }
     for name, endpoint in ir.netlist.ports.items():
         component.add_port(name=name, port=references[endpoint.instance].ports[endpoint.port])
-    # Derive connectivity from all placed primitive ports, including physical interconnects.
+    # Derive connectivity from all placed primitive ports, including routed waveguides.
     extracted = component.get_netlist(
         on_multi_connect="error", on_dangling_port="error", instance_namer=lambda ref: ref.name
     )
@@ -216,7 +267,7 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     options.gds2_write_timestamps = False
     component.write_gds(directory / "design.gds", save_options=options, with_metadata=False)
     return {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "top_cell": component.name,
         "technology": tech.name,
         "core_layer": list(tech.core_layer),
@@ -225,7 +276,5 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         "ports": ports,
         "extracted_circuit": extracted_circuit,
         "bend_radius_um": tech.bend_radius_um,
-        "delta_length_um": imbalances.get("mzi") if ir.assembly is None else None,
-        "path_imbalances_um": imbalances,
         "actuators": actuators,
     }

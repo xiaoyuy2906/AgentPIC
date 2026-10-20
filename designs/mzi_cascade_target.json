@@ -1,0 +1,590 @@
+{
+  "name": "mzi_cascade_target",
+  "wavelength_nm": 1550,
+  "sweep_span_nm": 40,
+  "sweep_points": 201,
+  "circuit": {
+    "top": "assembly",
+    "definitions": [
+      {
+        "name": "stage_first",
+        "primitives": [
+          {
+            "name": "splitter",
+            "kind": "ideal_coupler",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              },
+              {
+                "name": "o3"
+              },
+              {
+                "name": "o4"
+              }
+            ],
+            "coupling_ratio": 0.5
+          },
+          {
+            "name": "combiner",
+            "kind": "ideal_coupler",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              },
+              {
+                "name": "o3"
+              },
+              {
+                "name": "o4"
+              }
+            ],
+            "coupling_ratio": 0.5
+          },
+          {
+            "name": "top_arm",
+            "kind": "phase_shifter",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              },
+              {
+                "name": "e1",
+                "domain": "electrical"
+              },
+              {
+                "name": "e2",
+                "domain": "electrical"
+              }
+            ],
+            "length_um": 800,
+            "phase_control": {
+              "phase_rad": 0,
+              "active_length_um": 100
+            }
+          },
+          {
+            "name": "bottom_arm",
+            "kind": "waveguide",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              }
+            ],
+            "length_um": 800
+          }
+        ],
+        "modules": [],
+        "connections": [
+          {
+            "a": {
+              "instance": "splitter",
+              "port": "o3"
+            },
+            "b": {
+              "instance": "top_arm",
+              "port": "o1"
+            }
+          },
+          {
+            "a": {
+              "instance": "top_arm",
+              "port": "o2"
+            },
+            "b": {
+              "instance": "combiner",
+              "port": "o2"
+            }
+          },
+          {
+            "a": {
+              "instance": "splitter",
+              "port": "o4"
+            },
+            "b": {
+              "instance": "bottom_arm",
+              "port": "o1"
+            }
+          },
+          {
+            "a": {
+              "instance": "bottom_arm",
+              "port": "o2"
+            },
+            "b": {
+              "instance": "combiner",
+              "port": "o1"
+            }
+          }
+        ],
+        "ports": {
+          "in0": {
+            "instance": "splitter",
+            "port": "o1"
+          },
+          "in1": {
+            "instance": "splitter",
+            "port": "o2"
+          },
+          "out0": {
+            "instance": "combiner",
+            "port": "o4"
+          },
+          "out1": {
+            "instance": "combiner",
+            "port": "o3"
+          },
+          "phase_e1": {
+            "instance": "top_arm",
+            "port": "e1"
+          },
+          "phase_e2": {
+            "instance": "top_arm",
+            "port": "e2"
+          }
+        }
+      },
+      {
+        "name": "stage_second",
+        "primitives": [
+          {
+            "name": "splitter",
+            "kind": "ideal_coupler",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              },
+              {
+                "name": "o3"
+              },
+              {
+                "name": "o4"
+              }
+            ],
+            "coupling_ratio": 0.5
+          },
+          {
+            "name": "combiner",
+            "kind": "ideal_coupler",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              },
+              {
+                "name": "o3"
+              },
+              {
+                "name": "o4"
+              }
+            ],
+            "coupling_ratio": 0.5
+          },
+          {
+            "name": "top_arm",
+            "kind": "phase_shifter",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              },
+              {
+                "name": "e1",
+                "domain": "electrical"
+              },
+              {
+                "name": "e2",
+                "domain": "electrical"
+              }
+            ],
+            "length_um": 800,
+            "phase_control": {
+              "phase_rad": 0,
+              "active_length_um": 150
+            }
+          },
+          {
+            "name": "bottom_arm",
+            "kind": "waveguide",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              }
+            ],
+            "length_um": 800
+          }
+        ],
+        "modules": [],
+        "connections": [
+          {
+            "a": {
+              "instance": "splitter",
+              "port": "o3"
+            },
+            "b": {
+              "instance": "top_arm",
+              "port": "o1"
+            }
+          },
+          {
+            "a": {
+              "instance": "top_arm",
+              "port": "o2"
+            },
+            "b": {
+              "instance": "combiner",
+              "port": "o2"
+            }
+          },
+          {
+            "a": {
+              "instance": "splitter",
+              "port": "o4"
+            },
+            "b": {
+              "instance": "bottom_arm",
+              "port": "o1"
+            }
+          },
+          {
+            "a": {
+              "instance": "bottom_arm",
+              "port": "o2"
+            },
+            "b": {
+              "instance": "combiner",
+              "port": "o1"
+            }
+          }
+        ],
+        "ports": {
+          "in0": {
+            "instance": "splitter",
+            "port": "o1"
+          },
+          "in1": {
+            "instance": "splitter",
+            "port": "o2"
+          },
+          "out0": {
+            "instance": "combiner",
+            "port": "o4"
+          },
+          "out1": {
+            "instance": "combiner",
+            "port": "o3"
+          },
+          "phase_e1": {
+            "instance": "top_arm",
+            "port": "e1"
+          },
+          "phase_e2": {
+            "instance": "top_arm",
+            "port": "e2"
+          }
+        }
+      },
+      {
+        "name": "assembly",
+        "primitives": [
+          {
+            "name": "interconnect_0_0",
+            "kind": "waveguide",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              }
+            ],
+            "length_um": 100
+          },
+          {
+            "name": "interconnect_0_1",
+            "kind": "waveguide",
+            "ports": [
+              {
+                "name": "o1"
+              },
+              {
+                "name": "o2"
+              }
+            ],
+            "length_um": 100
+          }
+        ],
+        "modules": [
+          {
+            "name": "first",
+            "definition": "stage_first"
+          },
+          {
+            "name": "second",
+            "definition": "stage_second"
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instance": "first",
+              "port": "out0"
+            },
+            "b": {
+              "instance": "interconnect_0_0",
+              "port": "o1"
+            }
+          },
+          {
+            "a": {
+              "instance": "interconnect_0_0",
+              "port": "o2"
+            },
+            "b": {
+              "instance": "second",
+              "port": "in0"
+            }
+          },
+          {
+            "a": {
+              "instance": "first",
+              "port": "out1"
+            },
+            "b": {
+              "instance": "interconnect_0_1",
+              "port": "o1"
+            }
+          },
+          {
+            "a": {
+              "instance": "interconnect_0_1",
+              "port": "o2"
+            },
+            "b": {
+              "instance": "second",
+              "port": "in1"
+            }
+          }
+        ],
+        "ports": {
+          "in0": {
+            "instance": "first",
+            "port": "in0"
+          },
+          "in1": {
+            "instance": "first",
+            "port": "in1"
+          },
+          "out0": {
+            "instance": "second",
+            "port": "out0"
+          },
+          "out1": {
+            "instance": "second",
+            "port": "out1"
+          },
+          "first_phase_e1": {
+            "instance": "first",
+            "port": "phase_e1"
+          },
+          "first_phase_e2": {
+            "instance": "first",
+            "port": "phase_e2"
+          },
+          "second_phase_e1": {
+            "instance": "second",
+            "port": "phase_e1"
+          },
+          "second_phase_e2": {
+            "instance": "second",
+            "port": "phase_e2"
+          }
+        }
+      }
+    ]
+  },
+  "port_order": [
+    "in0",
+    "in1",
+    "out0",
+    "out1"
+  ],
+  "layout": {
+    "placements": {
+      "first/splitter": {
+        "x_um": 0,
+        "y_um": 0
+      },
+      "first/combiner": {
+        "anchor": {
+          "instance": "first/splitter",
+          "port": "o1"
+        },
+        "port": "o1",
+        "x_um": 650
+      },
+      "second/splitter": {
+        "anchor": {
+          "instance": "first/combiner",
+          "port": "o4"
+        },
+        "port": "o1",
+        "x_um": 100
+      },
+      "second/combiner": {
+        "anchor": {
+          "instance": "second/splitter",
+          "port": "o1"
+        },
+        "port": "o1",
+        "x_um": 650
+      }
+    },
+    "routes": {
+      "first/top_arm": {
+        "steps": [
+          {
+            "dx_um": 100
+          },
+          {
+            "dy_um": 150
+          },
+          {
+            "x_from_end_um": -100
+          }
+        ]
+      },
+      "first/bottom_arm": {
+        "steps": [
+          {
+            "dx_um": 100
+          },
+          {
+            "dy_um": -150
+          },
+          {
+            "x_from_end_um": -100
+          }
+        ]
+      },
+      "second/top_arm": {
+        "steps": [
+          {
+            "dx_um": 100
+          },
+          {
+            "dy_um": 150
+          },
+          {
+            "x_from_end_um": -100
+          }
+        ]
+      },
+      "second/bottom_arm": {
+        "steps": [
+          {
+            "dx_um": 100
+          },
+          {
+            "dy_um": -150
+          },
+          {
+            "x_from_end_um": -100
+          }
+        ]
+      },
+      "interconnect_0_0": {
+        "steps": []
+      },
+      "interconnect_0_1": {
+        "steps": []
+      }
+    },
+    "constraints": [
+      {
+        "kind": "length_difference",
+        "a": "first/top_arm",
+        "b": "first/bottom_arm",
+        "value_um": 0
+      },
+      {
+        "kind": "length_difference",
+        "a": "second/top_arm",
+        "b": "second/bottom_arm",
+        "value_um": 0
+      },
+      {
+        "kind": "length",
+        "instance": "interconnect_0_0",
+        "value_um": 100
+      },
+      {
+        "kind": "length",
+        "instance": "interconnect_0_1",
+        "value_um": 100
+      }
+    ]
+  },
+  "tuning": {
+    "targets": [
+      {
+        "input_port": "in0",
+        "output_port": "out0",
+        "wavelength_nm": 1550,
+        "power": 0.8
+      },
+      {
+        "input_port": "in0",
+        "output_port": "out1",
+        "wavelength_nm": 1550,
+        "power": 0.2
+      },
+      {
+        "input_port": "in1",
+        "output_port": "out1",
+        "wavelength_nm": 1540,
+        "power": 0.7975860169790084
+      }
+    ],
+    "variables": [
+      {
+        "instance_path": [
+          "first",
+          "top_arm"
+        ],
+        "min_phase_rad": 0,
+        "max_phase_rad": 6.283185307179586
+      },
+      {
+        "instance_path": [
+          "second",
+          "top_arm"
+        ],
+        "min_phase_rad": 0,
+        "max_phase_rad": 6.283185307179586
+      }
+    ]
+  }
+}

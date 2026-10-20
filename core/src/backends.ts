@@ -2,7 +2,6 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { z } from 'zod';
-import { primitiveModels } from './generic.js';
 import {
   CheckResultSchema,
   LayoutResultSchema,
@@ -106,32 +105,26 @@ export class PythonBackend implements ScientificBackend {
   }
 }
 export const capabilities = () => ({
-  schema_version: '2.0',
+  schema_version: '3.0',
   core: 'typescript',
   contracts: 'zod-generated-json-schema',
-  devices: ['mzi', 'mzi_cascade', 'ring_add_drop', 'circuit'],
-  generic_circuit: {
-    compilation: 'implemented',
-    simulation: 'implemented',
-    verification: 'implemented',
-    models: primitiveModels,
-    max_instances: 32,
-    max_optical_ports: 16,
-    max_sweep_points: 1001,
-    layout: 'not_implemented',
-    target_tuning: 'not_implemented',
-    model_calibration: 'not_performed',
-  },
-  feedback_networks: {
-    add_drop_ring: 'implemented',
-    spectral_sampling_verification: 'implemented',
-    geometry_to_coupling_calibration: 'not_performed',
-  },
+  design_input: 'generic circuit or hierarchy with optional layout plan, tuning and measurements',
+  primitives: ['ideal_coupler', 'waveguide', 'phase_shifter'],
   platforms: ['sin'],
   technology: 'sin_demo_v1',
-  circuit: { backend: 'sax', status: 'implemented' },
-  layout: { backend: 'gdsfactory', status: 'implemented' },
-  hierarchy: { compilation: 'implemented', cascade_layout: 'implemented' },
+  circuit: {
+    backend: 'sax',
+    status: 'implemented',
+    max_optical_ports: 64,
+    max_sweep_points: 10001,
+  },
+  layout: {
+    backend: 'gdsfactory',
+    placement: 'explicit absolute or port-anchored',
+    routing: 'explicit Manhattan steps with automatic final corner and circular bends',
+    automatic_routing: 'not_implemented',
+  },
+  hierarchy: { compilation: 'implemented', layout_by_source_path: 'implemented' },
   phase_control: {
     target_tuning: {
       status: 'implemented',
@@ -146,7 +139,8 @@ export const capabilities = () => ({
     electrical_to_phase_calibration: 'not_performed',
     electrical_solver: 'not_implemented',
   },
-  electromagnetic: { fdtdx: 'not_implemented', fem: 'not_implemented', eme: 'not_implemented' },
+  spectral_verification: { sampling_adequacy: 'implemented', resonance_measurement: 'implemented' },
+  electromagnetic: { fdtdx: 'not_implemented' },
   foundry_signoff: false,
   physical_model_calibration: 'not_performed',
 });

@@ -17,9 +17,17 @@ p(λ, L) = 10^(−α L / (10⁴ × 20)) exp(i 2π n_eff(λ) L / λ)
 
 The `phase_shifter` model retains the waveguide's passive propagation over its complete routed length and multiplies it by exp(i φ₀ λ₀ / λ). The specified φ₀ is an optical phase at λ₀, not an electrical bias. The independent verifier instead constructs induced optical-path difference ΔOPL = φ₀ λ₀ / (2π) and evaluates exp(i 2π (n_eff L + ΔOPL) / λ). The change is reciprocal and lossless under the explicit ideal assumptions.
 
-A balanced MZI therefore has output-0 power sin²(φ₀ λ₀ / (2λ)): at λ₀, phases 0, π/2, π and 2π give powers 0, 1/2, 1 and 0. These values and the wavelength dependence are independently tested. Cascades reuse the same controlled primitive and transfer composition.
+A balanced MZI therefore has output-0 power sin²(φ₀ λ₀ / (2λ)): at λ₀, phases 0, π/2, π and 2π give powers 0, 1/2, 1 and 0. These values and the wavelength dependence are golden references in `core/tests/simulation.test.ts`.
 
 The active metal length sets a geometry footprint, not an actuator efficiency. There is no calibrated relation between voltage, current, power, temperature, induced refractive index and commanded optical phase. Software bounds do not establish thermal feasibility. Controlled designs explicitly report `phase_actuation_calibration: not_run`.
+
+## Independent reference
+
+Production verification never uses device formulas (ADR-007). `src/agentpic/circuit_reference.py` builds the block-diagonal S-matrix of every primitive from the equations above and eliminates internal waves: S = S_ee + S_ei (I − P S_ii)⁻¹ P S_ie, where P pairs connected internal ports. It shares the compact-model equations with SAX but not its code or network solver, so agreement checks the solver and netlist translation, not the physics of the ideal models. The complex tolerance is 10⁻⁹; reciprocity, passivity and unitarity tolerances are 10⁻¹⁰.
+
+`spectral_sampling` evaluates the same reference at every midpoint of the sweep grid and requires linear interpolation of exported powers to agree within 1/400. A unit-height Lorentzian sampled 20 times per half-maximum width just meets this bound, so undersampled resonances fail even when every exported sample is exact.
+
+The device closed forms below are the golden references the tests compare against.
 
 ## Ideal coupler and complete MZI
 
@@ -46,15 +54,15 @@ S_total = [[0, transpose(T_total)],
            [T_total,            0]]
 ```
 
-The independent reference multiplies these 2×2 matrices directly without importing SAX models or layout construction. SAX separately solves the flattened primitive network. Both use the resolved physical waveguide lengths. For two stages with equal link lengths, the input-0 output-0 power also satisfies cos²(π n_eff (ΔL₂ − ΔL₁) / λ), covered by a separate test. Complex error, reciprocity, passivity and unitarity limits are unchanged from the single-stage benchmark.
+For two stages with equal link lengths, the input-0 output-0 power also satisfies cos²(π n_eff (ΔL₂ − ΔL₁) / λ), covered by a separate test. Complex error, reciprocity, passivity and unitarity limits are unchanged from the single-stage benchmark.
 
 ## Layout
 
-Two GDSFactory MMI cells are connected by two circular-bend arms with a 50 µm radius. The generated path changes by the specified imbalance; a negative imbalance lengthens the bottom arm. The waveguide width is 1 µm. MMI width/length are 5/40 µm with 10 µm tapers. This creates actual polygons and port connectivity but does not establish that those MMI dimensions realize a 50:50 splitter in a real material stack.
+The layout engine places `sin_demo_v1` cells and routes waveguides from a design's layout plan (see `docs/interfaces.md`). Couplers are GDSFactory MMI cells (width/length 5/40 µm, 10 µm tapers); waveguides are 1 µm wide with 50 µm circular bends. This creates actual polygons and port connectivity but does not establish that those MMI dimensions realize the declared coupling ratio in a real material stack.
 
-Cascades place 2–4 such blocks in a row and extrude two straight port-to-port links between adjacent blocks. All primitive references appear in one top-level assembly; logical module hierarchy remains traceable through the source-path map. Layout positions use a 0.001 µm grid. Interconnect-length and backannotation errors must be at most 0.001 µm, and each stage's imbalance error at most 0.002 µm.
+All primitive references appear in one top-level cell; logical module hierarchy remains traceable through the source-path map. Layout positions use a 0.001 µm grid. Backannotation error must be at most 0.001 µm; declared length constraints default to 0.001 µm and length-difference constraints to 0.002 µm.
 
-Controlled arms use GDSFactory metal cross sections to place a 2.5 µm-wide metal segment on layer/datatype 2/0, centered over the longest straight top-arm segment. Its 20–200 µm length is user specified. Electrical terminals at both metal ends are exposed; vias, bond pads, electrical routing and a qualified material stack are not supplied. KLayout independently compares actual metal polygons with the expected footprint, checks dimensions within 0.001 µm, checks coverage over the optical path and checks metal width/spacing under the demonstration rules. Terminal position/orientation/domain checks are separate. Blue in the static SVG is optical core; orange is metal.
+Phase shifters use GDSFactory metal cross sections to place a 2.5 µm-wide metal segment on layer/datatype 2/0, centered over the longest straight section of their optical path. Its 20–200 µm length is user specified. Electrical terminals at both metal ends are exposed; vias, bond pads, electrical routing and a qualified material stack are not supplied. KLayout independently compares actual metal polygons with the expected footprint, checks dimensions within 0.001 µm, checks coverage over the optical path and checks metal width/spacing under the demonstration rules. Terminal position/orientation/domain checks are separate. Blue in the static SVG is optical core; orange is metal.
 
 The extracted port netlist is compared with compiler intent. KLayout independently opens the exported GDS, checks nonempty connected core geometry, minimum width/spacing, and that narrow corridors around every arm and interconnect centerline are covered by the core. Bend radii are checked from the sampled centerline. These checks detect missing connections, broken paths and some geometry violations; they do not constitute full polygon-extracted LVS, foundry DRC, density, enclosure, process-corner, packaging or yield checks.
 
@@ -73,8 +81,8 @@ T00 = (t1 − t2 pr pl) / D       T01 = −sqrt(k1 k2) pl / D
 T10 = −sqrt(k1 k2) pr / D       T11 = (t2 − t1 pr pl) / D
 ```
 
-The reverse block is Tᵀ by reciprocity; reflection blocks vanish in this ideal model. Independent verification constructs this full 4×4 matrix without importing SAX. At a symmetric-coupling resonance the drop power reaches one and through power vanishes; asymmetric couplings generally cannot reach unit drop transmission. Tests require optimization to report that target as unmet rather than accepting solver convergence.
+The reverse block is Tᵀ by reciprocity; reflection blocks vanish in this ideal model. At a symmetric-coupling resonance the drop power reaches one and through power vanishes; asymmetric couplings generally cannot reach unit drop transmission. Tests require optimization to report that target as unmet rather than accepting solver convergence.
 
-For total modeled return length L, reference wavelength λ₀ and commanded phase φ, the assumed linear dispersion gives round-trip phase divided by 2π as A/λ+B, where A=n_g L+φλ₀/(2π) and B=(n_eff−n_g)L/λ₀. Resonance order m has λ_m=A/(m−B). With ρ=t₁t₂, the half-maximum phase offset from resonance is δ=2 asin((1−ρ)/(2√ρ)); exact half-maximum wavelengths use denominators m−B±δ/(2π). The supported coupling interval keeps these real. Spectral verification uses these predictions and independently extracts measured peaks/widths from SAX output. It rejects inadequate resolution and clipped coverage even when sampled complex values agree.
+For total modeled return length L, reference wavelength λ₀ and commanded phase φ, the assumed linear dispersion gives round-trip phase divided by 2π as A/λ+B, where A=n_g L+φλ₀/(2π) and B=(n_eff−n_g)L/λ₀. Resonance order m has λ_m=A/(m−B). With ρ=t₁t₂, the half-maximum phase offset from resonance is δ=2 asin((1−ρ)/(2√ρ)); exact half-maximum wavelengths use denominators m−B±δ/(2π). Tests use these predictions as golden references for measured peak spacing; production verification relies on the generic sampling check and the declared `resonances` measurement.
 
 The compact model has zero internal coupler phase/delay, zero propagation/bend loss and prescribed coupling ratios. Physical MMI geometry is illustrative. Predicted extinction, resonant wavelength and loaded Q are properties of these assumptions, not calibrated device or fabrication claims. Actual GDS verification proves geometric/port consistency within the demonstration rules only.

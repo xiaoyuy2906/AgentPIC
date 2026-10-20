@@ -4,12 +4,10 @@ from pathlib import Path
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from agentpic.ir import Component, Contracts
+from agentpic.ir import Component, DesignSpec
 from agentpic.worker import dispatch
 
-# The generator inlines union contracts into its catalog. Read that generated
-# annotation rather than maintaining a second Python union definition.
-design_spec = TypeAdapter(Contracts.model_fields["DesignSpec"].annotation)
+design_spec = TypeAdapter(DesignSpec)
 
 
 def test_python_models_are_generated_from_ts_contract():
@@ -19,29 +17,42 @@ def test_python_models_are_generated_from_ts_contract():
     assert {"Component", "Port", "Connection", "Circuit", "PDK"} <= schema["$defs"].keys()
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def design(name: str) -> dict:
+    return json.loads((ROOT / f"designs/{name}.json").read_text())
+
+
 @pytest.mark.parametrize(
-    "invalid",
+    "change",
     [
-        {"device": "bad"},
+        {"device": "mzi"},
         {"outputs": []},
         {"wavelength_nm": float("nan")},
-        {"delta_length_um": None},
+        {"name": None},
         {"extra": 1},
-        {"device": "mzi_cascade"},
-        {"device": "mzi_cascade", "stages": [{"name": "only", "delta_length_um": 10}]},
-        {"phase_control": {"voltage": 1}},
-        {"phase_control": {"phase_rad": 20}},
-        {"phase_control": {"phase_rad": 0, "active_length_um": 201}},
+        {"port_order": []},
+        {"sweep_points": 10003},
+        {"circuit": {"instances": []}},
+        {"layout": {"placements": {"bad path": {}}}},
+        {
+            "layout": {
+                "placements": {},
+                "routes": {"top_arm": {"steps": [{"dx_um": 1, "dy_um": 1}]}},
+            }
+        },
+        {"measurements": [{"kind": "peaks", "input_port": "in0", "output_port": "out1"}]},
     ],
 )
-def test_generated_contract_rejects_invalid_structure(invalid):
+def test_generated_contract_rejects_invalid_structure(change):
     with pytest.raises(ValidationError):
-        design_spec.validate_python(invalid)
+        design_spec.validate_python({**design("mzi"), **change})
 
 
 def test_structure_is_not_semantic_verification():
     # Explicitly structural: odd-sample engineering policy is owned by TypeScript.
-    assert design_spec.validate_python({"sweep_points": 4}).sweep_points == 4
+    assert design_spec.validate_python({**design("mzi"), "sweep_points": 4}).sweep_points == 4
     with pytest.raises(ValidationError):
         Component(name="x", kind="waveguide", ports=[{"name": "p"}], length_um=-1)
 
@@ -51,60 +62,29 @@ def test_reserved_em_backend_fails_explicitly():
         dispatch({"operation": "fdtdx"})
 
 
-def test_generated_cascade_contract_round_trips_serialized_data():
-    source = (Path(__file__).resolve().parents[1] / "examples/cascaded_mzi_1550.json").read_text()
+@pytest.mark.parametrize("name", sorted(p.stem for p in (ROOT / "designs").glob("*.json")))
+def test_every_design_round_trips_through_the_generated_contract(name):
+    source = (ROOT / f"designs/{name}.json").read_text()
     parsed = design_spec.validate_json(source, strict=True)
-    assert parsed.device == "mzi_cascade"
-    assert len(parsed.stages) == 2
+    assert parsed.name == name
     assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
 
 
-@pytest.mark.parametrize("name", ["chain", "coupler"])
-def test_generated_generic_contract_round_trips(name):
-    source = (
-        Path(__file__).resolve().parents[1] / f"examples/generic_{name}_1550.json"
-    ).read_text()
-    parsed = design_spec.validate_json(source, strict=True)
-    assert parsed.device == "circuit"
-    assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
-    invalid = json.loads(source)
-    invalid["circuit"]["ports"]["invalid,name"] = next(iter(invalid["circuit"]["ports"].values()))
-    with pytest.raises(ValidationError):
-        design_spec.validate_python(invalid)
+def test_hierarchical_design_keeps_definitions_and_source_path_layout_keys():
+    parsed = design_spec.validate_python(design("mzi_cascade"))
+    assert parsed.circuit.top == "assembly"
+    assert {d.name for d in parsed.circuit.definitions} >= {"stage_first", "stage_second"}
+    assert "second/top_arm" in parsed.layout.routes
+    assert parsed.layout.placements["second/splitter"].anchor.instance == "first/combiner"
 
 
-def test_generated_phase_control_contract_preserves_units_and_values():
-    source = (Path(__file__).resolve().parents[1] / "examples/tunable_mzi_1550.json").read_text()
-    parsed = design_spec.validate_json(source, strict=True)
-    assert parsed.phase_control.phase_rad == pytest.approx(3.141592653589793)
-    assert parsed.phase_control.active_length_um == 100
-
-
-def test_generated_ring_contract_round_trip_and_sampling_range():
-    source = (Path(__file__).resolve().parents[1] / "examples/target_ring_1550.json").read_text()
-    parsed = design_spec.validate_json(source, strict=True)
-    assert parsed.device == "ring_add_drop"
-    assert parsed.coupling_ratios == (0.5, 0.5)
+def test_generated_layout_contract_preserves_steps_and_constraints():
+    parsed = design_spec.validate_python(design("ring_target"))
+    assert parsed.layout.routes["right_return"].steps[0].dx_um == 200
+    assert parsed.layout.placements["bottom_coupler"].rotation_deg == 180
+    assert parsed.layout.constraints[0].kind == "length_difference"
+    assert parsed.measurements[0].min_count == 2
     assert parsed.tuning.variables[0].instance_path == ["right_return"]
-    assert design_spec.validate_json(parsed.model_dump_json(), strict=True) == parsed
-    assert (
-        design_spec.validate_python({"device": "ring_add_drop", "sweep_points": 5001}).sweep_points
-        == 5001
-    )
-    with pytest.raises(ValidationError):
-        design_spec.validate_python({"device": "mzi", "sweep_points": 5001})
-
-
-@pytest.mark.parametrize(
-    "extra",
-    [
-        {"coupling_ratios": [0, 0.5]},
-        {"loop_height_um": 199},
-        {"side_extension_um": 501},
-        {"sweep_points": 10003},
-        {"gap_um": 0.2},
-    ],
-)
-def test_generated_ring_contract_rejects_unsupported_geometry_and_calibration(extra):
-    with pytest.raises(ValidationError):
-        design_spec.validate_python({"device": "ring_add_drop", **extra})
+    phase = design_spec.validate_python(design("mzi_tunable")).circuit.instances[2].phase_control
+    assert phase.phase_rad == pytest.approx(3.141592653589793)
+    assert phase.active_length_um == 100

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../src/compiler.js';
-import { CircuitHierarchySchema, type CircuitHierarchy } from '../src/contracts.js';
+import { CircuitHierarchySchema, CircuitSchema, type CircuitHierarchy } from '../src/contracts.js';
 import { flattenCircuit, HierarchyError, instanceName } from '../src/hierarchy.js';
+import { mziCircuit } from '../../designs/templates.js';
 
 const endpoint = (instance: string, port: string) => ({ instance, port });
 const edge = (a: string, ap: string, b: string, bp: string) => ({
@@ -10,7 +10,7 @@ const edge = (a: string, ap: string, b: string, bp: string) => ({
   b: endpoint(b, bp),
 });
 const sample = (): CircuitHierarchy => {
-  const mzi = compile({}).netlist;
+  const mzi = CircuitSchema.parse(mziCircuit(10));
   return CircuitHierarchySchema.parse({
     top: 'cascade',
     definitions: [
@@ -158,7 +158,7 @@ for (const [name, [code, mutate]] of Object.entries(mutations))
     );
   });
 test('hierarchy expansion has a finite primitive budget', () => {
-  const primitive = compile({}).netlist.instances[2];
+  const primitive = CircuitSchema.parse(mziCircuit(10)).instances[2];
   const definitions: CircuitHierarchy['definitions'] = [
     {
       name: 'level0',

@@ -30,35 +30,25 @@ jobs:
       - run: npm ci
       - run: uv sync --locked
       - run: npm run generate
-      - run: git diff --exit-code -- schemas src/agentpic/ir.py
+      - run: git diff --exit-code -- schemas src/agentpic/ir.py designs
       - run: npm run typecheck
       - run: npm run format:check
       - run: uv run ruff check src tests
       - run: uv run ruff format --check src tests
       - run: uv run pytest -q
       - run: npm test
-      - run: npm run acceptance -- --output runs/ci-acceptance
-      - run: npm run acceptance -- --specification examples/cascaded_mzi_1550.json --output runs/cascade-acceptance
-      - run: npm run acceptance -- --specification examples/tunable_cascade_1550.json --output runs/phase-acceptance
-      - run: npm run acceptance -- --specification examples/target_cascade_1550.json --output runs/target-acceptance
-      - run: npm run acceptance -- --specification examples/ring_1550.json --output runs/ring-acceptance
-      - run: npm run acceptance -- --specification examples/target_ring_1550.json --output runs/target-ring-acceptance
-      - run: npm run acceptance -- --specification examples/generic_chain_1550.json --output runs/generic-chain-acceptance
-      - run: npm run acceptance -- --specification examples/generic_coupler_1550.json --output runs/generic-coupler-acceptance
+      - name: Acceptance for every design
+        run: |
+          for design in designs/*.json; do
+            npm run acceptance -- --specification "$design" --output "runs/acceptance/$(basename "$design" .json)"
+          done
       - run: npm run benchmark:physics -- --output runs/physics-benchmarks
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: engineering-evidence-python-${{ matrix.python }}
           path: |
-            runs/ci-acceptance/
-            runs/cascade-acceptance/
-            runs/phase-acceptance/
-            runs/target-acceptance/
-            runs/ring-acceptance/
-            runs/target-ring-acceptance/
-            runs/generic-chain-acceptance/
-            runs/generic-coupler-acceptance/
+            runs/acceptance/
             runs/physics-benchmarks/
             /tmp/agentpic-*/
           if-no-files-found: ignore

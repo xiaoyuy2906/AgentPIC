@@ -1,5 +1,4 @@
 import { readFile, stat, realpath, readdir } from 'node:fs/promises';
-import { genericLayoutChecks } from './generic.js';
 import path from 'node:path';
 import {
   check,
@@ -11,8 +10,8 @@ import {
   compile,
   backannotate,
 } from './compiler.js';
+import { pathIndex } from './design.js';
 import { applyOperatingPoint, resolveVariables } from './tuning.js';
-import { ringPhysicalChecks } from './cells/ring.js';
 import { verifyTuning } from './tuning-verification.js';
 import {
   EngineeringIRSchema,
@@ -97,41 +96,13 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
       .filter((i) => i.kind !== 'ideal_coupler')
       .map((i) => Math.abs(lengths[i.name] - (i.length_um ?? NaN))),
   );
-  const targets = ir.assembly?.blocks.map((block) => ({
-    name: block.name,
-    top: block.primitives.top_arm,
-    bottom: block.primitives.bottom_arm,
-    delta: block.delta_length_um,
-  })) ?? [
-    {
-      name: 'mzi',
-      top: 'top_arm',
-      bottom: 'bottom_arm',
-      delta: ir.specification.device === 'mzi' ? ir.specification.delta_length_um : NaN,
-    },
-  ];
-  const deltaErrors = Object.fromEntries(
-    targets.map((t) => [t.name, Math.abs(lengths[t.top] - lengths[t.bottom] - t.delta)]),
-  );
-  const deltaError = Math.max(...Object.values(deltaErrors));
-  const linkError = ir.assembly
-    ? Math.max(
-        ...ir.assembly.links.map((link) =>
-          Math.abs(lengths[link.instance] - ir.assembly!.link_length_um),
-        ),
-      )
-    : 0;
+  const index = pathIndex(ir);
+  const length = (p: string) => lengths[index.get(p) ?? ''] ?? NaN;
+  const constraints = (ir.specification.layout?.constraints ?? []).map((c) => {
+    const actual = c.kind === 'length' ? length(c.instance) : length(c.a) - length(c.b);
+    return { ...c, actual_um: actual, error_um: Math.abs(actual - c.value_um) };
+  });
   return [
-    ...(ir.assembly
-      ? [
-          check(
-            'requested_interconnect_lengths',
-            linkError <= 0.001,
-            'Every connecting waveguide matches the requested physical length.',
-            { maximum_error_um: linkError },
-          ),
-        ]
-      : []),
     check(
       'layout_netlist_agreement',
       graphOK,
@@ -149,18 +120,33 @@ function physicalChecks(ir: EngineeringIR, layout: LayoutResult): CheckResult[] 
       'Independent centerline sums match simulation lengths.',
       { maximum_error_um: lengthError },
     ),
-    ...(ir.specification.device === 'ring_add_drop'
-      ? ringPhysicalChecks(ir, layout)
-      : [
+    ...(constraints.length
+      ? [
           check(
-            'requested_path_imbalance',
-            deltaError <= 0.002,
-            'Physical arm imbalance matches the specification.',
-            { error_um: deltaError, stage_errors_um: deltaErrors },
+            'layout_constraints',
+            constraints.every((c) => c.error_um <= c.tolerance_um),
+            'Measured path lengths satisfy every declared layout constraint.',
+            { constraints },
           ),
-        ]),
+        ]
+      : []),
   ];
 }
+export const layoutNotRunChecks = (): CheckResult[] => [
+  {
+    id: 'layout_generation',
+    status: 'not_run',
+    detail: 'No layout plan was executed, so no GDS was generated.',
+    evidence: {},
+  },
+  {
+    id: 'layout_verification',
+    status: 'not_run',
+    detail:
+      'No physical layout, extracted connectivity, DRC or measured path lengths are available.',
+    evidence: {},
+  },
+];
 export function report(designID: string, checks: CheckResult[]): VerificationReport {
   for (const [id, detail] of [
     ['electromagnetic_calibration', 'No electromagnetic solver or model calibration executed.'],
@@ -229,10 +215,8 @@ export async function verifyArtifacts(
           canonical(await readJSON(path.join(directory, 'hierarchy.json'))) ===
             canonical(ir.hierarchy) &&
             canonical(await readJSON(path.join(directory, 'instance-paths.json'))) ===
-              canonical(ir.instance_paths) &&
-            canonical(await readJSON(path.join(directory, 'assembly.json'))) ===
-              canonical(ir.assembly),
-          'Exported hierarchy, primitive source paths and assembly plan match the resolved engineering IR.',
+              canonical(ir.instance_paths),
+          'Exported hierarchy and primitive source paths match the resolved engineering IR.',
         ),
       );
     const simulation = SimulationResultSchema.parse(
@@ -245,49 +229,40 @@ export async function verifyArtifacts(
         'Exported netlist equals resolved IR.',
       ),
     );
-    if (ir.specification.device === 'circuit') {
-      const compiled = compile(ir.specification);
+    // Every derived workflow state must be rebuildable from the submitted design.
+    const compiled = compile(ir.specification);
+    const layout = ir.specification.layout
+      ? LayoutResultSchema.parse(await readJSON(path.join(directory, 'layout.json')))
+      : null;
+    const expected = layout ? backannotate(compiled, layout) : compiled;
+    const before = ir.specification.tuning
+      ? EngineeringIRSchema.parse(await readJSON(path.join(directory, 'pre-tuning-ir.json')))
+      : null;
+    checks.push(
+      check(
+        'workflow_state_consistency',
+        canonical(await readJSON(path.join(directory, 'specification.json'))) ===
+          canonical(ir.specification) &&
+          canonical(await readJSON(path.join(directory, 'compiled_ir.json'))) ===
+            canonical(compiled) &&
+          canonical(before ?? ir) === canonical(expected),
+        'Specification, compiled IR, measured pre-tuning state and final IR are rebuilt from the submitted design.',
+      ),
+    );
+    if (layout) checks.push(...physicalChecks(ir, layout));
+    else
       checks.push(
         check(
-          'generic_artifact_consistency',
-          canonical(await readJSON(path.join(directory, 'specification.json'))) ===
-            canonical(ir.specification) &&
-            canonical(await readJSON(path.join(directory, 'compiled_ir.json'))) ===
-              canonical(compiled) &&
-            canonical(ir) === canonical(compiled),
-          'Generic source specification, compiled IR and simulation IR agree without backannotation.',
-        ),
-        check(
-          'generic_layout_boundary',
+          'layout_boundary',
           !(await readdir(directory)).some(
             (name) => name.endsWith('.gds') || name === 'layout.json',
           ),
-          'Simulation-only workflow exports no unsupported physical artifacts.',
+          'A design without a layout plan exports no physical artifacts.',
         ),
-        ...genericLayoutChecks(),
-        ...(await backend.verifySimulation(ir, simulation)),
+        ...layoutNotRunChecks(),
       );
-      return report(id, checks);
-    }
-    const layout = LayoutResultSchema.parse(await readJSON(path.join(directory, 'layout.json')));
-    checks.push(...physicalChecks(ir, layout));
-    if (ir.specification.tuning) {
-      const before = EngineeringIRSchema.parse(
-        await readJSON(path.join(directory, 'pre-tuning-ir.json')),
-      );
+    if (before) {
       const tuning = TuningResultSchema.parse(await readJSON(path.join(directory, 'tuning.json')));
-      const compiled = compile(ir.specification);
-      checks.push(
-        check(
-          'tuning_source_intent',
-          canonical(await readJSON(path.join(directory, 'specification.json'))) ===
-            canonical(ir.specification) &&
-            canonical(await readJSON(path.join(directory, 'compiled_ir.json'))) ===
-              canonical(compiled) &&
-            canonical(before) === canonical(backannotate(compiled, layout)),
-          'Original specification, compiled IR and measured pre-tuning state remain consistent.',
-        ),
-      );
       checks.push(...verifyTuning(ir, before, tuning, simulation));
       checks.push(
         ...(backend.verifyTuning
@@ -297,7 +272,7 @@ export async function verifyArtifacts(
     }
     const [optical, geometry] = await Promise.all([
       backend.verifySimulation(ir, simulation),
-      backend.verifyGeometry(ir, layout, directory),
+      layout ? backend.verifyGeometry(ir, layout, directory) : [],
     ]);
     checks.push(...optical, ...geometry);
   } catch (error) {
@@ -328,7 +303,7 @@ export async function simulateCircuit(
     simulation,
     verification: report(ir.design_id, [
       ...semanticChecks(ir),
-      ...(ir.specification.device === 'circuit' ? genericLayoutChecks() : []),
+      ...layoutNotRunChecks(),
       ...(await backend.verifySimulation(ir, simulation)),
       ...(tuning ? verifyTuning(ir, before, tuning, simulation) : []),
       ...(tuning

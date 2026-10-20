@@ -1,0 +1,187 @@
+{
+  "name": "ring",
+  "wavelength_nm": 1550,
+  "sweep_span_nm": 4,
+  "sweep_points": 1001,
+  "circuit": {
+    "instances": [
+      {
+        "name": "top_coupler",
+        "kind": "ideal_coupler",
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          },
+          {
+            "name": "o3"
+          },
+          {
+            "name": "o4"
+          }
+        ],
+        "coupling_ratio": 0.5
+      },
+      {
+        "name": "bottom_coupler",
+        "kind": "ideal_coupler",
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          },
+          {
+            "name": "o3"
+          },
+          {
+            "name": "o4"
+          }
+        ],
+        "coupling_ratio": 0.5
+      },
+      {
+        "name": "right_return",
+        "kind": "waveguide",
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          }
+        ],
+        "length_um": 654.5796326794897,
+        "phase_control": null
+      },
+      {
+        "name": "left_return",
+        "kind": "waveguide",
+        "ports": [
+          {
+            "name": "o1"
+          },
+          {
+            "name": "o2"
+          }
+        ],
+        "length_um": 654.5796326794897
+      }
+    ],
+    "connections": [
+      {
+        "a": {
+          "instance": "top_coupler",
+          "port": "o4"
+        },
+        "b": {
+          "instance": "right_return",
+          "port": "o1"
+        }
+      },
+      {
+        "a": {
+          "instance": "right_return",
+          "port": "o2"
+        },
+        "b": {
+          "instance": "bottom_coupler",
+          "port": "o1"
+        }
+      },
+      {
+        "a": {
+          "instance": "bottom_coupler",
+          "port": "o4"
+        },
+        "b": {
+          "instance": "left_return",
+          "port": "o1"
+        }
+      },
+      {
+        "a": {
+          "instance": "left_return",
+          "port": "o2"
+        },
+        "b": {
+          "instance": "top_coupler",
+          "port": "o1"
+        }
+      }
+    ],
+    "ports": {
+      "in0": {
+        "instance": "top_coupler",
+        "port": "o2"
+      },
+      "in1": {
+        "instance": "bottom_coupler",
+        "port": "o2"
+      },
+      "out0": {
+        "instance": "top_coupler",
+        "port": "o3"
+      },
+      "out1": {
+        "instance": "bottom_coupler",
+        "port": "o3"
+      }
+    }
+  },
+  "port_order": [
+    "in0",
+    "in1",
+    "out0",
+    "out1"
+  ],
+  "layout": {
+    "placements": {
+      "top_coupler": {
+        "x_um": 0,
+        "y_um": 300
+      },
+      "bottom_coupler": {
+        "x_um": 40,
+        "y_um": 0,
+        "rotation_deg": 180
+      }
+    },
+    "routes": {
+      "right_return": {
+        "steps": [
+          {
+            "dx_um": 200
+          }
+        ]
+      },
+      "left_return": {
+        "steps": [
+          {
+            "dx_um": -200
+          }
+        ]
+      }
+    },
+    "constraints": [
+      {
+        "kind": "length_difference",
+        "a": "right_return",
+        "b": "left_return",
+        "value_um": 0
+      }
+    ]
+  },
+  "tuning": null,
+  "measurements": [
+    {
+      "kind": "resonances",
+      "input_port": "in0",
+      "output_port": "out1",
+      "min_count": 2
+    }
+  ]
+}

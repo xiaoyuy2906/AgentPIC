@@ -11,22 +11,19 @@ import { PythonBackend, projectRoot, pythonRequest } from '../src/backends.js';
 import { verifyArtifacts, simulateCircuit, readJSON } from '../src/verification.js';
 import { createAPI } from '../src/api.js';
 import type { RunResult } from '../src/contracts.js';
-const spec = {
-  device: 'mzi',
-  platform: 'sin',
-  wavelength_nm: 1550,
-  outputs: ['netlist', 'simulation', 'gds', 'verification'],
-};
+import { designs } from '../../designs/templates.js';
+import { power } from './helpers.js';
+const spec = designs.mzi;
 const root = await mkdtemp(path.join(tmpdir(), 'agentpic-ts-'));
 const runtime = new Runtime(root);
 let run: RunResult;
 
-test('MZI specification → TS IR → semantic validation → JSON → Python SAX → result', async () => {
+test('design → TS IR → semantic validation → JSON → Python SAX → result', async () => {
   const ir = JSON.parse(canonical(compile(spec)));
   const result = await simulateCircuit(ir);
   assert.equal(result.verification.status, 'passed_with_limitations');
   assert.equal(result.ir.length_source, 'specification');
-  const t = result.simulation.transmission_out0![100];
+  const t = power(result.simulation, 'out0', 'in0', 100);
   assert.ok(Math.abs(t - Math.sin((Math.PI * 1.8 * 10) / 1.55) ** 2) < 1e-9);
   assert.ok(!('sax_netlist' in result.simulation));
 });
@@ -50,15 +47,9 @@ test('full TS runtime creates real GDS and passes independent checks', async () 
   const report = await runtime.verifyRun(run.run_id);
   assert.equal(report.status, 'passed_with_limitations');
   assert.equal(report.checks.filter((c) => c.status === 'not_run').length, 3);
-  assert.ok(report.checks.filter((c) => c.status === 'pass').length >= 27);
+  assert.ok(report.checks.filter((c) => c.status === 'pass').length >= 33);
   const data = await readFile(await runtime.artifactPath(run.run_id, 'design.gds'));
   assert.equal(data.subarray(0, 4).toString('hex'), '00060002');
-  const layout = (await readJSON(path.join(run.artifact_directory, 'layout.json'))) as {
-    delta_length_um: number;
-    extracted_circuit: unknown;
-  };
-  assert.ok(Math.abs(layout.delta_length_um - 10) < 0.002);
-  assert.ok(layout.extracted_circuit);
   const provenance = (await readJSON(path.join(run.artifact_directory, 'provenance.json'))) as {
     core: string;
     schema_sha256: string;

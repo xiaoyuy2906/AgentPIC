@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Route",
+  "$defs": {
+    "Route": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "default": [],
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteStep"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteStep": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "dx_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "dx_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dy_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "dy_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "y_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "y_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x_from_end_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_from_end_um"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "y_from_end_um": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "y_from_end_um"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

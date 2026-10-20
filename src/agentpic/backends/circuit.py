@@ -80,12 +80,7 @@ def build_circuit(ir: EngineeringIR):
             "phase_shifter": phase_shifter,
         },
     )
-    ports = (
-        ir.specification.port_order
-        if ir.specification.device == "circuit"
-        else list(netlist["ports"])
-    )
-    return model, ports
+    return model, list(ir.specification.port_order)
 
 
 def simulate(ir: EngineeringIR) -> dict:
@@ -101,19 +96,12 @@ def simulate(ir: EngineeringIR) -> dict:
     for (output_port, input_port), value in scattering.items():
         matrix[:, ports.index(output_port), ports.index(input_port)] = np.asarray(value)
     return {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "backend": "sax",
         "model_version": ir.technology.model_version,
         "wavelength_nm": wavelengths.tolist(),
         "ports": ports,
         "s_real": matrix.real.tolist(),
         "s_imag": matrix.imag.tolist(),
-        "input_port": None if spec.device == "circuit" else "in0",
-        "transmission_out0": None
-        if spec.device == "circuit"
-        else (np.abs(matrix[:, ports.index("out0"), ports.index("in0")]) ** 2).tolist(),
-        "transmission_out1": None
-        if spec.device == "circuit"
-        else (np.abs(matrix[:, ports.index("out1"), ports.index("in0")]) ** 2).tolist(),
         "physical_calibration": "not_performed",
     }
