@@ -149,9 +149,16 @@ export const RouteStepSchema = z
     z.strictObject({ y_from_end_um: z.number() }),
   ])
   .meta({ id: 'RouteStep' });
+// Without steps, GDSFactory's Manhattan router chooses the path between the two ports.
 export const RouteSchema = z
   .strictObject({ steps: z.array(RouteStepSchema).max(16).default([]) })
   .meta({ id: 'Route' });
+export const BundleSchema = z
+  .strictObject({
+    routes: z.array(instancePath).min(2).max(32),
+    separation_um: positive().default(5),
+  })
+  .meta({ id: 'Bundle' });
 export const LayoutConstraintSchema = z
   .discriminatedUnion('kind', [
     z.strictObject({
@@ -173,6 +180,8 @@ export const LayoutPlanSchema = z
   .strictObject({
     placements: z.record(instancePath, PlacementSchema),
     routes: z.record(instancePath, RouteSchema).default({}),
+    // Bundled routes are routed together with a common edge-to-edge separation.
+    bundles: z.array(BundleSchema).max(16).default([]),
     constraints: z.array(LayoutConstraintSchema).max(64).default([]),
   })
   .meta({ id: 'LayoutPlan' });
@@ -276,6 +285,7 @@ export const LayoutResultSchema = z
     extracted_circuit: CircuitSchema,
     bend_radius_um: positive(),
     actuators: record(ActuatorLayoutSchema).default({}),
+    routers: record(z.enum(['steps', 'auto', 'bundle'])).default({}),
   })
   .meta({ id: 'LayoutResult' });
 export const SimulationResultSchema = z
@@ -363,6 +373,7 @@ export const Contracts = {
   Placement: PlacementSchema,
   RouteStep: RouteStepSchema,
   Route: RouteSchema,
+  Bundle: BundleSchema,
   LayoutConstraint: LayoutConstraintSchema,
   LayoutPlan: LayoutPlanSchema,
   Measurement: MeasurementSchema,

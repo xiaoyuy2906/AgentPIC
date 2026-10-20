@@ -1950,6 +1950,14 @@
               "$ref": "#/components/schemas/Route"
             }
           },
+          "bundles": {
+            "default": [],
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bundle"
+            }
+          },
           "constraints": {
             "default": [],
             "maxItems": 64,
@@ -2126,6 +2134,29 @@
             "additionalProperties": false
           }
         ]
+      },
+      "Bundle": {
+        "type": "object",
+        "properties": {
+          "routes": {
+            "minItems": 2,
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+            }
+          },
+          "separation_um": {
+            "default": 5,
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "routes"
+        ],
+        "additionalProperties": false
       },
       "LayoutConstraint": {
         "oneOf": [
@@ -2722,6 +2753,21 @@
             },
             "additionalProperties": {
               "$ref": "#/components/schemas/ActuatorLayout"
+            }
+          },
+          "routers": {
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "steps",
+                "auto",
+                "bundle"
+              ]
             }
           }
         },

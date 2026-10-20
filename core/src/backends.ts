@@ -121,8 +121,9 @@ export const capabilities = () => ({
   layout: {
     backend: 'gdsfactory',
     placement: 'explicit absolute or port-anchored',
-    routing: 'explicit Manhattan steps with automatic final corner and circular bends',
-    automatic_routing: 'not_implemented',
+    routing: 'declared Manhattan steps, automatic single routes and separated bundles',
+    lvs: 'pin-coincidence extraction, pin geometry and waveguide-crossing checks',
+    automatic_placement: 'not_implemented',
   },
   hierarchy: { compilation: 'implemented', layout_by_source_path: 'implemented' },
   phase_control: {

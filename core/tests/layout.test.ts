@@ -217,3 +217,77 @@ test('a design without a layout plan exports no GDS and reports layout as not_ru
     /no layout plan/,
   );
 });
+
+test('a route without steps is found by the automatic router and backannotated', async () => {
+  const { run, report } = await completed(designs.waveguide_chain);
+  const layout = await json(path.join(run.artifact_directory, 'layout.json'));
+  assert.deepEqual(layout.routers, { second: 'auto' });
+  assert.ok(layout.lengths_um.second > 300, 'an S-route is longer than the 35.5 µm nominal');
+  const ir = await json(path.join(run.artifact_directory, 'engineering_ir.json'));
+  assert.equal(
+    ir.netlist.instances.find((i: { name: string }) => i.name === 'second').length_um,
+    layout.lengths_um.second,
+  );
+  for (const id of ['lvs_connectivity', 'lvs_pin_geometry', 'waveguide_crossings'])
+    assert.equal(checked(report, id)?.status, 'pass', id);
+});
+test('bundled routes keep their separation and pass spacing, LVS and crossing checks', async () => {
+  const { run, report } = await completed(designs.mzi_cascade_offset);
+  runs.offset = run;
+  const layout = await json(path.join(run.artifact_directory, 'layout.json'));
+  const links = Object.keys(layout.routers).filter((n) => layout.routers[n] === 'bundle');
+  assert.equal(links.length, 2);
+  const [a, b] = links.map((n) => layout.centerlines_um[n] as [number, number][]);
+  const gap = Math.min(
+    ...a.map((p) => Math.min(...b.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1])))),
+  );
+  assert.ok(gap >= 2.5 - 1e-6, `bundle centrelines ${gap} µm apart`);
+  for (const id of ['demo_minimum_spacing', 'lvs_connectivity', 'waveguide_crossings'])
+    assert.equal(checked(report, id)?.status, 'pass', id);
+});
+test('independent LVS reports opens, shorts and pins without geometry', async () => {
+  const faults: Record<string, [(l: any) => void, string, string]> = {
+    open: [
+      (l) => (l.ports.combiner.o1.center_um[1] += 5),
+      'lvs_connectivity',
+      'missing_connections',
+    ],
+    short: [
+      (l) => (l.ports.splitter.o2.center_um = [...l.ports.splitter.o1.center_um]),
+      'lvs_connectivity',
+      'ambiguous_pin_groups',
+    ],
+    floating: [
+      (l) => (l.ports.combiner.o3.center_um[0] += 40),
+      'lvs_pin_geometry',
+      'pins_without_geometry',
+    ],
+  };
+  for (const [fault, [edit, id, evidence]] of Object.entries(faults)) {
+    const dir = path.join(root, `lvs-${fault}`);
+    await corruptCopy(runs.mzi.artifact_directory, dir, 'layout.json', edit);
+    const lvs = checked(await verifyArtifacts(dir), id)!;
+    assert.equal(lvs.status, 'fail', fault);
+    assert.ok((lvs.evidence[evidence] as unknown[]).length > 0, `${fault}: ${evidence}`);
+  }
+});
+test('a crossing waveguide fails even though connectivity-based checks cannot see it', async () => {
+  const crossing = structuredClone(designs.mzi) as any;
+  crossing.layout.routes.top_arm.steps = [{ dx_um: 200 }, { dy_um: -300 }, { x_from_end_um: -100 }];
+  crossing.layout.constraints = [];
+  const run = await runtime.run(crossing);
+  assert.equal(run.status, 'failed');
+  const report = await runtime.verifyRun(run.run_id);
+  const found = checked(report, 'waveguide_crossings')!;
+  assert.equal(found.status, 'fail');
+  assert.deepEqual(
+    [
+      ...new Set(
+        (found.evidence.crossings as { a: string; b: string }[]).map((c) => c.a + '/' + c.b),
+      ),
+    ],
+    ['bottom_arm/top_arm'],
+  );
+  for (const id of ['layout_netlist_agreement', 'lvs_connectivity', 'gds_connected_core'])
+    assert.equal(checked(report, id)?.status, 'pass', id);
+});

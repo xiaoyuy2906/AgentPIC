@@ -79,9 +79,19 @@
     "ReceiveA",
     "LaunchB"
   ],
-  "outputs": [
-    "netlist",
-    "simulation",
-    "verification"
-  ]
+  "layout": {
+    "placements": {
+      "first": {
+        "x_um": 0,
+        "y_um": 0
+      },
+      "third": {
+        "x_um": 300,
+        "y_um": 150
+      }
+    },
+    "routes": {
+      "second": {}
+    }
+  }
 }

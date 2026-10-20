@@ -114,6 +114,16 @@ function layoutPlan(ir: EngineeringIR): CheckResult[] {
       seen.add(n);
     }
   }
+  const bundled = new Set<string>();
+  for (const bundle of plan.bundles)
+    for (const path of bundle.routes) {
+      const name = index.get(path);
+      if (!name || !routed.has(name)) problems.push(`bundle member ${path} must be routed`);
+      else if (plan.routes[path].steps.length)
+        problems.push(`bundle member ${path} must not declare steps`);
+      if (name && bundled.has(name)) problems.push(`${path} belongs to more than one bundle`);
+      if (name) bundled.add(name);
+    }
   for (const c of plan.constraints)
     for (const path of c.kind === 'length' ? [c.instance] : [c.a, c.b]) {
       const name = index.get(path);
@@ -124,7 +134,7 @@ function layoutPlan(ir: EngineeringIR): CheckResult[] {
     check(
       'layout_plan',
       problems.length === 0,
-      'Every instance is placed or routed once; routes join placed ports; anchors and constraints resolve.',
+      'Every instance is placed or routed once; routes join placed ports; anchors, bundles and constraints resolve.',
       { problems },
     ),
   ];

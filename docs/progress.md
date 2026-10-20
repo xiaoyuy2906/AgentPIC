@@ -1,6 +1,12 @@
 # Persistent development progress
 
-## Freeze rule: designs are data (2026-10-20)
+## Generic place and route with independent LVS (2026-10-20)
+
+Routes without steps are now found by GDSFactory's `route_single`; routes listed in a `bundle` are routed together by `route_bundle` with a common separation. The routers only propose Manhattan backbones in a scratch cell. One validator, one circular-bend smoother and one extruder handle every path, so measured lengths and bend radii come from the same representation whatever produced the route. `layout.json` records the router of each path.
+
+`src/agentpic/lvs.py` adds layout-versus-schematic checks independent of the builder: connectivity re-extracted from coincident physical pins (reporting opens, shorts and ambiguous pins), pins backed by real GDS geometry, and no waveguide crossing another waveguide or a coupler body. A deliberately crossing MZI arm now fails `waveguide_crossings` while every connectivity-based check still passes. `waveguide_chain` gained a layout with an auto-routed S-shaped middle waveguide (measured 395.829 µm against 35.5 µm nominal); the new `mzi_cascade_offset` design shifts its second stage by 300 µm and bundles both links.
+
+## Freeze rule: designs are data (2026-10-20, earlier)
 
 Every device recipe was removed from the engine (ADR-007). `DesignSpec` 3.0 is one generic contract: a flat or hierarchical circuit, an explicit `port_order`, and optional layout plan, tuning and spectral measurements. The 38 device-specific branches in the compiler, layout, simulation, verification and runtime are gone, together with `cells/mzi.ts`, `cells/ring.ts`, `cascade.ts` and `generic.ts`. `core/tests/architecture.test.ts` fails if engine code names a device family, instance or port, or imports `designs/`.
 

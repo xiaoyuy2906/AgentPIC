@@ -36,12 +36,14 @@ npm run acceptance -- --specification designs/mzi_cascade_target.json --output r
 | `mzi`, `mzi_tunable`, `mzi_target` | Arm imbalance, phase-shifter metal and terminals, target-driven phase search |
 | `mzi_cascade`, `mzi_cascade_tunable`, `mzi_cascade_target` | Module hierarchy, port-anchored placement, multi-variable tuning |
 | `ring`, `ring_target` | Feedback topology, resonance measurement, aligning a drop resonance to 1550 nm |
-| `waveguide_chain`, `coupler` | Arbitrary port names and order, simulation without layout |
+| `mzi_cascade_offset` | Offset stages whose links are auto-routed together as a bundle |
+| `waveguide_chain` | Arbitrary port names and order, an automatically routed S-shaped waveguide |
+| `coupler` | Simulation without any layout plan |
 
 A design contains:
 
 - `circuit`: a flat netlist or a module hierarchy of primitives, plus `port_order` for the S-matrix.
-- `layout` (optional): `placements` (absolute or anchored to another instance's port), `routes` (Manhattan steps; the engine adds the final corner and PDK-radius bends) and `constraints` on measured lengths. Without it, layout checks report `not_run`.
+- `layout` (optional): `placements` (absolute or anchored to another instance's port), `routes` (declared Manhattan steps, or none to let GDSFactory's router choose), `bundles` of routes kept at a common separation, and `constraints` on measured lengths. Without it, layout checks report `not_run`.
 - `tuning` (optional): power targets over phase-shifter variables, solved by bounded SciPy search.
 - `measurements` (optional): spectral features such as complete resonances between two ports.
 
@@ -67,7 +69,7 @@ Invalid structure or semantics return 422 with the failing checks; a completed t
 
 ## Verification and its limits
 
-TypeScript checks references, port occupancy and compatibility, topology, the layout plan, extracted connectivity, port alignment, measured lengths and layout constraints. Python checks the full SAX matrix against independent dense network elimination, spectral sampling adequacy, reciprocity, passivity and lossless power balance, then reopens the GDS with KLayout for connectivity, width, spacing, bend radius and metal geometry.
+TypeScript checks references, port occupancy and compatibility, topology, the layout plan, extracted connectivity, port alignment, measured lengths and layout constraints. Python checks the full SAX matrix against independent dense network elimination, spectral sampling adequacy, reciprocity, passivity and lossless power balance, then reopens the GDS with KLayout for connectivity, width, spacing, bend radius and metal geometry, and runs pin-based LVS: connectivity re-extracted from physical pins, pins backed by real geometry, and no crossing waveguides.
 
 These checks verify the solver, the netlist and the geometry against the **stated ideal models**. `sin_demo_v1` assumes neff = 1.8 and ng = 1.9 at 1550 nm, ideal couplers and zero loss; these are not derived from a mode solver or a measured stack. Electromagnetic calibration, measurement validation and foundry signoff are always reported `not_run`, and controlled designs also report electrical-to-phase calibration as `not_run`. See [models and verification](docs/models-and-verification.md).
 

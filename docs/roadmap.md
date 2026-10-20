@@ -52,7 +52,7 @@ Verification is layered: circuit references and port topology; model validity an
 Agreed order (2026-10-20), each landing as one reviewed commit:
 
 1. **Freeze device code** (done): designs are data; engine code never names a device (ADR-007).
-2. **Generic place and route**: automatic routing when a design gives no steps, explicit layout-versus-schematic comparison of the extracted netlist, and length backannotation for any circuit.
+2. **Generic place and route** (done): automatic single and bundled routing, independent pin-based LVS with crossing detection, and length backannotation for any circuit. Automatic placement remains future work.
 3. **PDK as data**: each component declares ports, layout cell, compact model, validity range and source. Neither cspdk 2.1.0 nor ubcpdk 1.3.4 ships calibrated compact models (both use fixed placeholder indices), so they are not adopted as model sources.
 4. **Physics verification ladder**: FDTDX (3D FDTD, MIT) characterizes neff/ng from the PDK cross-section by time-domain propagation, checked by grid convergence and the existing analytic slab reference. AgentPIC code never calls tidy3d, which FDTDX installs as a dependency.
 5. **Capability registry as code**: implemented/partial/missing with evidence (test names) and limitations; the README table is generated from it.

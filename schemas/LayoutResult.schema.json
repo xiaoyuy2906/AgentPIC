@@ -98,6 +98,21 @@
           "additionalProperties": {
             "$ref": "#/$defs/ActuatorLayout"
           }
+        },
+        "routers": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "steps",
+              "auto",
+              "bundle"
+            ]
+          }
         }
       },
       "required": [

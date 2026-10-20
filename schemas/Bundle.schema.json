@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Bundle",
+  "$defs": {
+    "Bundle": {
+      "type": "object",
+      "properties": {
+        "routes": {
+          "minItems": 2,
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$"
+          }
+        },
+        "separation_um": {
+          "default": 5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "routes"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

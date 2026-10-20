@@ -13,6 +13,7 @@ import numpy as np
 
 from agentpic.circuit_reference import circuit_reference
 from agentpic.ir import CheckResult, EngineeringIR
+from agentpic.lvs import verify_lvs
 from agentpic.spectral import sampling_adequacy, verify_measurements
 
 LIMITATIONS = [
@@ -174,47 +175,51 @@ def verify_geometry(ir: EngineeringIR, metadata: dict, gds_path: Path) -> list[C
             minimum_radius = min(
                 minimum_radius, float(np.min(numerator[curved] / (2 * cross[curved])))
             )
-    return verify_actuators(ir, metadata, layout, top, region) + [
-        _check(
-            "gds_readback",
-            not region.is_empty() and top.name == metadata["top_cell"],
-            "Independent KLayout reader opens the exported GDS and finds its core geometry.",
-            area_um2=float(region.area() * layout.dbu**2),
-            dbu_um=layout.dbu,
-        ),
-        _check(
-            "gds_connected_core",
-            connected_regions == 1,
-            "Merged core geometry forms one connected PIC region.",
-            regions=connected_regions,
-        ),
-        _check(
-            "demo_minimum_width",
-            width_errors == 0,
-            "KLayout width check against the explicit demonstration rule.",
-            threshold_um=tech.minimum_width_um,
-            violations=width_errors,
-        ),
-        _check(
-            "demo_minimum_spacing",
-            spacing_errors == 0,
-            "KLayout spacing check against the explicit demonstration rule.",
-            threshold_um=tech.minimum_spacing_um,
-            violations=spacing_errors,
-        ),
-        _check(
-            "gds_contains_waveguide_centerlines",
-            corridor_missing_area < 1e-6,
-            "Every waveguide centerline corridor is contained in the exported GDS core.",
-            missing_area_um2=corridor_missing_area,
-        ),
-        _check(
-            "demo_bend_radius",
-            minimum_radius >= tech.bend_radius_um - 0.01,
-            "Centerline circumradii meet the demonstration bend-radius rule; straight-only layouts have no bends.",
-            minimum_radius_um=minimum_radius if np.isfinite(minimum_radius) else None,
-        ),
-    ]
+    return (
+        verify_lvs(ir, metadata, layout, top, region)
+        + verify_actuators(ir, metadata, layout, top, region)
+        + [
+            _check(
+                "gds_readback",
+                not region.is_empty() and top.name == metadata["top_cell"],
+                "Independent KLayout reader opens the exported GDS and finds its core geometry.",
+                area_um2=float(region.area() * layout.dbu**2),
+                dbu_um=layout.dbu,
+            ),
+            _check(
+                "gds_connected_core",
+                connected_regions == 1,
+                "Merged core geometry forms one connected PIC region.",
+                regions=connected_regions,
+            ),
+            _check(
+                "demo_minimum_width",
+                width_errors == 0,
+                "KLayout width check against the explicit demonstration rule.",
+                threshold_um=tech.minimum_width_um,
+                violations=width_errors,
+            ),
+            _check(
+                "demo_minimum_spacing",
+                spacing_errors == 0,
+                "KLayout spacing check against the explicit demonstration rule.",
+                threshold_um=tech.minimum_spacing_um,
+                violations=spacing_errors,
+            ),
+            _check(
+                "gds_contains_waveguide_centerlines",
+                corridor_missing_area < 1e-6,
+                "Every waveguide centerline corridor is contained in the exported GDS core.",
+                missing_area_um2=corridor_missing_area,
+            ),
+            _check(
+                "demo_bend_radius",
+                minimum_radius >= tech.bend_radius_um - 0.01,
+                "Centerline circumradii meet the demonstration bend-radius rule; straight-only layouts have no bends.",
+                minimum_radius_um=minimum_radius if np.isfinite(minimum_radius) else None,
+            ),
+        ]
+    )
 
 
 def verify_actuators(ir, metadata, layout, top, core):

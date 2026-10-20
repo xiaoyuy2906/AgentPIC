@@ -1,9 +1,10 @@
-"""Generic GDSFactory layout: place cells, route waveguides along Manhattan steps, extract.
+"""Generic GDSFactory layout: place cells, route waveguides, extract connectivity.
 
 The engine knows primitive kinds and the demonstration PDK cells, never device families.
 Placements are absolute or anchored to another instance's port. A routed waveguide joins
-the two placed ports it connects to; its path follows the declared steps, gains at most one
-final corner to reach the end port and is smoothed with circular bends of the PDK radius.
+the two placed ports it connects to. Its Manhattan backbone comes from declared steps (plus at
+most one final corner), from GDSFactory's single-route router, or from its bundle router; the
+backbone is then smoothed with circular bends of the PDK radius.
 """
 
 from pathlib import Path
@@ -34,7 +35,7 @@ def longest_segment(points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 def manhattan_points(start, start_orientation, end, end_orientation, steps, radius) -> np.ndarray:
-    """Polyline from start through the steps to end, adding at most one final corner."""
+    """Polyline from start through the declared steps to end, adding at most one final corner."""
     start, end = np.asarray(start, float), np.asarray(end, float)
     points = [start]
     for step in steps:
@@ -60,9 +61,13 @@ def manhattan_points(start, start_orientation, end, end_orientation, steps, radi
     elif abs(arrival[1]) > 0.5 and abs(last[0] - end[0]) > 1e-9:
         points.append(np.array([end[0], last[1]]))
     points.append(end)
-    # Drop repeated points and merge collinear runs so every interior point is a real corner.
-    merged = [points[0]]
-    for point in points[1:]:
+    return validated_backbone(points, start_orientation, end_orientation, radius)
+
+
+def validated_backbone(points, start_orientation, end_orientation, radius) -> np.ndarray:
+    """Merge repeated/collinear points and check the polyline can carry PDK-radius bends."""
+    merged = [np.asarray(points[0], float)]
+    for point in map(np.asarray, points[1:]):
         if np.linalg.norm(point - merged[-1]) < 1e-9:
             continue
         if len(merged) >= 2:
@@ -71,7 +76,7 @@ def manhattan_points(start, start_orientation, end, end_orientation, steps, radi
                 merged[-1] = point
                 continue
         merged.append(point)
-    path = np.array(merged)
+    path = np.array(merged, dtype=float)
     segments = np.diff(path, axis=0)
     if len(segments) == 0:
         raise ValueError("Route start and end ports coincide")
@@ -81,7 +86,7 @@ def manhattan_points(start, start_orientation, end, end_orientation, steps, radi
     unit = segments / lengths[:, None]
     if not np.allclose(unit[0], direction(start_orientation), atol=1e-9):
         raise ValueError("Route must leave its start port along the port direction")
-    if not np.allclose(unit[-1], arrival, atol=1e-9):
+    if not np.allclose(unit[-1], -direction(end_orientation), atol=1e-9):
         raise ValueError("Route must enter its end port along the port direction")
     if np.any(np.einsum("ij,ij->i", unit[1:], unit[:-1]) < -0.5):
         raise ValueError("Route reverses direction")
@@ -192,21 +197,70 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
     for edge in ir.netlist.connections:
         neighbour[(edge.a.instance, edge.a.port)] = edge.b
         neighbour[(edge.b.instance, edge.b.port)] = edge.a
-    for name, route in routes.items():
-        start = neighbour[(name, "o1")]
-        end = neighbour[(name, "o2")]
-        start_port = references[start.instance].ports[start.port]
-        end_port = references[end.instance].ports[end.port]
-        points = manhattan_points(
-            start_port.center,
-            start_port.orientation,
-            end_port.center,
-            end_port.orientation,
-            route.steps,
-            tech.bend_radius_um,
+
+    def ends(name: str):
+        start, end = neighbour[(name, "o1")], neighbour[(name, "o2")]
+        return references[start.instance].ports[start.port], references[end.instance].ports[
+            end.port
+        ]
+
+    # GDSFactory's routers only propose Manhattan backbones in a scratch cell; every path is
+    # then validated, smoothed with circular PDK-radius bends and extruded the same way.
+    bend = gf.components.bend_circular(radius=tech.bend_radius_um, cross_section=cross_section)
+    dbu = component.kcl.dbu
+
+    def backbone(route) -> list:
+        return [(p.x * dbu, p.y * dbu) for p in route.backbone]
+
+    backbones, routers = {}, {}
+    bundled = {index[path] for bundle in plan.bundles for path in bundle.routes}
+    for k, bundle in enumerate(plan.bundles):
+        members = [index[path] for path in bundle.routes]
+        pairs = [ends(name) for name in members]
+        found = gf.routing.route_bundle(
+            gf.Component(f"bundle_{k}_{ir.design_id}"),
+            [a for a, _ in pairs],
+            [b for _, b in pairs],
+            cross_section=cross_section,
+            bend=bend,
+            separation=bundle.separation_um,
+            sort_ports=False,
         )
+        for name, route in zip(members, found, strict=True):
+            backbones[name], routers[name] = backbone(route), "bundle"
+    for name, route in routes.items():
+        if name in bundled:
+            continue
+        start_port, end_port = ends(name)
+        if route.steps:
+            backbones[name] = manhattan_points(
+                start_port.center,
+                start_port.orientation,
+                end_port.center,
+                end_port.orientation,
+                route.steps,
+                tech.bend_radius_um,
+            )
+            routers[name] = "steps"
+        else:
+            found = gf.routing.route_single(
+                gf.Component(f"route_{name}_{ir.design_id}"),
+                start_port,
+                end_port,
+                cross_section=cross_section,
+                bend=bend,
+            )
+            backbones[name], routers[name] = backbone(found), "auto"
+    for name, points in backbones.items():
+        start_port, end_port = ends(name)
+        points = validated_backbone(
+            points, start_port.orientation, end_port.orientation, tech.bend_radius_um
+        )
+        # Routers put corners exactly one radius from a port. smooth() recomputes the radius
+        # from its discretised arc and rejects that tie on rounding noise, so shave 1 pm: a
+        # thousandth of the database unit, invisible in the written GDS.
         path = (
-            gf.path.smooth(points, radius=tech.bend_radius_um, bend=gf.path.arc, npoints=128)
+            gf.path.smooth(points, radius=tech.bend_radius_um - 1e-6, bend=gf.path.arc, npoints=128)
             if len(points) > 2
             else gf.Path(points)
         )
@@ -277,4 +331,5 @@ def build_layout(ir: EngineeringIR, directory: Path) -> dict:
         "extracted_circuit": extracted_circuit,
         "bend_radius_um": tech.bend_radius_um,
         "actuators": actuators,
+        "routers": routers,
     }

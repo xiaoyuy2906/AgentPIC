@@ -397,7 +397,8 @@
           "port": "o4"
         },
         "port": "o1",
-        "x_um": 100
+        "x_um": 100,
+        "y_um": 0
       },
       "second/combiner": {
         "anchor": {
@@ -468,6 +469,7 @@
         "steps": []
       }
     },
+    "bundles": [],
     "constraints": [
       {
         "kind": "length_difference",

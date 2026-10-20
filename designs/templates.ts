@@ -129,16 +129,28 @@ export interface Stage {
   delta_length_um: number;
   phase_control?: Control;
 }
-/** MZI stages in series; both outputs of a stage feed the next stage through equal links. */
+/**
+ * MZI stages in series; both outputs of a stage feed the next stage. Without an offset the
+ * links are straight and equally long. With `stage_offset_um` each stage sits that far above
+ * the previous one and the two links are auto-routed together as a bundle, so their lengths
+ * come from the router rather than the design.
+ */
 export function cascade(
   options: Sweep & {
     name?: string;
     stages: Stage[];
     link_length_um?: number;
+    stage_offset_um?: number;
     tuning?: Tuning | null;
   },
 ): DesignInput {
-  const { name = 'mzi_cascade', stages, link_length_um: link = 100, tuning = null } = options;
+  const {
+    name = 'mzi_cascade',
+    stages,
+    link_length_um: link = 100,
+    stage_offset_um: offset = 0,
+    tuning = null,
+  } = options;
   const links = stages.slice(1).flatMap((stage, i) =>
     [0, 1].map((port) => ({
       name: `interconnect_${i}_${port}`,
@@ -147,7 +159,7 @@ export function cascade(
       port,
     })),
   );
-  const layout: Layout = { placements: {}, routes: {}, constraints: [] };
+  const layout: Layout = { placements: {}, routes: {}, bundles: [], constraints: [] };
   stages.forEach((stage, i) => {
     const block = mziLayout(
       stage.name,
@@ -158,6 +170,7 @@ export function cascade(
             anchor: { instance: `${stages[i - 1].name}/combiner`, port: 'o4' },
             port: 'o1',
             x_um: link,
+            y_um: offset,
           },
     );
     Object.assign(layout.placements, block.placements);
@@ -166,8 +179,11 @@ export function cascade(
   });
   for (const l of links) {
     layout.routes![l.name] = { steps: [] };
-    layout.constraints!.push({ kind: 'length', instance: l.name, value_um: link });
+    if (!offset) layout.constraints!.push({ kind: 'length', instance: l.name, value_um: link });
   }
+  if (offset)
+    for (let i = 0; i < stages.length - 1; i++)
+      layout.bundles!.push({ routes: [0, 1].map((port) => `interconnect_${i}_${port}`) });
   return {
     name,
     ...sweep(options),
@@ -395,8 +411,22 @@ export const designs: Record<string, DesignInput> = {
       ports: { LaunchB: endpoint('first', 'o1'), ReceiveA: endpoint('third', 'o2') },
     },
     port_order: ['ReceiveA', 'LaunchB'],
-    outputs: ['netlist', 'simulation', 'verification'],
+    // The outer straights are placed; the router finds the middle waveguide's S-shaped path,
+    // so its nominal 35.5 µm is replaced by the measured length after layout.
+    layout: {
+      placements: { first: { x_um: 0, y_um: 0 }, third: { x_um: 300, y_um: 150 } },
+      routes: { second: {} },
+    },
   },
+  mzi_cascade_offset: cascade({
+    name: 'mzi_cascade_offset',
+    stages: [
+      { name: 'first', delta_length_um: 10 },
+      { name: 'second', delta_length_um: 20 },
+    ],
+    link_length_um: 300,
+    stage_offset_um: 300,
+  }),
   coupler: {
     name: 'coupler',
     circuit: {

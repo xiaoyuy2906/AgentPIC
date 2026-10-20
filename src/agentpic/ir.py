@@ -490,6 +490,17 @@ class RouteStep6(ContractModel):
     y_from_end_um: float
 
 
+type Route1 = Annotated[str, Field(pattern="^[A-Za-z][A-Za-z0-9_]*(\\/[A-Za-z][A-Za-z0-9_]*)*$")]
+
+
+class Bundle(ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    routes: Annotated[list[Route1], Field(max_length=32, min_length=2)]
+    separation_um: Annotated[float, Field(gt=0.0)] = 5
+
+
 class LayoutConstraint1(ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -805,6 +816,7 @@ class LayoutPlan(ContractModel):
         dict[constr(pattern=r"^[A-Za-z][A-Za-z0-9_]*(\/[A-Za-z][A-Za-z0-9_]*)*$"), Route],
         Field(validate_default=True),
     ] = {}
+    bundles: Annotated[list[Bundle], Field(max_length=16, validate_default=True)] = []
     constraints: Annotated[
         list[LayoutConstraint1 | LayoutConstraint2], Field(max_length=64, validate_default=True)
     ] = []
@@ -834,6 +846,7 @@ class LayoutResult(ContractModel):
     extracted_circuit: Circuit
     bend_radius_um: Annotated[float, Field(gt=0.0)]
     actuators: Annotated[dict[str, ActuatorLayout], Field(validate_default=True)] = {}
+    routers: dict[str, Literal["steps", "auto", "bundle"]] = {}
 
 
 class DesignSpec(ContractModel):
@@ -915,6 +928,7 @@ class Contracts(ContractModel):
     Placement_1: Annotated[Placement, Field(alias="Placement")]
     RouteStep: RouteStep1 | RouteStep2 | RouteStep3 | RouteStep4 | RouteStep5 | RouteStep6
     Route_1: Annotated[Route, Field(alias="Route")]
+    Bundle_1: Annotated[Bundle, Field(alias="Bundle")]
     LayoutConstraint: LayoutConstraint1 | LayoutConstraint2
     LayoutPlan_1: Annotated[LayoutPlan, Field(alias="LayoutPlan")]
     Measurement_1: Annotated[Measurement, Field(alias="Measurement")]

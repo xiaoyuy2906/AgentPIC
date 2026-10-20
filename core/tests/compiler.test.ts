@@ -163,6 +163,15 @@ for (const [label, change] of [
   test(`layout plan rejects ${label}`, () => {
     assert.throws(() => compile(edit(base, change)), /layout_plan/);
   });
+test('layout plan rejects bundles of unrouted, stepped or shared members', () => {
+  const offset = designs.mzi_cascade_offset;
+  for (const [label, change] of [
+    ['unrouted', (d: any) => (d.layout.bundles[0].routes[0] = 'first/splitter')],
+    ['stepped', (d: any) => (d.layout.routes.interconnect_0_0.steps = [{ dx_um: 100 }])],
+    ['shared', (d: any) => d.layout.bundles.push({ routes: d.layout.bundles[0].routes })],
+  ] as const)
+    assert.throws(() => compile(edit(offset, change)), /bundle|more than one/, label);
+});
 test('layout plan rejects a route whose end is not a placed instance', () => {
   const chain = edit(designs.waveguide_chain, (d) => {
     d.layout = { placements: { first: {}, third: { x_um: 100 } }, routes: { second: {} } };

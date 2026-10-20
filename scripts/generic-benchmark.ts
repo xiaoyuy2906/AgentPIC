@@ -1,12 +1,20 @@
 /** Closed-form acceptance references; never imported by the production compiler/backend. */
-import { CircuitSchema, DesignSpecSchema, type SimulationResult } from '../core/src/contracts.js';
+import {
+  CircuitSchema,
+  DesignSpecSchema,
+  type Circuit,
+  type SimulationResult,
+} from '../core/src/contracts.js';
 
-/** Returns null when a flat circuit has no closed form here (only chains and single couplers). */
-export function genericBenchmark(input: unknown, result: SimulationResult) {
+/**
+ * Returns null when a flat circuit has no closed form here (only chains and single couplers).
+ * `resolved` is the simulated netlist, whose lengths are measured when the design has a layout.
+ */
+export function genericBenchmark(input: unknown, result: SimulationResult, resolved: Circuit) {
   const parsed = DesignSpecSchema.parse(input);
   const circuit = CircuitSchema.safeParse(parsed.circuit);
   if (!circuit.success) return null;
-  const spec = { ...parsed, circuit: circuit.data };
+  const spec = { ...parsed, circuit: resolved };
   const chain = spec.circuit.instances.every((i) => i.kind === 'waveguide');
   const coupler =
     spec.circuit.instances.length === 1 && spec.circuit.instances[0].kind === 'ideal_coupler';

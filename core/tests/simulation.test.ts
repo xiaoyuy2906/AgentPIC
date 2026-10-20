@@ -79,12 +79,12 @@ for (const ratios of [
       assert.ok(Math.abs(spacing - fsr) < 0.01, `${spacing} vs ${fsr}`);
   });
 for (const name of ['waveguide_chain', 'coupler'] as const)
-  test(`flat ${name} matches its closed form with an explicit port order and no layout`, async () => {
+  test(`flat ${name} circuit-only simulation matches its closed form with an explicit port order`, async () => {
     const spec = designs[name];
     const ir = compile(JSON.parse(canonical(spec)));
-    assert.deepEqual(
-      ir.workflow.map((t) => t.name),
-      ['compile', 'simulate', 'verify', 'manifest'],
+    assert.equal(
+      ir.workflow.some((t) => t.name === 'layout'),
+      spec.layout != null,
     );
     const result = await simulateCircuit(ir);
     assert.equal(
@@ -93,7 +93,7 @@ for (const name of ['waveguide_chain', 'coupler'] as const)
       JSON.stringify(result.verification),
     );
     assert.deepEqual(result.simulation.ports, spec.port_order);
-    assert.equal(genericBenchmark(spec, result.simulation)?.status, 'pass');
+    assert.equal(genericBenchmark(spec, result.simulation, result.ir.netlist)?.status, 'pass');
     for (const id of [
       'independent_circuit_agreement',
       'reciprocity',
