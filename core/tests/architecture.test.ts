@@ -55,3 +55,9 @@ test('checked-in design files equal their generators and compile without engine 
     assert.equal(compile(design).specification.name, name);
   }
 });
+test('engine code reaches FDTDX only through time stepping, never tidy3d or its mode solver', async () => {
+  const forbidden =
+    /^\s*(import\s+tidy3d|from\s+tidy3d)|\btidy3d\.|fdtdx\.(ModePlaneSource|\w*ModeOverlapDetector|compute_mode)\b|from\s+fdtdx[\w.]*\s+import\s+[^\n]*\b(ModePlaneSource|\w*ModeOverlapDetector|compute_mode)\b/m;
+  for (const file of await engineFiles())
+    assert.doesNotMatch(await readFile(path.join(projectRoot, file), 'utf8'), forbidden, file);
+});

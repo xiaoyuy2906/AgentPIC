@@ -1,0 +1,260 @@
+{
+  "schema_version": "1.0",
+  "pdk": "sin_demo_v1",
+  "cross_section": "strip",
+  "method": "FDTDX continuous-wave time-domain propagation; effective index from the phase of cross-section field projections; three grids per wavelength with Richardson extrapolation at the observed order; group index by central difference.",
+  "versions": {
+    "fdtdx": "0.6.3",
+    "jax": "0.9.2",
+    "numpy": "2.4.6",
+    "scipy": "1.18.1"
+  },
+  "grids_um": [
+    0.05,
+    0.04,
+    0.025
+  ],
+  "criteria": {
+    "slab_validation_error": 0.001,
+    "phase_residual_rad": 0.05,
+    "amplitude_spread": 0.1,
+    "observed_order": [
+      1.0,
+      3.0
+    ],
+    "richardson_correction": 0.01
+  },
+  "validation": {
+    "case": "symmetric slab, TE, same materials and thickness",
+    "analytic_effective_index": 1.7436317191546977,
+    "fdtd_extrapolated_effective_index": 1.7444630409014081,
+    "error": 0.0008313217467104117
+  },
+  "convergence": [
+    {
+      "case": "slab_validation",
+      "observed_order": 2.0361457954764335,
+      "richardson_correction": 0.0024203432634157807,
+      "worst_phase_residual_rad": 0.005740027915685175,
+      "worst_amplitude_spread": 0.015454956330358982
+    },
+    {
+      "case": "channel",
+      "observed_order": 2.0370685752619364,
+      "richardson_correction": 0.002264749224216489,
+      "worst_phase_residual_rad": 0.01629618808184574,
+      "worst_amplitude_spread": 0.030675671994686127
+    },
+    {
+      "case": "channel",
+      "observed_order": 2.0208222268855676,
+      "richardson_correction": 0.002120414806877857,
+      "worst_phase_residual_rad": 0.014652266532731772,
+      "worst_amplitude_spread": 0.02729743905365467
+    },
+    {
+      "case": "channel",
+      "observed_order": 2.019459508913634,
+      "richardson_correction": 0.001961472159868416,
+      "worst_phase_residual_rad": 0.012316582377955854,
+      "worst_amplitude_spread": 0.027317676693201065
+    }
+  ],
+  "channel": [
+    {
+      "wavelength_um": 1.5,
+      "core_index": 1.9976787068600748,
+      "cladding_index": 1.4446176596495854,
+      "observed_order": 2.0370685752619364,
+      "extrapolated": 1.653791280022584,
+      "correction": 0.002264749224216489
+    },
+    {
+      "wavelength_um": 1.55,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "observed_order": 2.0208222268855676,
+      "extrapolated": 1.6397340310917126,
+      "correction": 0.002120414806877857
+    },
+    {
+      "wavelength_um": 1.6,
+      "core_index": 1.9948839972336818,
+      "cladding_index": 1.4434190019685604,
+      "observed_order": 2.019459508913634,
+      "extrapolated": 1.6258824558135354,
+      "correction": 0.001961472159868416
+    }
+  ],
+  "mode": {
+    "reference_wavelength_um": 1.55,
+    "effective_index": 1.63973,
+    "group_index": 2.0723
+  },
+  "passed": {
+    "slab_validation": true,
+    "convergence_order": true,
+    "richardson_correction": true,
+    "phase_residual": true,
+    "amplitude_spread": true
+  },
+  "accepted": true,
+  "runs": [
+    {
+      "case": "slab_validation",
+      "wavelength_um": 1.55,
+      "grid_um": 0.05,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "effective_index": 1.7543900386602111,
+      "phase_residual_rad": 0.005498207332905736,
+      "amplitude_spread": 0.015454956330358982,
+      "cross_sections_fitted": 80,
+      "time_steps": 1589,
+      "elapsed_seconds": 1.0394432909997704
+    },
+    {
+      "case": "slab_validation",
+      "wavelength_um": 1.55,
+      "grid_um": 0.04,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "effective_index": 1.7507652819241706,
+      "phase_residual_rad": 0.005685026364350421,
+      "amplitude_spread": 0.014868982136249542,
+      "cross_sections_fitted": 100,
+      "time_steps": 1986,
+      "elapsed_seconds": 1.4640369580001789
+    },
+    {
+      "case": "slab_validation",
+      "wavelength_um": 1.55,
+      "grid_um": 0.025,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "effective_index": 1.746883384164824,
+      "phase_residual_rad": 0.005740027915685175,
+      "amplitude_spread": 0.014927752315998077,
+      "cross_sections_fitted": 160,
+      "time_steps": 3177,
+      "elapsed_seconds": 4.820375750000494
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.5,
+      "grid_um": 0.05,
+      "core_index": 1.9976787068600748,
+      "cladding_index": 1.4446176596495854,
+      "effective_index": 1.6630860546531392,
+      "phase_residual_rad": 0.01593473655067612,
+      "amplitude_spread": 0.029936818405985832,
+      "cross_sections_fitted": 80,
+      "time_steps": 1557,
+      "elapsed_seconds": 7.673595291999845
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.5,
+      "grid_um": 0.04,
+      "core_index": 1.9976787068600748,
+      "cladding_index": 1.4446176596495854,
+      "effective_index": 1.6596909337470196,
+      "phase_residual_rad": 0.01629618808184574,
+      "amplitude_spread": 0.030675671994686127,
+      "cross_sections_fitted": 100,
+      "time_steps": 1946,
+      "elapsed_seconds": 20.34396066700083
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.5,
+      "grid_um": 0.025,
+      "core_index": 1.9976787068600748,
+      "cladding_index": 1.4446176596495854,
+      "effective_index": 1.6560560292468005,
+      "phase_residual_rad": 0.01604927277296042,
+      "amplitude_spread": 0.028632277622818947,
+      "cross_sections_fitted": 160,
+      "time_steps": 3114,
+      "elapsed_seconds": 127.65675787500004
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.55,
+      "grid_um": 0.05,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "effective_index": 1.6483389926487975,
+      "phase_residual_rad": 0.014652266532731772,
+      "amplitude_spread": 0.026926029473543167,
+      "cross_sections_fitted": 80,
+      "time_steps": 1589,
+      "elapsed_seconds": 14.98886549999952
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.55,
+      "grid_um": 0.04,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "effective_index": 1.6452156776017233,
+      "phase_residual_rad": 0.013990093344215637,
+      "amplitude_spread": 0.02729743905365467,
+      "cross_sections_fitted": 100,
+      "time_steps": 1986,
+      "elapsed_seconds": 30.977220082999338
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.55,
+      "grid_um": 0.025,
+      "core_index": 1.9962797317138814,
+      "cladding_index": 1.4440236217032607,
+      "effective_index": 1.6418544458985904,
+      "phase_residual_rad": 0.014214354442131594,
+      "amplitude_spread": 0.027215076610445976,
+      "cross_sections_fitted": 160,
+      "time_steps": 3177,
+      "elapsed_seconds": 125.49992474999999
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.6,
+      "grid_um": 0.05,
+      "core_index": 1.9948839972336818,
+      "cladding_index": 1.4434190019685604,
+      "effective_index": 1.6338348891201537,
+      "phase_residual_rad": 0.011782760428328487,
+      "amplitude_spread": 0.027317676693201065,
+      "cross_sections_fitted": 80,
+      "time_steps": 1620,
+      "elapsed_seconds": 12.760209875000328
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.6,
+      "grid_um": 0.04,
+      "core_index": 1.9948839972336818,
+      "cladding_index": 1.4434190019685604,
+      "effective_index": 1.6309499608417162,
+      "phase_residual_rad": 0.011956524799881407,
+      "amplitude_spread": 0.02706407941877842,
+      "cross_sections_fitted": 100,
+      "time_steps": 2025,
+      "elapsed_seconds": 26.83197520900012
+    },
+    {
+      "case": "channel",
+      "wavelength_um": 1.6,
+      "grid_um": 0.025,
+      "core_index": 1.9948839972336818,
+      "cladding_index": 1.4434190019685604,
+      "effective_index": 1.6278439279734038,
+      "phase_residual_rad": 0.012316582377955854,
+      "amplitude_spread": 0.02653529867529869,
+      "cross_sections_fitted": 160,
+      "time_steps": 3240,
+      "elapsed_seconds": 125.21321095799976
+    }
+  ]
+}

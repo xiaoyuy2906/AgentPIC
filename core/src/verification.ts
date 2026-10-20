@@ -152,7 +152,6 @@ export const layoutNotRunChecks = (): CheckResult[] => [
 ];
 export function report(ir: EngineeringIR | null, checks: CheckResult[]): VerificationReport {
   for (const [id, detail] of [
-    ['electromagnetic_calibration', 'No electromagnetic solver or model calibration executed.'],
     ['measurement_validation', 'No fabricated-device measurements supplied.'],
     ['foundry_signoff', 'No foundry PDK/signoff checks available.'],
   ])

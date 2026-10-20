@@ -5,8 +5,14 @@
   "foundry": null,
   "database_unit_um": 0.001,
   "layers": {
-    "core": [1, 0],
-    "heater": [2, 0]
+    "core": [
+      1,
+      0
+    ],
+    "heater": [
+      2,
+      0
+    ]
   },
   "rules": {
     "minimum_width_um": 0.5,
@@ -17,10 +23,19 @@
     "silicon_nitride": {
       "model": "sellmeier",
       "terms": [
-        { "b": 3.0249, "c_um": 0.1353406 },
-        { "b": 40314, "c_um": 1239.842 }
+        {
+          "b": 3.0249,
+          "c_um": 0.1353406
+        },
+        {
+          "b": 40314,
+          "c_um": 1239.842
+        }
       ],
-      "validity_wavelength_um": [0.31, 5.504],
+      "validity_wavelength_um": [
+        0.31,
+        5.504
+      ],
       "source": {
         "kind": "literature",
         "reference": "K. Luke et al., Broadband mid-infrared frequency comb generation in a Si3N4 microresonator, Opt. Lett. 40, 4823 (2015): LPCVD Si3N4 Sellmeier fit",
@@ -31,11 +46,23 @@
     "silicon_dioxide": {
       "model": "sellmeier",
       "terms": [
-        { "b": 0.6961663, "c_um": 0.0684043 },
-        { "b": 0.4079426, "c_um": 0.1162414 },
-        { "b": 0.8974794, "c_um": 9.896161 }
+        {
+          "b": 0.6961663,
+          "c_um": 0.0684043
+        },
+        {
+          "b": 0.4079426,
+          "c_um": 0.1162414
+        },
+        {
+          "b": 0.8974794,
+          "c_um": 9.896161
+        }
       ],
-      "validity_wavelength_um": [0.21, 6.7],
+      "validity_wavelength_um": [
+        0.21,
+        6.7
+      ],
       "source": {
         "kind": "literature",
         "reference": "I. H. Malitson, Interspecimen comparison of the refractive index of fused silica, J. Opt. Soc. Am. 55, 1205 (1965)",
@@ -53,14 +80,14 @@
       "cladding_material": "silicon_dioxide",
       "mode": {
         "reference_wavelength_um": 1.55,
-        "effective_index": 1.8,
-        "group_index": 1.9,
+        "effective_index": 1.63973,
+        "group_index": 2.0723,
         "loss_db_per_cm": 0,
         "source": {
-          "kind": "assumption",
-          "reference": "Illustrative indices chosen to exercise the flow; not derived from this cross-section or measured.",
+          "kind": "characterization",
+          "reference": "FDTDX 0.6.3 time-domain characterization of this cross-section from the PDK Sellmeier materials; method validated on the analytic slab. A simulation, not a measurement.",
           "calibrated": false,
-          "evidence": null
+          "evidence": "pdks/sin_demo_v1.strip.characterization.json"
         }
       }
     },
@@ -72,10 +99,42 @@
   "components": {
     "ideal_coupler": {
       "ports": [
-        { "name": "o1", "domain": "optical", "position_um": [-10, -1.25], "orientation_deg": 180 },
-        { "name": "o2", "domain": "optical", "position_um": [-10, 1.25], "orientation_deg": 180 },
-        { "name": "o3", "domain": "optical", "position_um": [50, 1.25], "orientation_deg": 0 },
-        { "name": "o4", "domain": "optical", "position_um": [50, -1.25], "orientation_deg": 0 }
+        {
+          "name": "o1",
+          "domain": "optical",
+          "position_um": [
+            -10,
+            -1.25
+          ],
+          "orientation_deg": 180
+        },
+        {
+          "name": "o2",
+          "domain": "optical",
+          "position_um": [
+            -10,
+            1.25
+          ],
+          "orientation_deg": 180
+        },
+        {
+          "name": "o3",
+          "domain": "optical",
+          "position_um": [
+            50,
+            1.25
+          ],
+          "orientation_deg": 0
+        },
+        {
+          "name": "o4",
+          "domain": "optical",
+          "position_um": [
+            50,
+            -1.25
+          ],
+          "orientation_deg": 0
+        }
       ],
       "cell": {
         "factory": "mmi2x2",
@@ -88,10 +147,21 @@
           "gap_mmi": 1
         }
       },
-      "model": { "name": "ideal_coupler", "version": "ideal_coupler_v1" },
+      "model": {
+        "name": "ideal_coupler",
+        "version": "ideal_coupler_v1"
+      },
       "validity": {
-        "wavelength_um": [1.45, 1.65],
-        "parameters": { "coupling_ratio": [0, 1] }
+        "wavelength_um": [
+          1.45,
+          1.65
+        ],
+        "parameters": {
+          "coupling_ratio": [
+            0,
+            1
+          ]
+        }
       },
       "source": {
         "kind": "assumption",
@@ -102,14 +172,34 @@
     },
     "waveguide": {
       "ports": [
-        { "name": "o1", "domain": "optical" },
-        { "name": "o2", "domain": "optical" }
+        {
+          "name": "o1",
+          "domain": "optical"
+        },
+        {
+          "name": "o2",
+          "domain": "optical"
+        }
       ],
-      "cell": { "factory": "extrusion", "cross_section": "strip" },
-      "model": { "name": "waveguide", "version": "ideal_sin_waveguide_v1" },
+      "cell": {
+        "factory": "extrusion",
+        "cross_section": "strip"
+      },
+      "model": {
+        "name": "waveguide",
+        "version": "ideal_sin_waveguide_v1"
+      },
       "validity": {
-        "wavelength_um": [1.45, 1.65],
-        "parameters": { "length_um": [0, 100000] }
+        "wavelength_um": [
+          1.45,
+          1.65
+        ],
+        "parameters": {
+          "length_um": [
+            0,
+            100000
+          ]
+        }
       },
       "source": {
         "kind": "assumption",
@@ -120,23 +210,50 @@
     },
     "phase_shifter": {
       "ports": [
-        { "name": "o1", "domain": "optical" },
-        { "name": "o2", "domain": "optical" },
-        { "name": "e1", "domain": "electrical" },
-        { "name": "e2", "domain": "electrical" }
+        {
+          "name": "o1",
+          "domain": "optical"
+        },
+        {
+          "name": "o2",
+          "domain": "optical"
+        },
+        {
+          "name": "e1",
+          "domain": "electrical"
+        },
+        {
+          "name": "e2",
+          "domain": "electrical"
+        }
       ],
       "cell": {
         "factory": "extrusion",
         "cross_section": "strip",
         "actuator_cross_section": "heater"
       },
-      "model": { "name": "phase_shifter", "version": "ideal_phase_shifter_v1" },
+      "model": {
+        "name": "phase_shifter",
+        "version": "ideal_phase_shifter_v1"
+      },
       "validity": {
-        "wavelength_um": [1.45, 1.65],
+        "wavelength_um": [
+          1.45,
+          1.65
+        ],
         "parameters": {
-          "length_um": [0, 100000],
-          "phase_rad": [-12.566370614359172, 12.566370614359172],
-          "active_length_um": [20, 200]
+          "length_um": [
+            0,
+            100000
+          ],
+          "phase_rad": [
+            -12.566370614359172,
+            12.566370614359172
+          ],
+          "active_length_um": [
+            20,
+            200
+          ]
         }
       },
       "source": {

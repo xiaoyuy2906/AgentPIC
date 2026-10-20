@@ -68,14 +68,32 @@ def optimize(ir: EngineeringIR, variables: list[ResolvedTuningVariable]) -> Tuni
         for seed in range(1, 5):
             fractions = (seed * np.sqrt(np.array([2, 3, 5, 7][: len(names)]))) % 1
             starts.append(lower + fractions * (upper - lower))
+        probed: list[np.ndarray] = []
         for x in starts:
-            residual(x)
-        ranked = sorted(trace, key=lambda c: float(np.max(np.abs(np.array(c["powers"]) - wanted))))
-        for candidate in ranked:
-            x0 = np.array([candidate["controls"][n] for n in names])
+            if not any(np.allclose(x, seen, rtol=0, atol=1e-12) for seen in probed):
+                probed.append(x)
+                residual(x)
+        # Restart each local search from the best point found so far, so a search that stops
+        # short (e.g. crawling along a bound) is continued rather than repeated from the start.
+        searched: list[np.ndarray] = []
+        while True:
+            ranked = sorted(
+                trace, key=lambda c: float(np.max(np.abs(np.array(c["powers"]) - wanted)))
+            )
+            starts_left = [
+                x
+                for x in (np.array([c["controls"][n] for n in names]) for c in ranked)
+                if not any(np.allclose(x, seen, rtol=0, atol=1e-12) for seen in searched)
+            ]
+            if not starts_left:
+                break
+            searched.append(starts_left[0])
+            # Trust-region-reflective steps scale with the distance to a bound, so a search
+            # started exactly on a bound crawls; start it a thousandth of the range inside.
+            margin = 1e-3 * (upper - lower)
             least_squares(
                 residual,
-                x0,
+                np.clip(starts_left[0], lower + margin, upper - margin),
                 bounds=(lower, upper),
                 method="trf",
                 jac="3-point",

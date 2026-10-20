@@ -73,7 +73,12 @@ Invalid structure or semantics return 422 with the failing checks; a completed t
 
 TypeScript checks references, port occupancy and compatibility, topology, the layout plan, extracted connectivity, port alignment, measured lengths and layout constraints. Python checks the full SAX matrix against independent dense network elimination, spectral sampling adequacy, reciprocity, passivity and lossless power balance, then reopens the GDS with KLayout for connectivity, width, spacing, bend radius and metal geometry, and runs pin-based LVS: connectivity re-extracted from physical pins, pins backed by real geometry, and no crossing waveguides.
 
-These checks verify the solver, the netlist and the geometry against the **stated ideal models**. `sin_demo_v1` assumes neff = 1.8 and ng = 1.9 at 1550 nm, ideal couplers and zero loss; its PDK file marks these as uncalibrated assumptions and every report lists them as limitations. Electromagnetic calibration, measurement validation and foundry signoff are always reported `not_run`, and controlled designs also report electrical-to-phase calibration as `not_run`. See [models and verification](docs/models-and-verification.md).
+These checks verify the solver, the netlist and the geometry against the **stated compact models**. The models themselves rest on a ladder of physics evidence (ADR-009): circuits are solved only by SAX and fields only by [FDTDX](https://github.com/ymahlau/fdtdx). The strip waveguide's neff = 1.63973 and ng = 2.0723 at 1550 nm come from an FDTDX time-domain characterization that first reproduces the analytic slab solution, then converges over three grids per wavelength. The earlier assumed 1.8 and 1.9 were 9.8 % and 8.3 % off. Every run checks that evidence (`mode_characterization`) and lists models still without it (`electromagnetic_characterization`): the ideal MMI coupler has none yet. Measurement validation and foundry signoff are always `not_run`, and controlled designs report electrical-to-phase calibration as `not_run`.
+
+```sh
+uv sync --group em                                   # FDTDX; installs tidy3d, which AgentPIC never calls
+npm run characterize -- sin_demo_v1 strip --write    # about 8 minutes on a laptop CPU
+``` See [models and verification](docs/models-and-verification.md).
 
 A separate physics workflow (`npm run --silent agentpic -- physics examples/straight_waveguide.json`) runs a planar TE slab benchmark with independent dispersion evidence; see [physics verification](docs/physics-verification.md).
 

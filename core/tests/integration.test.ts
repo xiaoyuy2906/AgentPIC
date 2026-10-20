@@ -28,7 +28,7 @@ test('design → TS IR → semantic validation → JSON → Python SAX → resul
   assert.ok(!('sax_netlist' in result.simulation));
 });
 test('reserved EM adapters do not claim execution', async () => {
-  await assert.rejects(() => pythonRequest({ operation: 'fdtdx' }), /not implemented/);
+  await assert.rejects(() => pythonRequest({ operation: 'fem' }), /not implemented/);
 });
 test('scientific requests use the prepared environment without interpreter resolution or sync', async () => {
   const before = await pythonRequest({ operation: 'versions' });

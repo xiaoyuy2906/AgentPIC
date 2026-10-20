@@ -7,6 +7,7 @@ Numerical agreement verifies the stated ideal models, not physical calibration.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -32,6 +33,87 @@ def _check(identifier: str, passed: bool, detail: str, **evidence) -> CheckResul
     )
 
 
+ROOT = Path(__file__).resolve().parents[2]
+EVIDENCE_KINDS = {"characterization", "measurement", "foundry"}
+
+
+def verify_models(ir: EngineeringIR) -> list[CheckResult]:
+    """Which used compact models rest on electromagnetic evidence, and is that evidence intact?
+
+    A path-extruded component inherits its cross-section's mode model; a fixed cell needs
+    device-level evidence of its own. Characterization evidence must have passed its own
+    acceptance criteria and must state exactly the values the PDK uses.
+    """
+    tech = ir.technology
+    characterized, uncharacterized, records, problems = [], [], [], []
+    for kind in sorted({i.kind for i in ir.netlist.instances}):
+        component = tech.components[kind]
+        name = component.cell.cross_section
+        mode = tech.cross_sections[name].mode
+        backed = mode if component.cell.factory == "extrusion" else component
+        (characterized if backed.source.kind in EVIDENCE_KINDS else uncharacterized).append(kind)
+        if component.cell.factory != "extrusion" or mode.source.kind != "characterization":
+            continue
+        if any(r["cross_section"] == name for r in records):
+            continue
+        path = (ROOT / (mode.source.evidence or "")).resolve()
+        try:
+            if ROOT not in path.parents or not path.is_file():
+                raise ValueError("evidence file missing")
+            evidence = json.loads(path.read_text())
+            stated = evidence["mode"]
+            agree = (
+                evidence["pdk"] == tech.name
+                and evidence["cross_section"] == name
+                and evidence["accepted"] is True
+                and all(evidence["passed"].values())
+                and stated["reference_wavelength_um"] == mode.reference_wavelength_um
+                and abs(stated["effective_index"] - mode.effective_index) <= 5e-6
+                and abs(stated["group_index"] - mode.group_index) <= 5e-5
+            )
+            if not agree:
+                problems.append(f"{name}: evidence and PDK disagree or evidence was not accepted")
+            records.append(
+                {
+                    "cross_section": name,
+                    "evidence": mode.source.evidence,
+                    "effective_index": stated["effective_index"],
+                    "group_index": stated["group_index"],
+                    "slab_validation_error": evidence["validation"]["error"],
+                    "versions": evidence["versions"],
+                }
+            )
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            problems.append(f"{name}: {exc}")
+            records.append({"cross_section": name, "evidence": mode.source.evidence})
+    checks = []
+    if records:
+        checks.append(
+            _check(
+                "mode_characterization",
+                not problems,
+                "Characterized mode models match evidence that passed its own acceptance criteria.",
+                records=records,
+                problems=problems,
+            )
+        )
+    checks.append(
+        CheckResult(
+            id="electromagnetic_characterization",
+            status="pass" if not uncharacterized else "not_run",
+            detail=(
+                "Every compact model used rests on electromagnetic or measured evidence."
+                if not uncharacterized
+                else "Some compact models used have no electromagnetic characterization: "
+                + ", ".join(uncharacterized)
+                + "."
+            ),
+            evidence={"characterized": characterized, "uncharacterized": uncharacterized},
+        )
+    )
+    return checks
+
+
 def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     wavelengths = np.asarray(simulation["wavelength_nm"], dtype=float)
     spec = ir.specification
@@ -44,7 +126,7 @@ def verify_simulation(ir: EngineeringIR, simulation: dict) -> list[CheckResult]:
     except ValueError:
         return [_check("simulation_shape_and_finiteness", False, "Malformed complex matrix.")]
     controlled = any(i.phase_control is not None for i in ir.netlist.instances)
-    calibration = (
+    calibration = verify_models(ir) + (
         [
             CheckResult(
                 id="phase_actuation_calibration",

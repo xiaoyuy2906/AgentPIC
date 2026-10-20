@@ -28,7 +28,8 @@ jobs:
           python-version: ${{ matrix.python }}
           enable-cache: true
       - run: npm ci
-      - run: uv sync --locked
+      # The em group adds FDTDX so the slab validation of the characterization method runs in CI.
+      - run: uv sync --locked --group em
       - run: npm run generate
       - run: git diff --exit-code -- schemas src/agentpic/ir.py designs
       - run: npm run typecheck

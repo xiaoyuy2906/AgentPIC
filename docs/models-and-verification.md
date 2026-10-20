@@ -4,7 +4,7 @@ All lengths inside the compact models are in µm. Input wavelengths use nm and a
 
 ## Waveguide
 
-For reference wavelength λ₀ = 1.55 µm, assumed effective index n₀ = 1.8 and group index n_g = 1.9:
+For reference wavelength λ₀ = 1.55 µm, effective index n₀ = 1.63973 and group index n_g = 2.0723 from the FDTDX characterization of the 1.0 × 0.4 µm strip (`pdks/sin_demo_v1.strip.characterization.json`, ADR-009). These replaced assumed values of 1.8 and 1.9, which were 9.8 % and 8.3 % off:
 
 ```text
 n_eff(λ) = n₀ + (n₀ − n_g) (λ − λ₀) / λ₀
@@ -68,9 +68,20 @@ Phase shifters use GDSFactory metal cross sections to place a 2.5 µm-wide metal
 
 The builder's own extracted port netlist is also compared with compiler intent. KLayout independently opens the exported GDS, checks nonempty connected core geometry, minimum width/spacing, and that narrow corridors around every arm and interconnect centerline are covered by the core. Bend radii are checked from the sampled centerline. These checks detect missing connections, broken paths and some geometry violations; they do not constitute full polygon-extracted LVS, foundry DRC, density, enclosure, process-corner, packaging or yield checks.
 
+## Electromagnetic characterization of the strip
+
+| Case | Grids (nm) | Observed order | Extrapolated n_eff | Check |
+|---|---|---|---|---|
+| Slab, 0.4 µm, TE, 1550 nm | 50, 40, 25 | 2.04 | 1.744463 | analytic 1.743632; error 8.3 × 10⁻⁴ ≤ 1 × 10⁻³ |
+| Strip, 1500 nm | 50, 40, 25 | 2.04 | 1.653791 | |
+| Strip, 1550 nm | 50, 40, 25 | 2.02 | 1.639734 | |
+| Strip, 1600 nm | 50, 40, 25 | 2.02 | 1.625882 | |
+
+The group index 2.0723 is the central difference of the extrapolated values. Worst phase-fit residual is 0.016 rad and worst projection amplitude spread 3.1 %, against criteria of 0.05 rad and 10 %. The slab criterion of 1 × 10⁻³ (0.06 %) sits below the index shift of a 10 nm width change; at 25 nm the slab result is still pre-asymptotic because of interface staircasing, which finer grids would reduce at higher cost. The twelve FDTD runs took 499 s on one laptop CPU. These are simulations of the nominal cross-section, not measurements: sidewall angle, roughness and process variation are absent.
+
 ## Evidence interpretation
 
-`passed_with_limitations` means every implemented check passed for the stated model and demonstration geometry rules. Three required capabilities remain `not_run`: electromagnetic calibration, fabricated-device measurement validation, and foundry signoff. They are present in every verification report, including failed reports. Controlled optical calculations also report missing electrical-to-phase calibration. `foundry_signoff` is constrained to `false` in the public report schema.
+`passed_with_limitations` means every implemented check passed for the stated model and demonstration geometry rules. `electromagnetic_characterization` lists which used compact models rest on electromagnetic evidence; it passes only when all of them do, and is `not_run` for any design with an ideal coupler. Fabricated-device measurement validation and foundry signoff are always `not_run`. They are present in every verification report, including failed reports. Controlled optical calculations also report missing electrical-to-phase calibration. `foundry_signoff` is constrained to `false` in the public report schema.
 
 Tests deliberately corrupt the complex scattering matrix, extracted netlist, GDS geometry and stored artifacts to ensure verification detects failures. Boundary cases include balanced arms and positive/negative imbalances through ±200 µm. Backend exceptions are tested separately from failed engineering checks.
 

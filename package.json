@@ -13,7 +13,8 @@
     "format": "prettier --write core designs scripts/*.ts",
     "format:check": "prettier --check core designs scripts/*.ts",
     "benchmark:physics": "tsx scripts/benchmark-physics.ts",
-    "generate:designs": "tsx scripts/generate-designs.ts"
+    "generate:designs": "tsx scripts/generate-designs.ts",
+    "characterize": "uv run --group em python -m agentpic.characterize"
   },
   "repository": {
     "type": "git",

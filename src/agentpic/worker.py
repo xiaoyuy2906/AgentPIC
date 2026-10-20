@@ -4,7 +4,7 @@ import contextlib
 import json
 import platform
 import sys
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -34,13 +34,19 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | list[dict[str, Any]]:
                 "scipy",
             )
         }
+        with contextlib.suppress(PackageNotFoundError):
+            packages["fdtdx"] = version("fdtdx")
         return {
             **packages,
             "python": platform.python_version(),
             "python_executable": sys.executable,
         }
-    if operation in {"fdtdx", "fem", "eme"}:
+    if operation in {"fem", "eme"}:
         raise NotImplementedError(f"{operation} is reserved, not implemented")
+    if operation == "characterize_cross_section":
+        from agentpic.characterize import characterize
+
+        return characterize(request["pdk"], request["cross_section"])
     if operation in {"mode_planar_te", "reference_planar_te"}:
         from agentpic.backends.planar_modes import solve
 

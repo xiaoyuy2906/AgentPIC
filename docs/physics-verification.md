@@ -60,3 +60,5 @@ Causes are hypotheses, not certainty beyond the evidence. A suspected unit error
 Each run includes goal/configuration JSON, experiment plan, per-experiment criteria and evidence, a structured report, event log, file hashes, source/schema/lock hashes, Node/Python package versions and Git state. Resource reporting includes wall time, accumulated solver time, experiment count, largest grid and estimated array storage. Array storage is an estimate, not peak process RSS; import/runtime overhead appears in wall time.
 
 The benchmark registry records valid/invalid configurations, unit consistency, convergence, physical constraints, reproducibility, diagnosis and hypothesis evaluation. The test suite additionally checks error injection and real HTTP/MCP transports. A capability is not globally declared physically verified merely because it is registered; the benchmark artifact records exactly what evidence was produced for a particular revision.
+
+The analytic slab reference of this workflow also validates the FDTDX characterization method before its channel-guide results enter the PDK (ADR-009).

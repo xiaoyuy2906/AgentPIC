@@ -19,6 +19,11 @@ dev = [
     "ruff>=0.9",
     "datamodel-code-generator>=0.83.0",
 ]
+# Electromagnetic characterization. FDTDX installs tidy3d as a dependency; AgentPIC code never
+# imports tidy3d or uses FDTDX's tidy3d-backed mode sources, detectors or mode solver.
+em = [
+    "fdtdx==0.6.3",
+]
 
 [build-system]
 requires = ["hatchling"]

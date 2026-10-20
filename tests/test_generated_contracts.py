@@ -59,7 +59,7 @@ def test_structure_is_not_semantic_verification():
 
 def test_reserved_em_backend_fails_explicitly():
     with pytest.raises(NotImplementedError):
-        dispatch({"operation": "fdtdx"})
+        dispatch({"operation": "fem"})
 
 
 @pytest.mark.parametrize("name", sorted(p.stem for p in (ROOT / "designs").glob("*.json")))

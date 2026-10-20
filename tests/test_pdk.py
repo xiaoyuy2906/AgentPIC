@@ -23,7 +23,8 @@ def compiled():
 
 def test_pdk_data_file_validates_against_the_generated_contract():
     pdk = PDK.model_validate_json((ROOT / "pdks/sin_demo_v1.json").read_text(), strict=True)
-    assert pdk.cross_sections["strip"].mode.source.kind == "assumption"
+    assert pdk.cross_sections["strip"].mode.source.kind == "characterization"
+    assert pdk.components["ideal_coupler"].source.kind == "assumption"
     assert pdk.materials["silicon_nitride"].source.kind == "literature"
     assert {p.name for p in pdk.components["ideal_coupler"].ports} == {"o1", "o2", "o3", "o4"}
 

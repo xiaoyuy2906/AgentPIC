@@ -105,4 +105,16 @@ Accepted. Process facts live in `pdks/<name>.json`, validated by the `PDK` contr
 
 Every material, mode model and component carries a source (`assumption`, `literature`, `characterization`, `measurement`, `foundry`) with a reference and a calibration flag. Verification reports list every uncalibrated source as a limitation, so an assumed index can never look like a measured one. Backends declare which model versions they implement and reject others; the layout backend rejects a cell whose ports disagree with the PDK declaration.
 
-Open PDKs (cspdk 2.1.0, ubcpdk 1.3.4) were assessed and ship only placeholder compact models (see `docs/research.md`), so they are not used as model sources. Replacing `sin_demo_v1`'s assumed waveguide indices with characterization evidence is the next milestone.
+Open PDKs (cspdk 2.1.0, ubcpdk 1.3.4) were assessed and ship only placeholder compact models (see `docs/research.md`), so they are not used as model sources. ADR-009 replaces `sin_demo_v1`'s assumed waveguide indices with characterization evidence.
+
+## ADR-009: Physics evidence from FDTDX, validated before it is trusted
+
+Accepted. Circuits are solved only by SAX; electromagnetic fields only by FDTDX (MIT, JAX FDTD). FDTDX is an optional `em` dependency group. It installs tidy3d as a dependency, but AgentPIC code never imports tidy3d and never uses FDTDX's tidy3d-backed mode sources, mode detectors or `compute_mode`; `core/tests/architecture.test.ts` enforces this. Only FDTD time stepping, a uniform plane source and a phasor detector are used.
+
+`src/agentpic/characterize.py` characterizes a PDK cross-section offline. A continuous wave is launched into a straight guide whose material indices come from the PDK's Sellmeier data at each wavelength; the effective index is the slope of the phase of cross-section field projections along the guide. The ladder of evidence is:
+
+1. **Method validation**: the same pipeline on a symmetric slab of the same materials must reproduce the existing analytic slab dispersion solution (`planar_modes.py`) after extrapolation.
+2. **Convergence**: three grids per wavelength, Richardson extrapolation at the observed order; the order, the extrapolation correction, the phase-fit residual and the projection amplitude spread must lie within predeclared criteria.
+3. **Group index**: central difference of extrapolated indices across three wavelengths, so material dispersion is included.
+
+Accepted results update the PDK mode model with source `characterization` (still `calibrated: false`: a simulation, not a measurement) and an evidence file. Every design run verifies that evidence (`mode_characterization`) and reports which used models still lack electromagnetic evidence (`electromagnetic_characterization`); the MMI coupler, a fixed cell, needs device-level characterization of its own and remains `not_run`.

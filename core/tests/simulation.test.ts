@@ -102,8 +102,13 @@ for (const name of ['waveguide_chain', 'coupler'] as const)
       'spectral_sampling',
     ])
       assert.equal(checked(result.verification, id)?.status, 'pass', id);
-    for (const id of ['layout_generation', 'layout_verification', 'electromagnetic_calibration'])
+    for (const id of ['layout_generation', 'layout_verification'])
       assert.equal(checked(result.verification, id)?.status, 'not_run', id);
+    // Waveguides inherit the FDTDX-characterized strip mode; the ideal coupler has no EM evidence.
+    assert.equal(
+      checked(result.verification, 'electromagnetic_characterization')?.status,
+      name === 'coupler' ? 'not_run' : 'pass',
+    );
   });
 test('a phase shifter keeps its electrical terminals outside the optical matrix', async () => {
   const spec = structuredClone(designs.waveguide_chain) as any;
